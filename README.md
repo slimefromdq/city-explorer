@@ -72,7 +72,7 @@ speed trail width/length and afterimage density. F8 adds streak so you can see i
 
 ```
 godot --headless --fixed-fps 60 res://tests/smoke_test.tscn                  # rules
-xvfb-run -a godot --rendering-driver vulkan res://tests/screenshot.tscn      # PNGs in tests/out
+xvfb-run -a godot --rendering-driver vulkan --fixed-fps 30 res://tests/screenshot.tscn   # PNGs in tests/out (slow on software GL)
 ```
 
 ## Not built yet (deliberately)

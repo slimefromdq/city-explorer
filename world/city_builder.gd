@@ -40,6 +40,10 @@ func build() -> void:
 	for key in BLOCKS.keys():
 		_block(key)
 	HighwayBuilder.build(self)
+	var lb := Leaderboard.new()
+	lb.name = "Leaderboard"
+	lb.position = Vector3(-17.5, 46.0, -46.0)
+	add_child(lb)
 	_skybridge()
 	_street_furniture()
 	_landmark_clock_tower()

@@ -63,6 +63,7 @@ func _ready() -> void:
 	await _traversal()
 	await _combat_matrix()
 	await _abilities()
+	await _bots()
 	await _bounty()
 	print("\n%d passed, %d failed" % [passes, fails])
 	get_tree().quit(1 if fails > 0 else 0)
@@ -318,6 +319,53 @@ func _abilities() -> void:
 	check("ricochet round bounced off the wall", bounced)
 	a.queue_free()
 	v.queue_free()
+
+
+func _brain(f: Fighter, target: Fighter, mode: BotBrain.Mode) -> BotBrain:
+	var b := BotBrain.new()
+	b.fighter = f
+	b.target = target
+	b.mode = mode
+	f.add_child(b)
+	return b
+
+
+func _bots() -> void:
+	print("bots")
+	var shooter := spawn("Shooter", Vector3(-123, 0.1, -10))
+	var bot := spawn("BotB", Vector3(-123, 0.1, 6))
+	await frames(10)
+	face(shooter, bot)
+	var brain := _brain(bot, shooter, BotBrain.Mode.BLOCKER)
+	await frames(20)
+	check("blocker bot raises its guard", bot.guard.blocking)
+	var hp := bot.health
+	shooter.press_ability(1)
+	await frames(60)
+	check("blocker bot absorbs a burst", bot.health == hp and bot.guard.value < 100.0, "hp %s guard %s" % [bot.health, bot.guard.value])
+	brain.queue_free()
+	await frames(2)
+	bot.wants_block = false
+	# dodger
+	bot.reset_meters()
+	shooter.reset_meters()
+	brain = _brain(bot, shooter, BotBrain.Mode.DODGER)
+	await frames(30)
+	face(shooter, bot)
+	shooter.press_ability(3)  # ricochet: slow and readable
+	await frames(150)
+	check("dodger bot spends a dodge on an incoming round", bot.dodge.pool.charges < 3.0 or bot.dodge.active)
+	brain.queue_free()
+	await frames(2)
+	# aggressor shoots the target
+	bot.reset_meters()
+	shooter.reset_meters()
+	shooter.hurtbox.set_active(true)
+	brain = _brain(bot, shooter, BotBrain.Mode.AGGRESSOR)
+	await frames(360)
+	check("aggressor bot fires at its target", bot.gun.ammo < bot.gun.mag_size or shooter.health < shooter.max_health)
+	bot.queue_free()
+	shooter.queue_free()
 
 
 func _h(attacker: Fighter, victim: Fighter, dmg: float, flinch := 0.0) -> HitData:

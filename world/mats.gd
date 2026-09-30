@@ -79,11 +79,28 @@ static func mural(a: Color, b: Color, c: Color, seed: float, aspect: float, ener
 
 static func road() -> StandardMaterial3D:
 	if not _cache.has("road"):
+		var noise := FastNoiseLite.new()
+		noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+		noise.frequency = 0.03
+		noise.fractal_octaves = 3
+		var tex := NoiseTexture2D.new()
+		tex.noise = noise
+		tex.width = 512
+		tex.height = 512
+		tex.seamless = true
+		var ramp := Gradient.new()
+		ramp.set_color(0, Color(0.55, 0.55, 0.6))
+		ramp.set_color(1, Color(1, 1, 1))
+		tex.color_ramp = ramp
 		var m := StandardMaterial3D.new()
-		m.albedo_color = Color(0.09, 0.1, 0.13)
-		m.roughness = 0.16
-		m.metallic = 0.25
+		m.albedo_color = Color(0.16, 0.17, 0.22)
+		m.albedo_texture = tex
+		m.roughness = 0.55
+		m.roughness_texture = tex
+		m.metallic = 0.2
 		m.metallic_specular = 0.9
+		m.uv1_triplanar = true
+		m.uv1_scale = Vector3(0.08, 0.08, 0.08)
 		_cache["road"] = m
 	return _cache["road"]
 

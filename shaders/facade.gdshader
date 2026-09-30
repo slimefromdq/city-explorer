@@ -48,14 +48,16 @@ void fragment() {
 		// wall grime toward the street
 		col *= 1.0 - 0.3 * smoothstep(6.0, 0.0, wpos.y) * hash21(vec2(floor(u * 0.7), salt));
 		if (wpos.y < store_height) {
-			// storefront band: wide glazing with mullions
+			// storefront band: mullioned glazing above a solid riser, patchy warm light
 			vec2 sc = vec2(cell.x * 1.8, store_height);
 			vec2 f = fract(vec2(u, wpos.y) / sc);
-			float inside = step(0.08, f.x) * step(f.x, 0.92) * step(0.06, f.y) * step(f.y, 0.86);
+			float inside = step(0.05, f.x) * step(f.x, 0.95) * step(0.2, f.y) * step(f.y, 0.82);
+			inside *= step(abs(fract(u / 1.7) - 0.5), 0.44);
 			float id = floor(u / sc.x);
-			float on = step(0.25, hash21(vec2(id, salt + 7.0)));
+			float on = step(0.2, hash21(vec2(id, salt + 7.0)));
+			float vary = 0.6 + 0.6 * hash21(vec2(id, salt + 3.0));
 			col = mix(col, window_dark.rgb, inside);
-			em = store_glow.rgb * inside * on * 0.55 * glow;
+			em = store_glow.rgb * inside * on * 0.5 * glow * vary * mix(0.55, 1.0, f.y);
 		} else {
 			vec2 p = vec2(u, wpos.y - store_height) / cell;
 			vec2 id = floor(p);

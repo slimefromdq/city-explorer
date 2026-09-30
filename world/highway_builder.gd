@@ -64,8 +64,8 @@ static func _gantry(k: Kit, x: float) -> void:
 	k.box(Vector3(x, DECK_Y + 7.0, 0), Vector3(0.6, 0.5, HALF_W * 2.0 - 1.0), steel, false)
 	var sign_mat := Mats.paint(Color(0.05, 0.4, 0.25))
 	k.box(Vector3(x, DECK_Y + 4.2, 0), Vector3(0.25, 2.8, 9.0), sign_mat, false)
-	k.label("DOWNTOWN  >>  12 km", Vector3(x + 0.16, DECK_Y + 5.6, 0), 0.9, Color(1, 1, 1), 90.0)
-	k.label("HANGANG BRIDGE  >>", Vector3(x + 0.16, DECK_Y + 4.7, 0), 0.7, Color(1, 1, 1), 90.0)
+	k.label("DOWNTOWN  >>  12 km", Vector3(x - 0.16, DECK_Y + 5.6, 0), 0.9, Color(1, 1, 1), -90.0)
+	k.label("HANGANG BRIDGE  >>", Vector3(x - 0.16, DECK_Y + 4.7, 0), 0.7, Color(1, 1, 1), -90.0)
 
 
 static func _gas_station(k: Kit, x: float, rng: RandomNumberGenerator) -> void:
