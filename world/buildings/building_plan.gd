@@ -13,7 +13,7 @@ const DECORATION := ["window", "door"]
 
 
 class Piece:
-	var kind: String           # "base" | "floor" | "roof" | "rooftop" | "window" | "door" (more added per feature)
+	var kind: String           # "base" | "floor" | "roof" | "rooftop" | "window" | "door" | "parapet" | "roof_step"
 	var tier := -1             # which section of the tower (0 = lowest); -1 if not a floor
 	var floor_index := -1      # 0 = first floor above the base (for a window: the floor it belongs to)
 	var face := ""             # for wall decorations: which wall they sit on, "n" "e" "s" "w"
@@ -53,6 +53,7 @@ var depth_u := 0
 var floors := 0
 var floor_units := 0
 var palette_index := 0
+var roof_variant := "flat"
 var pieces: Array[Piece] = []
 var errors: PackedStringArray = []
 
@@ -72,7 +73,7 @@ func height_units() -> int:
 ## exactly when their signatures are equal (used by the tests).
 func signature() -> String:
 	var lines := PackedStringArray()
-	lines.append("%d|%d|%d|%d|%d|%d" % [seed_value, width_u, depth_u, floors, floor_units, palette_index])
+	lines.append("%d|%d|%d|%d|%d|%d|%s" % [seed_value, width_u, depth_u, floors, floor_units, palette_index, roof_variant])
 	for p in pieces:
 		lines.append("%s,%d,%d,%d,%d,%d,%d,%d,%s,%d" % [p.kind, p.tier, p.at.x, p.at.y, p.at.z, p.size.x, p.size.y, p.size.z, p.face, p.variant])
 	return "\n".join(lines)

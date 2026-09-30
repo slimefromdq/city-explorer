@@ -34,6 +34,15 @@ func good_plan() -> BuildingPlan:
 	return BuildingGenerator.plan(29, 29, 24, 3.5, 1)
 
 
+## A fresh plan whose roof is the given variant (and, optionally, that has a plant room).
+func _plan_with_roof(variant: String, with_rooftop := false) -> BuildingPlan:
+	for sd in 400:
+		var p := BuildingGenerator.plan(29, 29, 10, 3.5, sd)
+		if p.roof_variant == variant and (not with_rooftop or not _pieces_of(p, "rooftop").is_empty()):
+			return p
+	return BuildingGenerator.plan(29, 29, 10, 3.5, 1)
+
+
 func _pieces_of(p: BuildingPlan, kind: String) -> Array[BuildingPlan.Piece]:
 	var out: Array[BuildingPlan.Piece] = []
 	for pc in p.pieces:
@@ -182,6 +191,41 @@ func _ready() -> void:
 		if not BuildingValidator.validate(pp).is_empty():
 			clear = false
 	check("windows keep clear of the door on 40 seeds", clear)
+
+	# Roof variants (feature 3)
+	var seen := {}
+	for sd in 60:
+		var rp := BuildingGenerator.plan(29, 29, 10, 3.5, sd)
+		seen[rp.roof_variant] = true
+		if not BuildingValidator.validate(rp).is_empty():
+			check("roof variant %s (seed %d) is valid" % [rp.roof_variant, sd], false, BuildingValidator.format("x", BuildingValidator.validate(rp)))
+	check("all four roof variants occur (%s)" % ", ".join(seen.keys()), seen.size() == 4)
+	var parapet := _plan_with_roof("parapet")
+	var kp := _pieces_of(parapet, "parapet")
+	check("a parapet roof has 4 wall pieces", kp.size() == 4)
+	kp[0].at.y += 2
+	check("parapet lifted off the roof -> FLOATING", has_code(BuildingValidator.validate(parapet), "FLOATING"))
+	var stepped := _plan_with_roof("stepped")
+	var ks := _pieces_of(stepped, "roof_step")
+	check("a stepped roof has 2 layers", ks.size() == 2)
+	ks[1].size.x += 4
+	check("stepped layer wider than the one below -> OVERHANG", has_code(BuildingValidator.validate(stepped), "OVERHANG"))
+	var gable := _plan_with_roof("gable")
+	var kg := _pieces_of(gable, "roof_step")
+	check("a gable roof has 1-3 layers", kg.size() >= 1 and kg.size() <= 3)
+	kg[0].at.y -= 1
+	check("gable layer sunk into the roof -> OVERLAP", has_code(BuildingValidator.validate(gable), "OVERLAP"))
+	var pr := _plan_with_roof("parapet", true)
+	var box := _pieces_of(pr, "rooftop")
+	if not box.is_empty():
+		box[0].at.x = 1
+		check("plant room pushed into the parapet -> OVERLAP", has_code(BuildingValidator.validate(pr), "OVERLAP"))
+	var no_box := true
+	for sd in 60:
+		var rp2 := BuildingGenerator.plan(29, 29, 10, 3.5, sd)
+		if rp2.roof_variant in ["stepped", "gable"] and not _pieces_of(rp2, "rooftop").is_empty():
+			no_box = false
+	check("stepped/gable roofs never carry a plant room", no_box)
 
 	# Built nodes must match the plan.
 	var built := BuildingBuilder.build(self, good)

@@ -23,7 +23,7 @@ const MIN_FOOTPRINT_UNITS := 14    # 7 m: smaller than this leaves no room for w
 const MIN_TIER_UNITS := 12         # a setback never shrinks a section below 6 m
 const DEFAULT_FLOOR_M := 3.5
 
-enum Stream { COLOR, TIERS, ROOFTOP, WINDOWS, DOORS }
+enum Stream { COLOR, TIERS, ROOFTOP, WINDOWS, DOORS, ROOF }
 
 const PALETTE := [
 	Color(0.62, 0.40, 0.34), Color(0.50, 0.52, 0.58), Color(0.72, 0.66, 0.54),
@@ -84,13 +84,19 @@ static func plan(width_m: float, depth_m: float, floors: int, floor_height_m: fl
 	var roof_y := BASE_UNITS + floors * fh
 	p.pieces.append(BuildingPlan.Piece.new("roof", Vector3i(inset, roof_y, inset), Vector3i(top_w, ROOF_UNITS, top_d)))
 
-	# Optional plant room. Always draw all numbers so the stream stays aligned.
+	# Feature: roof variant (seed-driven). Draws exactly one number from its own stream.
+	var variant: BuildingRoofs.Variant = _rng(seed_value, Stream.ROOF).randi_range(0, 3)
+	p.roof_variant = BuildingRoofs.variant_name(variant)
+	BuildingRoofs.add(p, variant, inset, top_w, top_d, roof_y + ROOF_UNITS)
+
+	# Optional plant room. Always draw all numbers so the stream stays aligned; it only
+	# goes on roofs that leave the surface free (flat, parapet).
 	var rr := _rng(seed_value, Stream.ROOFTOP)
 	var wanted := rr.randf() < 0.6
 	var bw := clampi(floori(top_w / 3.0) + rr.randi_range(-1, 1), 4, top_w - 4)
 	var bd := clampi(floori(top_d / 3.0) + rr.randi_range(-1, 1), 4, top_d - 4)
 	var bh := rr.randi_range(4, 8)
-	if wanted:
+	if wanted and BuildingRoofs.allows_rooftop(variant):
 		var at := Vector3i(inset + ((top_w - bw) >> 1), roof_y + ROOF_UNITS, inset + ((top_d - bd) >> 1))
 		p.pieces.append(BuildingPlan.Piece.new("rooftop", at, Vector3i(bw, bh, bd)))
 
