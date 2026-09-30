@@ -125,20 +125,27 @@ static func build(parent: Node, c: Vector2) -> Dictionary:
 		k.box(Vector3(cx, 6.4, cz + zz), Vector3(40.0, 0.6, 4.0), tile, true)
 		for s: float in [-1.0, 1.0]:
 			k.box(Vector3(cx, 7.0, cz + zz + s * 1.9), Vector3(40.0, 1.0, 0.2), steel, true)
-	# escalator ramps up to the mezzanine (four corners)
+	# escalator ramps up to the mezzanine (four corners). Two of them (north-west, south-east) share
+	# a balcony end with a second ramp that continues up to the 14 m walkway and runs back over the
+	# escalator's own path; stacked, the upper ramp left < 1.8 m of headroom on the escalator's top
+	# 2 m. So those two escalators sit on the outer edge of the balcony (x = +-26, 3 m wide) and the
+	# upper ramps on the inner edge (x = +-22.5, 3 m wide): side by side, never above each other.
 	for sx: float in [-24.0, 24.0]:
 		for zs: float in [-1.0, 1.0]:
-			k.stairs(Vector3(cx + sx, 0.0, cz + zs * 28.5), Vector3(0, 0, -zs), 7.0, 14.5, 4.0, steel)
+			var shared_end := sx * zs > 0.0
+			var ex := signf(sx) * 26.0 if shared_end else sx
+			k.stairs(Vector3(cx + ex, 0.0, cz + zs * 28.5), Vector3(0, 0, -zs), 7.0, 14.5, 3.0 if shared_end else 4.0, steel)
 	# ---------------------------------------------------------------- upper level (14 m)
 	for zs: float in [-1.0, 1.0]:
 		k.box(Vector3(cx, 13.4, cz + zs * 27.5), Vector3(52.0, 0.6, 5.0), tile, true)
-		# pit-edge railing, open where the mezzanine ramp lands (ramps at x = -24 north, +24 south)
-		var rail_x0 := -26.0 if zs > 0.0 else -26.0 + 4.6
-		var rail_x1 := 26.0 if zs < 0.0 else 26.0 - 4.6
-		k.box(Vector3(cx + (rail_x0 + rail_x1) * 0.5, 14.0, cz + zs * 25.2), Vector3(rail_x1 - rail_x0, 1.0, 0.2), steel, true)
-	# ramps from each mezzanine end up to the upper walkways
-	k.stairs(Vector3(cx - 24.0, 7.0, cz - 14.0), Vector3(0, 0, -1), 7.0, 11.0, 4.0, steel)   # lands flush on the walkway's inner edge (cz - 25)
-	k.stairs(Vector3(cx + 24.0, 7.0, cz + 14.0), Vector3(0, 0, 1), 7.0, 11.0, 4.0, steel)
+		# pit-edge railing, open (3.4 m) where the mezzanine ramp lands: x = -22.5 north, +22.5 south
+		var gap_c := -22.5 if zs < 0.0 else 22.5
+		for seg: Array in [[-26.0, gap_c - 1.7], [gap_c + 1.7, 26.0]]:
+			if seg[1] > seg[0]:
+				k.box(Vector3(cx + (seg[0] + seg[1]) * 0.5, 14.0, cz + zs * 25.2), Vector3(seg[1] - seg[0], 1.0, 0.2), steel, true)
+	# ramps from each mezzanine end up to the upper walkways (inner edge of the balcony; see above)
+	k.stairs(Vector3(cx - 22.5, 7.0, cz - 14.0), Vector3(0, 0, -1), 7.0, 11.0, 3.0, steel)   # lands flush on the walkway's inner edge (cz - 25)
+	k.stairs(Vector3(cx + 22.5, 7.0, cz + 14.0), Vector3(0, 0, 1), 7.0, 11.0, 3.0, steel)
 	# ---------------------------------------------------------------- roof girders (25 m)
 	for zi: float in [-24.0, -12.0, 0.0, 12.0, 24.0]:
 		k.box(Vector3(cx, 24.4, cz + zi), Vector3(60.0, 0.6, 1.4), steel, true)

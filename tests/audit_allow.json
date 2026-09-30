@@ -1,5 +1,5 @@
 {
- "_readme": "allow: HOP/DROP/ORPHAN islands (>= 20 m2, wider than 2 m, lowest point <= 6 m) that are deliberate. An entry matches an island when the island's bbox centre is inside rect [x0,z0,x1,z1] and its y range overlaps y [lo,hi]. must_walk: places designed to be walked; each must be on the spawn's walkable network ({tp: name} or {name, p:[x,y,z]}). Run: godot --headless res://tests/audit.tscn (AUDIT_VERBOSE=1 for the full report); exit code 1 = failed.",
+ "_readme": "allow: HOP/DROP/ORPHAN islands (>= 20 m2, wider than 2 m, lowest point <= 6 m) that are deliberate. An entry matches an island when the island's bbox centre is inside rect [x0,z0,x1,z1] and its y range overlaps y [lo,hi]. must_walk: places designed to be walked; each must be on the spawn's walkable network ({tp: name} or {name, p:[x,y,z]}). Run: godot --headless res://tests/audit.tscn (AUDIT_VERBOSE=1 for the full report); exit code 1 = failed. stairs: each listed stair/ramp (a -> b, 3D points on its surface) must be walkable along its whole length.",
  "allow": [
   {
    "tier": "HOP",
@@ -158,6 +158,177 @@
   },
   {
    "tp": "Highway deck"
+  }
+ ],
+ "stairs": [
+  {
+   "name": "Metro escalator NW",
+   "a": [
+    -26,
+    0.3,
+    53.5
+   ],
+   "b": [
+    -26,
+    6.8,
+    67.5
+   ]
+  },
+  {
+   "name": "Metro escalator NE",
+   "a": [
+    24,
+    0.3,
+    53.5
+   ],
+   "b": [
+    24,
+    6.8,
+    67.5
+   ]
+  },
+  {
+   "name": "Metro escalator SW",
+   "a": [
+    -24,
+    0.3,
+    110.5
+   ],
+   "b": [
+    -24,
+    6.8,
+    96.5
+   ]
+  },
+  {
+   "name": "Metro escalator SE",
+   "a": [
+    26,
+    0.3,
+    110.5
+   ],
+   "b": [
+    26,
+    6.8,
+    96.5
+   ]
+  },
+  {
+   "name": "Metro mezzanine -> north walkway",
+   "a": [
+    -22.5,
+    7.2,
+    67.5
+   ],
+   "b": [
+    -22.5,
+    13.8,
+    57.5
+   ]
+  },
+  {
+   "name": "Metro mezzanine -> south walkway",
+   "a": [
+    22.5,
+    7.2,
+    96.5
+   ],
+   "b": [
+    22.5,
+    13.8,
+    106.5
+   ]
+  },
+  {
+   "name": "Metro fare stair north (down to platform)",
+   "a": [
+    -16,
+    -0.3,
+    57
+   ],
+   "b": [
+    -16,
+    -7.6,
+    71
+   ]
+  },
+  {
+   "name": "Metro fare stair south (down to platform)",
+   "a": [
+    16,
+    -0.3,
+    107
+   ],
+   "b": [
+    16,
+    -7.6,
+    93
+   ]
+  },
+  {
+   "name": "Metro girder maintenance stair",
+   "a": [
+    -28.5,
+    14.3,
+    57.5
+   ],
+   "b": [
+    -28.5,
+    24.8,
+    68.5
+   ]
+  },
+  {
+   "name": "Library gallery ramp west",
+   "a": [
+    63,
+    3.2,
+    -152.5
+   ],
+   "b": [
+    63,
+    9.8,
+    -163.5
+   ]
+  },
+  {
+   "name": "Library gallery ramp east",
+   "a": [
+    101,
+    3.2,
+    -152.5
+   ],
+   "b": [
+    101,
+    9.8,
+    -163.5
+   ]
+  },
+  {
+   "name": "Clock tower spiral 1st flight",
+   "a": [
+    -8,
+    10.6,
+    -154.7
+   ],
+   "b": [
+    7,
+    19.9,
+    -154.7
+   ]
+  },
+  {
+   "name": "Clock tower spiral 2nd flight",
+   "a": [
+    9.3,
+    20.6,
+    -156.5
+   ],
+   "b": [
+    9.3,
+    30.0,
+    -171.5
+   ]
   }
  ]
 }

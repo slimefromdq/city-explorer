@@ -268,19 +268,19 @@ func _spawn_node(start: Vector3) -> int:
 
 
 ## Nearest node within 2 cells / 1.2 m of a world point, or -1.
-func _node_near(pos: Vector3) -> int:
+func _node_near(pos: Vector3, max_dy := 1.2, reach := 2) -> int:
 	var best := 1e9
 	var found := -1
 	var ix := int((pos.x - X0) / CELL)
 	var iz := int((pos.z - Z0) / CELL)
-	for dx in range(-2, 3):
-		for dz in range(-2, 3):
+	for dx in range(-reach, reach + 1):
+		for dz in range(-reach, reach + 1):
 			var sc := (ix + dx) * nz + iz + dz
 			if sc < 0 or sc >= nx * nz:
 				continue
 			for n in range(col_start[sc], col_start[sc + 1]):
 				var dy := absf(ys[n] - pos.y)
-				if dy <= 1.2 and dy + Vector2(dx, dz).length() * 0.3 < best:
+				if dy <= max_dy and dy + Vector2(dx, dz).length() * 0.3 < best:
 					best = dy + Vector2(dx, dz).length() * 0.3
 					found = n
 	return found
@@ -525,12 +525,14 @@ func _report(start: Vector3) -> int:
 	# ---- verdict: every HOP / DROP / ORPHAN island must be explained by the allowlist ----
 	var allow: Array = []
 	var must: Array = []
+	var stair_list: Array = []
 	var af := FileAccess.open(ALLOW_PATH, FileAccess.READ)
 	if af != null:
 		var parsed: Variant = JSON.parse_string(af.get_as_text())
 		if parsed is Dictionary:
 			allow = parsed.get("allow", [])
 			must = parsed.get("must_walk", [])
+			stair_list = parsed.get("stairs", [])
 	var used := PackedInt32Array()
 	used.resize(allow.size())
 	var failures := 0
@@ -589,11 +591,27 @@ func _report(start: Vector3) -> int:
 		elif _find(mn) != walk_root:
 			failures += 1
 			print("  BAD must_walk '%s' %s: not reachable on foot from the spawn (%s)" % [mname, _fmt(mp), tier_of.get(_find(mn), "?")])
+	# ---- every listed stair/ramp must be walkable along its WHOLE length (a stair can be reachable
+	# by another route and still be unusable: e.g. another ramp stacked over it leaves no headroom) ----
+	for st: Dictionary in stair_list:
+		var sa := Vector3(st.a[0], st.a[1], st.a[2])
+		var sb := Vector3(st.b[0], st.b[1], st.b[2])
+		var steps := maxi(2, int(Vector2(sa.x, sa.z).distance_to(Vector2(sb.x, sb.z))))
+		var broken := ""
+		for i in steps:
+			var sp := sa.lerp(sb, (i + 0.5) / float(steps))
+			var sn2 := _node_near(sp, 0.6, 0)
+			if sn2 < 0 or _find(sn2) != walk_root:
+				broken = _fmt(sp)
+				break
+		if broken != "":
+			failures += 1
+			print("  BAD stair '%s': cannot be walked end to end, breaks near %s (blocked, too low overhead, or cut off)" % [st.name, broken])
 	print("teleport points by tier:")
 	var tp_line := ""
 	for t: Array in tps:
 		var tn := _node_near(t[1])
 		tp_line += "  %s=%s" % [t[0], tier_of.get(_find(tn), "-") if tn >= 0 else "NONE"]
 	print(tp_line)
-	print("\n%s: %d unexplained problems, %d allowlisted islands" % ["AUDIT PASSED" if failures == 0 else "AUDIT FAILED", failures, used.size() - used.count(0)])
+	print("\n%s: %d unexplained problems, %d allowlisted islands, %d stairs/ramps checked end to end" % ["AUDIT PASSED" if failures == 0 else "AUDIT FAILED", failures, used.size() - used.count(0), stair_list.size()])
 	return failures
