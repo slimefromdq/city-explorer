@@ -23,7 +23,7 @@ const MIN_FOOTPRINT_UNITS := 14    # 7 m: smaller than this leaves no room for w
 const MIN_TIER_UNITS := 12         # a setback never shrinks a section below 6 m
 const DEFAULT_FLOOR_M := 3.5
 
-enum Stream { COLOR, TIERS, ROOFTOP }
+enum Stream { COLOR, TIERS, ROOFTOP, WINDOWS }
 
 const PALETTE := [
 	Color(0.62, 0.40, 0.34), Color(0.50, 0.52, 0.58), Color(0.72, 0.66, 0.54),
@@ -93,6 +93,11 @@ static func plan(width_m: float, depth_m: float, floors: int, floor_height_m: fl
 	if wanted:
 		var at := Vector3i(inset + ((top_w - bw) >> 1), roof_y + ROOF_UNITS, inset + ((top_d - bd) >> 1))
 		p.pieces.append(BuildingPlan.Piece.new("rooftop", at, Vector3i(bw, bh, bd)))
+
+	# Feature: windows (seed-driven pitch, how many bays are filled, how many are lit).
+	var wr := _rng(seed_value, Stream.WINDOWS)
+	var pitch := 8 + 2 * wr.randi_range(0, 1)
+	BuildingWindows.add(p, pitch, 0.9, 0.25, wr)
 	return p
 
 

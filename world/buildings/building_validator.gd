@@ -11,7 +11,7 @@ extends RefCounted
 ## the batch report can group failures by reason.
 ##
 ## Codes:  INPUT  SIZE  OUTSIDE  OVERLAP  FLOATING  OVERHANG  GAP  STACK
-##         FOOTPRINT_OVERLAP  OUTSIDE_LOT  BUILT_MISMATCH  NO_COLLISION
+##         DETACHED  FOOTPRINT_OVERLAP  OUTSIDE_LOT  BUILT_MISMATCH  NO_COLLISION
 
 class Issue:
 	var code: String
@@ -61,6 +61,7 @@ static func validate(plan: BuildingPlan) -> Array[Issue]:
 	_check_inside_footprint(plan, out)
 	_check_overlaps(plan, out)
 	_check_support(plan, out)
+	_check_attached(plan, out)
 	_check_stack(plan, out)
 	return out
 
@@ -81,13 +82,19 @@ static func _check_inside_footprint(plan: BuildingPlan, out: Array[Issue]) -> vo
 			out.append(Issue.new("OUTSIDE", "%s is below the ground (y = %s)" % [p.describe(), _m(p.at.y)]))
 
 
-## Two pieces may touch (share a face) but never share volume.
+## Two pieces may touch (share a face) but never share volume. Pieces are sorted
+## by bottom height so each one is only compared with pieces at overlapping heights
+## (a tower can have hundreds of windows; comparing every pair would be slow).
 static func _check_overlaps(plan: BuildingPlan, out: Array[Issue]) -> void:
-	var n := plan.pieces.size()
+	var order: Array[BuildingPlan.Piece] = plan.pieces.duplicate()
+	order.sort_custom(func(a: BuildingPlan.Piece, b: BuildingPlan.Piece) -> bool: return a.at.y < b.at.y)
+	var n := order.size()
 	for i in n:
+		var a := order[i]
 		for j in range(i + 1, n):
-			var a := plan.pieces[i]
-			var b := plan.pieces[j]
+			var b := order[j]
+			if b.at.y >= a.top():
+				break   # everything after this starts above a's top
 			var ov := Vector3i(
 				mini(a.at.x + a.size.x, b.at.x + b.size.x) - maxi(a.at.x, b.at.x),
 				mini(a.at.y + a.size.y, b.at.y + b.size.y) - maxi(a.at.y, b.at.y),
@@ -96,29 +103,74 @@ static func _check_overlaps(plan: BuildingPlan, out: Array[Issue]) -> void:
 				out.append(Issue.new("OVERLAP", "%s overlaps %s by %s x %s x %s" % [a.describe(), b.describe(), _m(ov.x), _m(ov.y), _m(ov.z)]))
 
 
-## Every piece must rest on the ground or fully on the top of the piece(s) below it.
+## Every structural piece must rest on the ground or fully on the top of the piece(s)
+## below it. Windows are exempt here: a window is held up by the wall beside it
+## (see _check_attached), not by anything underneath.
 static func _check_support(plan: BuildingPlan, out: Array[Issue]) -> void:
+	var by_top := {}     # height -> structural pieces whose top face is at that height
+	for q in plan.pieces:
+		if q.kind != "window":
+			if not by_top.has(q.top()):
+				by_top[q.top()] = []
+			by_top[q.top()].append(q)
 	for p in plan.pieces:
-		if p.at.y <= 0:
-			continue   # on the ground (or below it, which _check_inside_footprint reports)
+		if p.kind == "window" or p.at.y <= 0:
+			continue   # windows: see _check_attached; y <= 0: on the ground (below it is reported elsewhere)
 		var holders: Array[BuildingPlan.Piece] = []
-		var nearest_below := 0          # highest top under it, to say how far it floats
-		var nearest_name := "the ground"
-		for q in plan.pieces:
-			if q == p or not _footprints_overlap(p, q) or q.top() > p.at.y:
-				continue
-			if q.top() > nearest_below:
-				nearest_below = q.top()
-				nearest_name = q.label()
-			if q.top() == p.at.y:
+		for q: BuildingPlan.Piece in by_top.get(p.at.y, []):
+			if q != p and _footprints_overlap(p, q):
 				holders.append(q)
 		if holders.is_empty():
-			var gap := p.at.y - nearest_below
-			out.append(Issue.new("FLOATING", "%s floats %s above %s" % [p.describe(), _m(gap), nearest_name]))
+			# Rare path (it is a bug): find what is nearest below, to say how far it floats.
+			var nearest_below := 0
+			var nearest_name := "the ground"
+			for q in plan.pieces:
+				if q != p and q.kind != "window" and _footprints_overlap(p, q) and q.top() <= p.at.y and q.top() > nearest_below:
+					nearest_below = q.top()
+					nearest_name = q.label()
+			out.append(Issue.new("FLOATING", "%s floats %s above %s" % [p.describe(), _m(p.at.y - nearest_below), nearest_name]))
 			continue
 		var uncovered := _uncovered_cells(p, holders)
 		if uncovered > 0:
 			out.append(Issue.new("OVERHANG", "%s is only partly supported: %.1f m2 of its underside hangs in the air" % [p.describe(), uncovered * BuildingGrid.UNIT * BuildingGrid.UNIT]))
+
+
+## A wall decoration (window) must touch the wall of the floor it belongs to, and be
+## fully backed by it: its back face has to lie inside that wall's outer face.
+static func _check_attached(plan: BuildingPlan, out: Array[Issue]) -> void:
+	var floors := {}
+	for p in plan.pieces:
+		if p.kind == "floor":
+			floors[p.floor_index] = p
+	for p in plan.pieces:
+		if not p.is_decoration():
+			continue
+		var host: BuildingPlan.Piece = floors.get(p.floor_index)
+		if host == null:
+			out.append(Issue.new("DETACHED", "%s belongs to floor %d, which does not exist" % [p.describe(), p.floor_index]))
+			continue
+		var touching := false
+		var backed := false
+		match p.face:
+			"n":
+				touching = p.at.z + p.size.z == host.at.z
+				backed = _within(p.at.x, p.at.x + p.size.x, host.at.x, host.at.x + host.size.x)
+			"s":
+				touching = p.at.z == host.at.z + host.size.z
+				backed = _within(p.at.x, p.at.x + p.size.x, host.at.x, host.at.x + host.size.x)
+			"w":
+				touching = p.at.x + p.size.x == host.at.x
+				backed = _within(p.at.z, p.at.z + p.size.z, host.at.z, host.at.z + host.size.z)
+			"e":
+				touching = p.at.x == host.at.x + host.size.x
+				backed = _within(p.at.z, p.at.z + p.size.z, host.at.z, host.at.z + host.size.z)
+			_:
+				out.append(Issue.new("DETACHED", "%s has no valid wall face ('%s')" % [p.describe(), p.face]))
+				continue
+		if not (backed and _within(p.at.y, p.top(), host.at.y, host.top())):
+			out.append(Issue.new("DETACHED", "%s is not fully backed by the %s wall of floor %d (it hangs past the wall's edge, top or bottom)" % [p.describe(), p.face, p.floor_index]))
+		elif not touching:
+			out.append(Issue.new("DETACHED", "%s is not touching the %s wall of floor %d (there is a gap between them)" % [p.describe(), p.face, p.floor_index]))
 
 
 ## The stack must read base, floor 0..n-1, roof with every join exactly flush.
@@ -200,7 +252,7 @@ static func check_built(root: Node3D, plan: BuildingPlan) -> Array[Issue]:
 		var got := AABB(mi.position - (mi.mesh as BoxMesh).size * 0.5, (mi.mesh as BoxMesh).size)
 		if not want.position.is_equal_approx(got.position) or not want.size.is_equal_approx(got.size):
 			out.append(Issue.new("BUILT_MISMATCH", "%s was built at %s size %s instead" % [p.describe(), got.position, got.size]))
-		var covered := false
+		var covered := p.is_decoration()   # windows/doors are dressing: no collision by design
 		for s in shapes:
 			if s.grow(EPS).encloses(want):
 				covered = true
@@ -239,6 +291,10 @@ static func _m(units: int) -> String:
 
 static func _rect_m(r: Rect2i) -> String:
 	return "(x %.1f..%.1f, z %.1f..%.1f)" % [BuildingGrid.to_metres(r.position.x), BuildingGrid.to_metres(r.end.x), BuildingGrid.to_metres(r.position.y), BuildingGrid.to_metres(r.end.y)]
+
+
+static func _within(lo: int, hi: int, outer_lo: int, outer_hi: int) -> bool:
+	return lo >= outer_lo and hi <= outer_hi
 
 
 static func _footprints_overlap(a: BuildingPlan.Piece, b: BuildingPlan.Piece) -> bool:

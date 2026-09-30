@@ -34,6 +34,23 @@ func good_plan() -> BuildingPlan:
 	return BuildingGenerator.plan(29, 29, 24, 3.5, 1)
 
 
+func _pieces_of(p: BuildingPlan, kind: String) -> Array[BuildingPlan.Piece]:
+	var out: Array[BuildingPlan.Piece] = []
+	for pc in p.pieces:
+		if pc.kind == kind:
+			out.append(pc)
+	return out
+
+
+## One unit straight out of a wall: the direction a wall decoration sticks out.
+func _outward(face: String) -> Vector3i:
+	match face:
+		"n": return Vector3i(0, 0, -1)
+		"s": return Vector3i(0, 0, 1)
+		"w": return Vector3i(-1, 0, 0)
+	return Vector3i(1, 0, 0)
+
+
 func piece(p: BuildingPlan, kind: String, floor_index := -1) -> BuildingPlan.Piece:
 	for pc in p.pieces:
 		if pc.kind == kind and pc.floor_index == floor_index:
@@ -94,6 +111,42 @@ func _ready() -> void:
 	check("zero floors input -> INPUT", has_code(BuildingValidator.validate(BuildingGenerator.plan(20, 20, 0, 3.5, 1)), "INPUT"))
 	check("negative floor height input -> INPUT", has_code(BuildingValidator.validate(BuildingGenerator.plan(20, 20, 5, -3.0, 1)), "INPUT"))
 	check("tiny footprint input -> INPUT", has_code(BuildingValidator.validate(BuildingGenerator.plan(4, 20, 5, 3.5, 1)), "INPUT"))
+
+	# Windows (feature 1)
+	var wins := _pieces_of(good, "window")
+	check("a generated tower has windows (%d)" % wins.size(), wins.size() > 100)
+	var wp := good_plan()
+	var w0 := _pieces_of(wp, "window")[0]
+	w0.at += _outward(w0.face)
+	check("window pulled off its wall -> DETACHED (gap)", has_code(BuildingValidator.validate(wp), "DETACHED"))
+	wp = good_plan()
+	w0 = _pieces_of(wp, "window")[0]
+	w0.at -= _outward(w0.face)
+	var wr := BuildingValidator.validate(wp)
+	check("window sunk into the wall -> OVERLAP and DETACHED", has_code(wr, "OVERLAP") and has_code(wr, "DETACHED"), BuildingValidator.format("x", wr))
+	wp = good_plan()
+	w0 = _pieces_of(wp, "window")[0]
+	w0.at.y += 6
+	check("window sliding past its floor's top -> DETACHED", has_code(BuildingValidator.validate(wp), "DETACHED"))
+	wp = good_plan()
+	var w1 := _pieces_of(wp, "window")[1]
+	var dup := BuildingPlan.Piece.new("window", w1.at, w1.size, w1.tier, w1.floor_index)
+	dup.face = w1.face
+	wp.pieces.append(dup)
+	check("two windows in the same spot -> OVERLAP", has_code(BuildingValidator.validate(wp), "OVERLAP"))
+	wp = good_plan()
+	w0 = _pieces_of(wp, "window")[0]
+	w0.floor_index = 99
+	check("window on a floor that does not exist -> DETACHED", has_code(BuildingValidator.validate(wp), "DETACHED"))
+	wp = good_plan()
+	w0 = _pieces_of(wp, "window")[0]
+	w0.face = "x"
+	check("window with no wall face -> DETACHED", has_code(BuildingValidator.validate(wp), "DETACHED"))
+	var blocks := BuildingBuilder.collision_blocks(good)
+	var any_decor := false
+	for b in blocks:
+		any_decor = any_decor or b.is_decoration()
+	check("windows add no collision", not any_decor)
 
 	# Built nodes must match the plan.
 	var built := BuildingBuilder.build(self, good)

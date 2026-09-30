@@ -9,10 +9,15 @@ extends RefCounted
 ## Origin = the footprint's north-west corner on the ground; +x east, +z south, +y up.
 
 
+const DECORATION := ["window"]
+
+
 class Piece:
-	var kind: String           # "base" | "floor" | "roof" | "rooftop"
+	var kind: String           # "base" | "floor" | "roof" | "rooftop" | "window" (more added per feature)
 	var tier := -1             # which section of the tower (0 = lowest); -1 if not a floor
-	var floor_index := -1      # 0 = first floor above the base
+	var floor_index := -1      # 0 = first floor above the base (for a window: the floor it belongs to)
+	var face := ""             # for wall decorations: which wall they sit on, "n" "e" "s" "w"
+	var variant := 0           # look variant (e.g. a lit window), chosen from the seed
 	var at := Vector3i.ZERO    # minimum corner
 	var size := Vector3i.ZERO
 
@@ -25,6 +30,11 @@ class Piece:
 
 	func top() -> int:
 		return at.y + size.y
+
+	## Decorations are stuck onto a wall instead of being part of the structure:
+	## they get no collision and are checked by "is it attached?" instead of "what is under it?".
+	func is_decoration() -> bool:
+		return BuildingPlan.DECORATION.has(kind)
 
 	## Short name, e.g. "floor 7", "roof".
 	func label() -> String:
@@ -64,5 +74,5 @@ func signature() -> String:
 	var lines := PackedStringArray()
 	lines.append("%d|%d|%d|%d|%d|%d" % [seed_value, width_u, depth_u, floors, floor_units, palette_index])
 	for p in pieces:
-		lines.append("%s,%d,%d,%d,%d,%d,%d,%d" % [p.kind, p.tier, p.at.x, p.at.y, p.at.z, p.size.x, p.size.y, p.size.z])
+		lines.append("%s,%d,%d,%d,%d,%d,%d,%d,%s,%d" % [p.kind, p.tier, p.at.x, p.at.y, p.at.z, p.size.x, p.size.y, p.size.z, p.face, p.variant])
 	return "\n".join(lines)
