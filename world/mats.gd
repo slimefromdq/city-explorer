@@ -37,6 +37,25 @@ static func toon_unique(color: Color, grunge := 0.0, outline := false, outline_s
 	return m
 
 
+## Cel material that multiplies in vertex / MultiMesh instance colours.
+static func toon_vcolor(color := Color.WHITE) -> ShaderMaterial:
+	var key := "toonv_%s" % color.to_html()
+	if not _cache.has(key):
+		var m := toon_unique(color, 0.0, false)
+		m.set_shader_parameter("use_vcolor", true)
+		_cache[key] = m
+	return _cache[key]
+
+
+static func water() -> ShaderMaterial:
+	if not _cache.has("water"):
+		var m := ShaderMaterial.new()
+		m.shader = _sh("res://shaders/water.gdshader")
+		m.render_priority = -1
+		_cache["water"] = m
+	return _cache["water"]
+
+
 static func glow(color: Color, energy := 2.5) -> StandardMaterial3D:
 	var key := "glow_%s_%s" % [color.to_html(), energy]
 	if not _cache.has(key):
@@ -49,7 +68,8 @@ static func glow(color: Color, energy := 2.5) -> StandardMaterial3D:
 	return _cache[key]
 
 
-static func facade(wall: Color, seed := 1.0, lit := 0.35, cell := Vector2(3.2, 3.6), win := Vector2(0.55, 0.55), store := 4.6) -> ShaderMaterial:
+static func facade(wall: Color, p_seed := 1.0, lit := 0.35, cell := Vector2(3.2, 3.6), win := Vector2(0.55, 0.55), store := 4.6) -> ShaderMaterial:
+	var seed := float(int(p_seed) % 8)   # few variants so blocks can batch by material
 	var key := "fac_%s_%s_%s_%s_%s_%s" % [wall.to_html(), seed, lit, cell, win, store]
 	if not _cache.has(key):
 		var m := ShaderMaterial.new()

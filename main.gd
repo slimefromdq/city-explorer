@@ -38,6 +38,7 @@ func _ready() -> void:
 	rain = Rain.new()
 	rain.follow = rig.camera
 	add_child(rain)
+	hud.setup_navigation(rig, city.landmarks)
 	_update_mode_text()
 
 
@@ -50,10 +51,10 @@ func _spawn_player() -> void:
 	add_child(player)
 	player.global_position = city.markers["player"]
 	player.spawn_transform = player.global_transform
-	player.face_yaw = -PI * 0.5
+	player.face_yaw = PI
 	rig = CameraRig.new()
 	rig.target = player
-	rig.yaw = -PI * 0.5
+	rig.yaw = PI
 	add_child(rig)
 	rig.snap_to_target()
 	controller = PlayerController.new()
@@ -90,6 +91,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event.is_action_pressed(&"dbg_help"):
 		hud.toggle_help()
+	elif event.is_action_pressed(&"map"):
+		hud.toggle_map()
 	elif event.is_action_pressed(&"dbg_teleport"):
 		teleport_next()
 	elif event.is_action_pressed(&"dbg_reset"):

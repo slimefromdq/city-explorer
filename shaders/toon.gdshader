@@ -11,6 +11,7 @@ uniform float emission_energy = 0.0;
 uniform float flash = 0.0;
 uniform float grunge = 0.0;
 uniform float grunge_scale = 0.8;
+uniform bool use_vcolor = false;
 
 varying vec3 wpos;
 
@@ -32,6 +33,9 @@ void vertex() {
 
 void fragment() {
 	vec3 col = albedo.rgb;
+	if (use_vcolor) {
+		col *= COLOR.rgb;
+	}
 	if (grunge > 0.0) {
 		float n = vnoise(vec2(wpos.x + wpos.z, wpos.y) * grunge_scale) * 0.6 + vnoise(vec2(wpos.x - wpos.z, wpos.y) * grunge_scale * 3.1) * 0.4;
 		float stain = smoothstep(5.0, 0.0, wpos.y) * 0.5 + n * 0.5;

@@ -12,6 +12,7 @@ signal landed(impact_speed: float)
 signal dashed(dir: Vector3, chain: int)
 signal mantled
 signal wall_kicked
+signal wall_run_started
 signal drive_ended(kind: int)
 
 enum Drive { NONE, DASH, DODGE, SLIDE }
@@ -42,6 +43,11 @@ const CHAIN_SPEED_BONUS := 0.07
 const CHAIN_MAX := 4
 const WALL_KICKS := 3
 
+const WALLRUN_TIME := 1.6
+const WALLRUN_SPEED := 13.5
+const WALLRUN_GRAV := 0.1
+const WALLRUN_MIN_SPEED := 6.5
+
 const MANTLE_MIN := 0.35
 const MANTLE_MAX := 2.5
 const MANTLE_TIME := 0.28
@@ -56,6 +62,7 @@ var chain := 0
 var drive := Drive.NONE
 var drive_dir := Vector3.ZERO
 var mantling := false
+var wallrunning := false
 
 var _drive_speed := 0.0
 var _drive_t := 0.0
@@ -74,6 +81,10 @@ var _wall_left := 0.0
 var _wall_normal := Vector3.ZERO
 var _wall_kicks := 0
 var _mantle_cd := 0.0
+var _wr_t := 0.0
+var _wr_dir := Vector3.ZERO
+var _wr_cd := 0.0
+var _wr_lost := 0.0
 var _was_on_floor := true
 var _m_from := Vector3.ZERO
 var _m_to := Vector3.ZERO
@@ -86,6 +97,7 @@ func busy() -> bool:
 
 
 func reset() -> void:
+	wallrunning = false
 	run_vel = Vector3.ZERO
 	impulse = Vector3.ZERO
 	vy = 0.0
@@ -122,6 +134,8 @@ func try_dash() -> bool:
 		return false
 	f.guard.drop()
 	f.interrupt_channel()
+	if wallrunning:
+		end_wallrun()
 	if drive == Drive.DODGE:
 		end_drive()
 	var wish := f.world_move_dir()
@@ -187,7 +201,9 @@ func step(dt: float) -> void:
 		_dash_buf = 0.0
 	if _jump_buf > 0.0:
 		_try_jump(on_floor)
-	if drive != Drive.NONE:
+	if wallrunning:
+		_step_wallrun(dt, on_floor)
+	elif drive != Drive.NONE:
 		_step_drive(dt, on_floor)
 	else:
 		_step_free(dt, on_floor)
@@ -202,6 +218,7 @@ func _tick_timers(dt: float, on_floor: bool) -> void:
 	_dash_buf = maxf(0.0, _dash_buf - dt)
 	_wall_left = maxf(0.0, _wall_left - dt)
 	_mantle_cd = maxf(0.0, _mantle_cd - dt)
+	_wr_cd = maxf(0.0, _wr_cd - dt)
 	_dash_cd = maxf(0.0, _dash_cd - dt)
 	_hang_left = maxf(0.0, _hang_left - dt)
 	if on_floor:
@@ -245,6 +262,7 @@ func _try_jump(on_floor: bool) -> void:
 		run_vel = _wall_normal * 10.0 + wish * 3.0
 		impulse = Vector3.ZERO
 		_wall_kicks += 1
+		wallrunning = false
 		_wall_left = 0.0
 		_jump_buf = 0.0
 		_jumped = true
@@ -306,16 +324,66 @@ func _post_slide(pre_vy: float) -> void:
 		run_vel -= _wall_normal * minf(0.0, run_vel.dot(_wall_normal))
 		var into := impulse.dot(_wall_normal)
 		var dash_into := drive == Drive.DASH and drive_dir.dot(_wall_normal) < -0.2
-		if not on_floor and _mantle_cd <= 0.0:
+		if not on_floor:
+			_try_wallrun()
+		if not on_floor and not wallrunning and _mantle_cd <= 0.0:
 			var wish := f.world_move_dir()
 			if dash_into or wish.dot(-_wall_normal) > 0.2 or into < -1.0 or run_vel.dot(-_wall_normal) > 1.0:
 				_try_mantle()
-		if not mantling:
+		if not mantling and not wallrunning:
 			impulse -= _wall_normal * minf(0.0, into)
 			# a dash with real lift keeps climbing the wall; a flat one stops dead
 			if drive == Drive.DASH and dash_into and absf(drive_dir.y) < 0.35:
 				end_drive()
 	_was_on_floor = on_floor
+
+
+## Wall-run: sprint into a wall at a glancing angle while airborne and you run
+## along it with reduced gravity. Jump kicks off (existing wall-kick), dash
+## cancels it, and running out of wall or time drops you.
+func _try_wallrun() -> void:
+	var f := fighter
+	if wallrunning or _wr_cd > 0.0 or drive != Drive.NONE or mantling or not f.can_move_act() or not f.wants_sprint:
+		return
+	var t := Vector3(-_wall_normal.z, 0.0, _wall_normal.x)
+	var hv := run_vel + Vector3(impulse.x, 0.0, impulse.z)
+	var along := hv.dot(t)
+	if absf(along) < WALLRUN_MIN_SPEED:
+		return
+	_wr_dir = t * signf(along)
+	wallrunning = true
+	_wr_t = 0.0
+	_wr_lost = 0.0
+	vy = maxf(vy, 1.0)
+	chain = 0
+	wall_run_started.emit()
+
+
+func end_wallrun() -> void:
+	if not wallrunning:
+		return
+	wallrunning = false
+	_wr_cd = 0.35
+	run_vel = _wr_dir * WALLRUN_SPEED * 0.8
+
+
+## +1 when the wall is on the runner's right, -1 on the left (for model lean).
+func wall_side() -> float:
+	return signf((-_wall_normal).dot(_wr_dir.cross(Vector3.UP)))
+
+
+func _step_wallrun(dt: float, on_floor: bool) -> void:
+	var f := fighter
+	_wr_t += dt
+	vy = maxf(vy - GRAVITY * WALLRUN_GRAV * dt, -4.0)
+	run_vel = _wr_dir * WALLRUN_SPEED
+	f.velocity = run_vel + Vector3.UP * vy - _wall_normal * 2.5
+	if not f.is_on_wall():
+		_wr_lost += dt
+	else:
+		_wr_lost = 0.0
+	if on_floor or _wr_t >= WALLRUN_TIME or _wr_lost > 0.15 or not f.wants_sprint or f.stun_left > 0.0:
+		end_wallrun()
 
 
 ## Ledge grab: when airborne against a wall with a ledge inside reach, hoist up.

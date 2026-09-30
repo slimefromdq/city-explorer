@@ -61,6 +61,8 @@ func _ready() -> void:
 	await _movement()
 	await _level()
 	await _traversal()
+	await _parkour()
+	await _world()
 	await _combat_matrix()
 	await _abilities()
 	await _bots()
@@ -72,7 +74,7 @@ func _ready() -> void:
 func _movement() -> void:
 	print("movement")
 	var p: Fighter = main.player
-	main.teleport_player(Vector3(-123, 0.1, -20), 0.0)
+	main.teleport_player(Vector3(-287, 0.1, -20), 0.0)
 	await frames(30)
 	check("player stands on the floor", p.is_on_floor(), str(p.global_position))
 	p.move_input = Vector2(0, 1)
@@ -108,12 +110,12 @@ func _traversal() -> void:
 	var p: Fighter = main.player
 	# open street at the west avenue, facing the east face of the 24 m concrete lot? use SW lot of block(-82,-41):
 	# oldtown h=14 (x -114..-85, z -38..-9): east face at x~-85.3 looking from alley side is cluttered, use avenue x=-123 -> west face x=-113.7
-	main.teleport_player(Vector3(-45, 0.1, -58), PI * 0.5)
+	main.teleport_player(Vector3(0, 0.1, -146), 0.0)
 	await frames(20)
 	var start := p.global_position
 	# aim up-and-toward the building (east = +x), yaw = -90deg
-	p.aim_yaw = PI * 0.5
-	p.aim_dir = Vector3(-0.6, 0.8, 0).normalized()
+	p.aim_yaw = 0.0
+	p.aim_dir = Vector3(0, 0.8, -0.6).normalized()
 	p.move_input = Vector2(0, 1)
 	var pool_before := p.loco.dash_pool.charges
 	p.loco.request_dash()
@@ -128,21 +130,76 @@ func _traversal() -> void:
 	for i in 120:
 		await get_tree().physics_frame
 		best = maxf(best, p.global_position.y)
-	print("      chained dash reached y=%.1f (x=%.1f)" % [best, p.global_position.x])
-	check("3-dash chain gains >15 m of height", best > 15.0, str(best))
+	print("      chained dash reached y=%.1f (z=%.1f)" % [best, p.global_position.z])
+	check("3-dash chain from the street reaches the first ledge (>9 m)", best > 9.0, str(best))
+	# mantling refunds a dash: keep climbing the shaft toward the 30 m ledge
+	await frames(30)
+	p.aim_dir = Vector3(0, 0.85, -0.5).normalized()
+	for n in 3:
+		p.loco.request_dash()
+		await frames(12)
+	for i in 90:
+		await get_tree().physics_frame
+		best = maxf(best, p.global_position.y)
+	print("      second chain reached y=%.1f" % best)
+	check("climbing the clock tower: second chain passes 20 m", best > 20.0, str(best))
 	p.move_input = Vector2.ZERO
 	# mantle test: walk into a 1.5 m obstacle in the air
 	# Dash recharge on ground
-	main.teleport_player(Vector3(-119, 0.1, -23.5), 0.0)
+	main.teleport_player(Vector3(-287, 0.1, -23.5), 0.0)
 	p.loco.dash_pool.charges = 0.0
 	await frames(120)
 	check("dash charges refill fast on the ground", p.loco.dash_pool.available() >= 2, str(p.loco.dash_pool.charges))
 
 
+func _parkour() -> void:
+	print("parkour")
+	var p: Fighter = main.player
+	# wall-run along the long west boundary wall (faces +x)
+	main.teleport_player(Vector3(-294.6, 9.0, -60.0), 0.0)
+	p.aim_yaw = 0.0
+	p.wants_sprint = true
+	p.move_input = Vector2(-0.35, 1.0)
+	p.loco.run_vel = Vector3(-2.0, 0.0, -14.0)
+	var ran := false
+	var z0 := p.global_position.z
+	for i in 45:
+		await get_tree().physics_frame
+		if p.loco.wallrunning:
+			ran = true
+	check("sprinting along a wall while airborne starts a wall-run", ran)
+	check("wall-run carries you along the wall", p.global_position.z < z0 - 6.0, "z %.1f -> %.1f" % [z0, p.global_position.z])
+	p.wants_sprint = false
+	p.move_input = Vector2.ZERO
+	await frames(60)
+	# ledge mantle: airborne into a 2 m crate-height ledge
+	main.teleport_player(Vector3(-287, 0.1, -40), 0.0)
+	await frames(10)
+
+
+func _world() -> void:
+	print("world")
+	var city: CityBuilder = main.city
+	var t: ParkTerrain = city.park.terrain
+	var lake := t.lake_c
+	check("lake is carved below water level", t.height_at(lake.x + 12.0, lake.y + 6.0) < ParkTerrain.WATER_LEVEL - 1.0, str(t.height_at(lake.x + 12.0, lake.y + 6.0)))
+	var hill := t.hills[0]
+	check("lookout hill rises above the meadow", t.height_at(hill.x, hill.y) > 6.0, str(t.height_at(hill.x, hill.y)))
+	check("map has 30+ landmarks and shards", city.landmarks.size() >= 10 and Shard.total >= 30, "%d landmarks %d shards" % [city.landmarks.size(), Shard.total])
+	var p: Fighter = main.player
+	var spot := Vector3(-16.0, -7.8 + 0.05, 82.0)
+	var before := Shard.collected
+	main.teleport_player(spot, 0.0)
+	await frames(30)
+	check("touching a sky shard collects it and refills dashes", Shard.collected == before + 1 and p.loco.dash_pool.available() == 3, "%d" % Shard.collected)
+	for b in main.bots:
+		check("bot '%s' spawned on solid ground" % b.display_name, b.is_on_floor(), str(b.global_position))
+
+
 func _combat_matrix() -> void:
 	print("combat matrix")
-	var a := spawn("A", Vector3(-123, 0.1, 30))
-	var v := spawn("V", Vector3(-123, 0.1, 42))
+	var a := spawn("A", Vector3(-287, 0.1, -90))
+	var v := spawn("V", Vector3(-287, 0.1, -78))
 	await frames(10)
 	face(v, a)
 	face(a, v)
@@ -162,7 +219,7 @@ func _combat_matrix() -> void:
 	res = hit(a, v, 10.0, 8.0, false, true)
 	check("unblockable beats guard", res == HitData.Result.HIT, str(res))
 	# hit from behind ignores block
-	var behind := spawn("B", Vector3(-123, 0.1, 54))
+	var behind := spawn("B", Vector3(-287, 0.1, -66))
 	var h := HitData.new()
 	h.attacker = behind
 	h.damage = 5.0
@@ -226,8 +283,8 @@ func _combat_matrix() -> void:
 
 func _abilities() -> void:
 	print("abilities")
-	var a := spawn("Shooter", Vector3(-123, 0.1, -60))
-	var v := spawn("Target", Vector3(-123, 0.1, -46))
+	var a := spawn("Shooter", Vector3(-287, 0.1, -90))
+	var v := spawn("Target", Vector3(-287, 0.1, -76))
 	await frames(10)
 	face(a, v)
 	face(v, a)
@@ -310,12 +367,13 @@ func _abilities() -> void:
 		if p != null and p.tag == &"ricochet":
 			found = true
 	check("ricochet round is a slow visible projectile", found)
-	await frames(90)
 	var bounced := false
-	for n in get_tree().get_nodes_in_group(&"projectiles"):
-		var p2 := n as Projectile
-		if p2 != null and p2.tag == &"ricochet" and p2.velocity.x > 0.0:
-			bounced = true
+	for i in 140:
+		await frames(1)
+		for n in get_tree().get_nodes_in_group(&"projectiles"):
+			var p2 := n as Projectile
+			if p2 != null and p2.tag == &"ricochet" and p2.velocity.x > 0.0:
+				bounced = true
 	check("ricochet round bounced off the wall", bounced)
 	a.queue_free()
 	v.queue_free()
@@ -332,8 +390,8 @@ func _brain(f: Fighter, target: Fighter, mode: BotBrain.Mode) -> BotBrain:
 
 func _bots() -> void:
 	print("bots")
-	var shooter := spawn("Shooter", Vector3(-123, 0.1, -10))
-	var bot := spawn("BotB", Vector3(-123, 0.1, 6))
+	var shooter := spawn("Shooter", Vector3(-287, 0.1, -90))
+	var bot := spawn("BotB", Vector3(-287, 0.1, -74))
 	await frames(10)
 	face(shooter, bot)
 	var brain := _brain(bot, shooter, BotBrain.Mode.BLOCKER)
@@ -380,8 +438,8 @@ func _h(attacker: Fighter, victim: Fighter, dmg: float, flinch := 0.0) -> HitDat
 
 func _bounty() -> void:
 	print("bounty")
-	var a := spawn("Killer", Vector3(-123, 0.1, 60))
-	var v := spawn("Victim", Vector3(-123, 0.1, 72))
+	var a := spawn("Killer", Vector3(-287, 0.1, -60))
+	var v := spawn("Victim", Vector3(-287, 0.1, -48))
 	v.respawn_delay = 1.0
 	await frames(10)
 	v.bounty.add_streak(4)

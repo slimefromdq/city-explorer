@@ -1,28 +1,41 @@
 class_name Kit
 extends RefCounted
-## Tiny builder for hand-authored geometry. A Kit owns a Node3D root and one
-## StaticBody3D; `box()` adds a visible mesh and (optionally) a matching
-## collision shape. Sub-kits can be rotated, so props are authored in local
-## space and dropped anywhere. All boxes are positioned by their bottom centre.
+## Tiny builder for hand-authored geometry. A top-level Kit owns a Node3D root
+## and ONE StaticBody3D; sub-kits (props) share that body, so a whole block is
+## a single physics body with many shapes. `box()` adds a visible mesh and
+## (optionally) a matching collision shape. All boxes are positioned by their
+## bottom centre.
 
 var root: Node3D
 var body: StaticBody3D
+var xform := Transform3D.IDENTITY   # this kit's root space -> body space
 
 
-func _init(parent: Node, node_name := "Kit", at := Vector3.ZERO, yaw_deg := 0.0) -> void:
+func _init(parent: Node, node_name := "Kit", at := Vector3.ZERO, yaw_deg := 0.0, shared: Kit = null) -> void:
 	root = Node3D.new()
 	root.name = node_name
 	root.position = at
 	root.rotation_degrees.y = yaw_deg
 	parent.add_child(root)
-	body = StaticBody3D.new()
-	body.collision_layer = Fighter.LAYER_WORLD
-	body.collision_mask = 0
-	root.add_child(body)
+	if shared == null:
+		body = StaticBody3D.new()
+		body.collision_layer = Fighter.LAYER_WORLD
+		body.collision_mask = 0
+		root.add_child(body)
+	else:
+		body = shared.body
+		xform = shared.xform * Transform3D(Basis(Vector3.UP, deg_to_rad(yaw_deg)), at)
 
 
 func sub(node_name: String, at: Vector3, yaw_deg := 0.0) -> Kit:
-	return Kit.new(root, node_name, at, yaw_deg)
+	return Kit.new(root, node_name, at, yaw_deg, self)
+
+
+func _add_shape(shape: Shape3D, local: Transform3D) -> void:
+	var cs := CollisionShape3D.new()
+	cs.shape = shape
+	cs.transform = xform * local
+	body.add_child(cs)
 
 
 func box(pos: Vector3, size: Vector3, mat: Material, collide := true, rot_deg := Vector3.ZERO, shadow := true) -> MeshInstance3D:
@@ -37,12 +50,9 @@ func box(pos: Vector3, size: Vector3, mat: Material, collide := true, rot_deg :=
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(mi)
 	if collide:
-		var cs := CollisionShape3D.new()
 		var bs := BoxShape3D.new()
 		bs.size = size
-		cs.shape = bs
-		cs.transform = mi.transform
-		body.add_child(cs)
+		_add_shape(bs, mi.transform)
 	return mi
 
 
@@ -59,14 +69,25 @@ func cyl(pos: Vector3, radius: float, height: float, mat: Material, collide := f
 	mi.position = pos + Vector3(0.0, height * 0.5, 0.0)
 	root.add_child(mi)
 	if collide:
-		var cs := CollisionShape3D.new()
 		var s := CylinderShape3D.new()
 		s.radius = radius
 		s.height = height
-		cs.shape = s
-		cs.transform = mi.transform
-		body.add_child(cs)
+		_add_shape(s, mi.transform)
 	return mi
+
+
+## Collision only (no mesh): invisible platforms, tree trunks, safety walls.
+func collision_cyl(pos: Vector3, radius: float, height: float) -> void:
+	var s := CylinderShape3D.new()
+	s.radius = radius
+	s.height = height
+	_add_shape(s, Transform3D(Basis.IDENTITY, pos + Vector3(0.0, height * 0.5, 0.0)))
+
+
+func collision_box(pos: Vector3, size: Vector3) -> void:
+	var s := BoxShape3D.new()
+	s.size = size
+	_add_shape(s, Transform3D(Basis.IDENTITY, pos + Vector3(0.0, size.y * 0.5, 0.0)))
 
 
 func sphere(pos: Vector3, radius: float, mat: Material) -> MeshInstance3D:
@@ -98,12 +119,9 @@ func ramp(a: Vector3, b: Vector3, width: float, thickness: float, mat: Material,
 	mi.transform = Transform3D(basis, (a + b) * 0.5 - up * thickness * 0.5)
 	root.add_child(mi)
 	if collide:
-		var cs := CollisionShape3D.new()
 		var bs := BoxShape3D.new()
 		bs.size = m.size
-		cs.shape = bs
-		cs.transform = mi.transform
-		body.add_child(cs)
+		_add_shape(bs, mi.transform)
 	return mi
 
 
@@ -112,7 +130,7 @@ func ramp(a: Vector3, b: Vector3, width: float, thickness: float, mat: Material,
 func stairs(bottom: Vector3, dir: Vector3, rise: float, run: float, width: float, mat: Material) -> void:
 	var d := Vector3(dir.x, 0.0, dir.z).normalized()
 	var n := maxi(2, int(round(rise / 0.2)))
-	ramp(bottom + d * 0.0, bottom + d * run + Vector3.UP * rise, width, 0.3, mat)
+	ramp(bottom, bottom + d * run + Vector3.UP * rise, width, 0.3, mat)
 	var basis := Basis.looking_at(d, Vector3.UP)
 	for i in n:
 		var t0 := float(i) / float(n)
@@ -128,7 +146,7 @@ func stairs(bottom: Vector3, dir: Vector3, rise: float, run: float, width: float
 		root.add_child(mi)
 
 
-func label(text: String, pos: Vector3, size: float, color: Color, yaw_deg := 0.0, emissive := true) -> Label3D:
+func label(text: String, pos: Vector3, size: float, color: Color, yaw_deg := 0.0, _emissive := true) -> Label3D:
 	var l := Label3D.new()
 	l.text = text
 	l.font_size = 96
@@ -136,7 +154,7 @@ func label(text: String, pos: Vector3, size: float, color: Color, yaw_deg := 0.0
 	l.modulate = color
 	l.outline_size = 0
 	l.shaded = false
-	l.double_sided = true
+	l.double_sided = false
 	l.position = pos
 	l.rotation_degrees.y = yaw_deg
 	l.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF

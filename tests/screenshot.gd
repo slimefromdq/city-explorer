@@ -3,16 +3,23 @@ extends Node
 ##   xvfb-run -a godot --rendering-driver vulkan --fixed-fps 30 --resolution 1280x720 res://tests/screenshot.tscn
 
 const SHOTS := [
-	# name, player pos, yaw(deg), pitch(deg), optional action
-	["street", Vector3(-41, 0.1, 26), -90.0, -6.0],
-	["avenue_tower", Vector3(-41, 0.1, 10), -18.0, 10.0],
-	["deck", Vector3(-60, 9.6, 0), -90.0, -4.0],
-	["underpass", Vector3(-12, 0.1, 0), 90.0, -2.0],
-	["alley", Vector3(-82, 0.2, -25), 180.0, -4.0],
-	["plaza", Vector3(24, 3.7, 66), 41.0, -5.0],
-	["block_ring", Vector3(-21, 0.1, 1), -90.0, -3.0],
-	["dash_streak", Vector3(-34, 0.1, 0), -90.0, 6.0, "dash"],
-	["gas_roof", Vector3(106, 15.2, 0), 90.0, -8.0],
+	# name, teleport name (from city markers) or Vector3, yaw(deg), pitch(deg), optional action
+	["start_plaza", "Start", 180.0, 6.0],
+	["tower_up", Vector3(0, 0.1, -140), 0.0, 38.0],
+	["belfry_view", "Clock belfry", 180.0, -16.0],
+	["lookout_hill", "Lookout Hill", 200.0, -6.0],
+	["lake_bridge", "Lake Bridge", 90.0, -6.0],
+	["old_oak", "Old Oak crown", 30.0, -14.0],
+	["library_hall", "Library hall", 180.0, 4.0],
+	["library_dome", "Library dome", 180.0, -12.0],
+	["metro_platform", "Metro platform", 0.0, 10.0],
+	["metro_mezzanine", "Metro mezzanine", 90.0, -8.0],
+	["chinatown", "Chinatown gate", 180.0, 4.0],
+	["pagoda", "Pagoda top", 90.0, -14.0],
+	["gas_station", "Highway deck", -90.0, 4.0],
+	["rail", "Rail viaduct", 90.0, -3.0],
+	["dash_streak", "Start", 180.0, 6.0, "dash"],
+	["map", "Start", 180.0, 6.0, "map"],
 ]
 
 
@@ -23,11 +30,25 @@ func _ready() -> void:
 	add_child(main)
 	await get_tree().process_frame
 	main.controller.enabled = false
+	var only := OS.get_environment("SHOTS").split(",", false)
 	for s in SHOTS:
-		main.teleport_player(s[1], deg_to_rad(s[2]))
+		if not only.is_empty() and not only.has(s[0]):
+			continue
+		var pos: Vector3
+		if s[1] is String:
+			for t in main.city.markers["tp"]:
+				if t[0] == s[1]:
+					pos = t[1]
+		else:
+			pos = s[1]
+		main.teleport_player(pos, deg_to_rad(s[2]))
 		main.rig.pitch = deg_to_rad(s[3])
 		var p: Fighter = main.player
-		if s.size() > 4:
+		if s.size() > 4 and s[4] == "map":
+			main.hud.toggle_map()
+			for i in 6:
+				await get_tree().process_frame
+		elif s.size() > 4:
 			for i in 30:
 				await get_tree().physics_frame
 			p.bounty.add_streak(7)
@@ -47,4 +68,6 @@ func _ready() -> void:
 		var img := get_viewport().get_texture().get_image()
 		img.save_png("res://tests/out/%s.png" % s[0])
 		print("saved ", s[0])
+		if s.size() > 4 and s[4] == "map":
+			main.hud.toggle_map()
 	get_tree().quit()

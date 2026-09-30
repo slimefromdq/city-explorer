@@ -301,6 +301,15 @@ func _process(dt: float) -> void:
 		target_rx = -0.3
 		aim_blend = 0.0
 
+	if f.loco.wallrunning:
+		target_rz = 0.5 * f.loco.wall_side()
+		target_rx = -0.15
+		var sw := sin(_phase * 1.8 + Time.get_ticks_msec() * 0.02) * 0.9
+		leg_l = sw
+		leg_r = -sw
+		arm_l = -sw * 0.8
+		arm_r = sw * 0.8
+
 	if f.guard.blocking:
 		# forearms up in front of the face
 		arm_l = PI * 0.5 + 0.9

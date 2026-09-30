@@ -9,10 +9,11 @@ const YAW := {"n": 180.0, "s": 0.0, "e": 90.0, "w": -90.0}
 const WORDS := ["CAFE", "RAMEN", "BAR 24", "NOODLE", "KARAOKE", "PC BANG", "CHICKEN", "COFFEE", "PIZZA", "HOTEL", "SOJU", "BOOKS", "PHARMACY", "TEA"]
 const BRICKS := [Color(0.5, 0.3, 0.26), Color(0.42, 0.34, 0.3), Color(0.55, 0.42, 0.32), Color(0.36, 0.3, 0.34)]
 const CONCRETES := [Color(0.48, 0.5, 0.54), Color(0.55, 0.53, 0.5), Color(0.4, 0.43, 0.48)]
+const CHINA_AWN := [Color(0.75, 0.12, 0.1), Color(0.9, 0.7, 0.2), Color(0.55, 0.1, 0.12)]
 const AWNINGS := [Color(0.85, 0.25, 0.3), Color(0.2, 0.5, 0.45), Color(0.9, 0.7, 0.25), Color(0.25, 0.35, 0.7), Color(0.9, 0.9, 0.85)]
 
 
-static func build(parent: Node, r: Rect2, spec: Dictionary, faces: Dictionary) -> Kit:
+static func build(parent: Node, r: Rect2, spec: Dictionary, faces: Dictionary, do_merge := true) -> Kit:
 	var k := Kit.new(parent, "Lot_%s" % spec.style)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(spec.get("seed", 1)) * 7919 + int(r.position.x * 31 + r.position.y * 17)
@@ -24,9 +25,17 @@ static func build(parent: Node, r: Rect2, spec: Dictionary, faces: Dictionary) -
 		"oldtown": _oldtown(k, r, h, rng, spec)
 		"billboard": _billboard(k, r, h, rng, spec, faces)
 		"museum": _museum(k, r, h, rng, spec, faces)
+		"chinese": _chinese(k, r, h, rng, spec)
+		"pagoda": _pagoda(k, r, rng, spec)
+		"round": _round(k, r, h, rng, spec)
 		_: _brick(k, r, h, rng, spec, faces, true)
 	_street_level(k, r, faces, rng, spec)
 	_alley_level(k, r, h, faces, rng, spec)
+	if not k.root.has_meta(&"roof"):
+		var c := center(r)
+		k.root.set_meta(&"roof", Vector3(c.x, h, c.z))
+	if do_merge:
+		StaticBatch.merge(k.root)
 	return k
 
 
@@ -90,18 +99,25 @@ static func _glass(k: Kit, r: Rect2, h: float, rng: RandomNumberGenerator, spec:
 	var podium_mat := Mats.facade(Color(0.45, 0.47, 0.52), seed_v + 3.0, 0.4, Vector2(3.6, 3.6), Vector2(0.7, 0.6), 4.6)
 	var podium := inset(r, 0.5)
 	_slab(k, podium, 0.0, 6.0, podium_mat)
-	var t1 := inset(r, 5.0)
-	_slab(k, t1, 6.0, h * 0.7 - 6.0, tower_mat)
-	var t2 := inset(r, 8.5)
-	_slab(k, t2, h * 0.7, h * 0.3, tower_mat)
+	# stepped setbacks: every ledge is a walkable terrace (dash-reset spots)
+	var cuts := [0.0, 0.34, 0.68] if h > 95.0 else [0.0, 0.7]
+	var insets := [5.0, 8.0, 11.0] if h > 95.0 else [5.0, 8.5]
+	var top_rect := podium
+	for i in cuts.size():
+		var y0: float = 6.0 if i == 0 else h * cuts[i]
+		var y1: float = h * cuts[i + 1] if i + 1 < cuts.size() else h
+		top_rect = inset(r, insets[i])
+		_slab(k, top_rect, y0, y1 - y0, tower_mat)
 	var c := center(r)
-	k.cyl(Vector3(c.x, h, c.z), 0.35, 12.0, Mats.toon(Color(0.7, 0.7, 0.75)), false, 8)
-	k.sphere(Vector3(c.x, h + 12.3, c.z), 0.5, Mats.glow(Color(1.0, 0.1, 0.1), 6.0))
+	# crown: glowing ring band + mast; supertalls get a lit halo
+	k.box(Vector3(c.x, h - 3.0, c.z), Vector3(top_rect.size.x + 0.6, 0.5, top_rect.size.y + 0.6), Mats.glow(Color(0.5, 0.85, 1.0), 3.0), false, Vector3.ZERO, false)
+	k.cyl(Vector3(c.x, h, c.z), 0.35, 12.0 if h < 110.0 else 26.0, Mats.toon(Color(0.7, 0.7, 0.75)), false, 8)
+	k.sphere(Vector3(c.x, h + (12.3 if h < 110.0 else 26.3), c.z), 0.5, Mats.glow(Color(1.0, 0.1, 0.1), 6.0))
 	_parapet(k, podium, 6.0, Mats.toon(Color(0.35, 0.36, 0.4)))
-	# podium terrace dressing so the ring is a usable fight space
 	Props.planter(k, Vector3(podium.position.x + 1.6, 6.0, podium.position.y + 8.0), Vector3(1.2, 0.9, 3.0))
 	Props.planter(k, Vector3(podium.end.x - 1.6, 6.0, podium.end.y - 8.0), Vector3(1.2, 0.9, 3.0))
-	Props.ac_unit(k, Vector3(t2.position.x + 2.0, h, t2.position.y + 2.0))
+	Props.ac_unit(k, Vector3(top_rect.position.x + 2.0, h, top_rect.position.y + 2.0))
+	k.root.set_meta(&"roof", Vector3(c.x, h, c.z))
 
 
 static func _brick(k: Kit, r: Rect2, h: float, rng: RandomNumberGenerator, spec: Dictionary, faces: Dictionary, is_brick: bool) -> void:
@@ -201,6 +217,128 @@ static func _museum(k: Kit, r: Rect2, h: float, rng: RandomNumberGenerator, spec
 	k.label("MUSEUM", Vector3(cx, 13.2, porch.position.y + 6.55), 3.2, Color(1.0, 0.9, 0.7), 0.0)
 
 
+static func _eave(k: Kit, e: Rect2, y: float, tiles: Material, gold: Material) -> void:
+	_slab(k, e, y, 0.4, tiles)
+	var c := center(e)
+	k.box(Vector3(c.x, y + 0.4, e.position.y + 0.15), Vector3(e.size.x, 0.18, 0.3), gold, false, Vector3.ZERO, false)
+	k.box(Vector3(c.x, y + 0.4, e.end.y - 0.15), Vector3(e.size.x, 0.18, 0.3), gold, false, Vector3.ZERO, false)
+	k.box(Vector3(e.position.x + 0.15, y + 0.4, c.z), Vector3(0.3, 0.18, e.size.y), gold, false, Vector3.ZERO, false)
+	k.box(Vector3(e.end.x - 0.15, y + 0.4, c.z), Vector3(0.3, 0.18, e.size.y), gold, false, Vector3.ZERO, false)
+	# upturned corner tips + hanging lanterns
+	var lantern := Mats.glow(Color(1.0, 0.22, 0.15), 4.0)
+	for cxn in [e.position.x, e.end.x]:
+		for czn in [e.position.y, e.end.y]:
+			k.box(Vector3(cxn, y + 0.3, czn), Vector3(0.9, 0.25, 0.9), tiles, false, Vector3(18, 45, 18))
+			k.sphere(Vector3(cxn, y - 0.7, czn), 0.38, lantern)
+	var n := int(e.size.x / 5.0)
+	for i in n:
+		var t := (i + 0.5) / n
+		k.sphere(Vector3(e.position.x + e.size.x * t, y - 0.7, e.position.y), 0.32, lantern)
+		k.sphere(Vector3(e.position.x + e.size.x * t, y - 0.7, e.end.y), 0.32, lantern)
+
+
+static func _chinese(k: Kit, r: Rect2, h: float, rng: RandomNumberGenerator, spec: Dictionary) -> void:
+	var seed_v := float(spec.get("seed", 1))
+	var red := Color(0.6, 0.14, 0.13).lerp(Color(0.5, 0.2, 0.12), rng.randf() * 0.6)
+	var wallmat := Mats.facade(red, seed_v, 0.6, Vector2(2.8, 3.2), Vector2(0.5, 0.6), 4.6)
+	var tiles := Mats.toon(Color(0.15, 0.32, 0.34), 0.4)
+	var gold := Mats.glow(Color(1.0, 0.78, 0.25), 2.6)
+	var body := inset(r, 2.0)
+	var tier_h := 5.4
+	var tiers := maxi(2, int(h / tier_h))
+	var y := 0.0
+	var tr := body
+	for i in tiers:
+		tr = inset(body, i * 0.8)
+		_slab(k, tr, y, tier_h, wallmat)
+		var e := Rect2(tr.position - Vector2(1.7, 1.7), tr.size + Vector2(3.4, 3.4))
+		_eave(k, e, y + tier_h - 0.4, tiles, gold)
+		y += tier_h
+	var c := center(tr)
+	# hipped pavilion roof on top
+	var roof := k.cyl(Vector3(c.x, y, c.z), minf(tr.size.x, tr.size.y) * 0.62, 3.6, tiles, false, 4, 0.6)
+	roof.rotation_degrees.y = 45
+	k.sphere(Vector3(c.x, y + 3.8, c.z), 0.45, gold)
+	Props.ac_unit(k, Vector3(tr.position.x + 2.0, y, tr.position.y + 2.0))
+	k.root.set_meta(&"roof", Vector3(c.x, y, c.z))
+	# vertical shop signs with lantern glow
+	var col := Color(1.0, 0.8, 0.25)
+	var word: String = ["TEA HOUSE", "DIM SUM", "NOODLES", "HERBS", "LUCKY"][rng.randi() % 5]
+	k.box(Vector3(r.position.x + 1.0, 5.5, r.position.y + r.size.y * 0.5), Vector3(0.4, 4.0, 1.4), Mats.toon(Color(0.7, 0.12, 0.1)), false)
+	k.label(word, Vector3(r.position.x + 0.7, 8.0, r.position.y + r.size.y * 0.5), 1.1, col, -90.0)
+
+
+static func _pagoda(k: Kit, r: Rect2, rng: RandomNumberGenerator, spec: Dictionary) -> void:
+	var seed_v := float(spec.get("seed", 1))
+	var red := Color(0.6, 0.13, 0.12)
+	var wallmat := Mats.facade(red, seed_v, 0.7, Vector2(3.0, 3.4), Vector2(0.4, 0.55), 0.0)
+	var tiles := Mats.toon(Color(0.14, 0.3, 0.32), 0.4)
+	var gold := Mats.glow(Color(1.0, 0.78, 0.25), 3.0)
+	var stone := Mats.toon(Color(0.62, 0.58, 0.52), 0.5)
+	var c := center(r)
+	# paved courtyard, low wall, gate, lions, trees
+	_slab(k, inset(r, 0.5), 0.0, 0.5, stone)
+	var court := inset(r, 0.5)
+	for side in [[Vector3(c.x, 0.5, court.position.y + 0.3), Vector3(court.size.x, 1.6, 0.6)], [Vector3(c.x, 0.5, court.end.y - 0.3), Vector3(court.size.x, 1.6, 0.6)],
+			[Vector3(court.position.x + 0.3, 0.5, c.z), Vector3(0.6, 1.6, court.size.y)], [Vector3(court.end.x - 0.3, 0.5, c.z), Vector3(0.6, 1.6, court.size.y)]]:
+		k.box(side[0], side[1], Mats.toon(Color(0.7, 0.2, 0.18), 0.3), true)
+	# 7-tier pagoda
+	var y := 0.5
+	var w := 13.0
+	for i in 7:
+		var body := Rect2(Vector2(c.x - w * 0.5, c.z - w * 0.5), Vector2(w, w))
+		_slab(k, body, y, 5.4, wallmat)
+		_eave(k, Rect2(body.position - Vector2(2.2, 2.2), body.size + Vector2(4.4, 4.4)), y + 5.0, tiles, gold)
+		y += 5.4
+		w -= 1.3
+	var roof := k.cyl(Vector3(c.x, y, c.z), w * 0.5 + 3.4, 3.4, tiles, false, 4, 0.4)
+	roof.rotation_degrees.y = 45
+	k.cyl(Vector3(c.x, y + 3.4, c.z), 0.3, 9.0, gold, false, 8)
+	k.sphere(Vector3(c.x, y + 12.6, c.z), 0.8, gold)
+	for sx in [-1.0, 1.0]:
+		Props.tree(k, Vector3(c.x + sx * 10.5, 0.5, c.z + 11.0), 6.0)
+		k.box(Vector3(c.x + sx * 3.0, 0.5, court.end.y - 2.5), Vector3(1.4, 1.5, 1.4), stone, true)
+	k.root.set_meta(&"roof", Vector3(c.x, y, c.z))
+	k.root.set_meta(&"landmark", "Pagoda")
+
+
+static func _round(k: Kit, r: Rect2, h: float, rng: RandomNumberGenerator, spec: Dictionary) -> void:
+	var seed_v := float(spec.get("seed", 1))
+	var c := center(r)
+	var R := minf(r.size.x, r.size.y) * 0.5 - 2.0
+	var base := Mats.toon(Color(0.2, 0.22, 0.3), 0.6)
+	# storefront drum
+	k.cyl(Vector3(c.x, 0.0, c.z), R + 1.0, 6.0, base, true, 32)
+	k.cyl(Vector3(c.x, 3.2, c.z), R + 1.05, 0.9, Mats.glow(Color(1.0, 0.8, 0.5), 2.2), false, 32)
+	# mural-wrapped shaft (Seoul-style giant painted tower)
+	var pal := Props.random_palette(rng)
+	var mural := Mats.mural(pal[0], pal[1], pal[2], seed_v * 3.1, TAU * R / maxf(h - 6.0, 1.0), 1.0)
+	var shaft := MeshInstance3D.new()
+	var cm := CylinderMesh.new()
+	cm.top_radius = R
+	cm.bottom_radius = R
+	cm.height = h - 6.0
+	cm.radial_segments = 40
+	cm.rings = 1
+	shaft.mesh = cm
+	shaft.material_override = mural
+	shaft.position = Vector3(c.x, 6.0 + (h - 6.0) * 0.5, c.z)
+	k.root.add_child(shaft)
+	var cs := CylinderShape3D.new()
+	cs.radius = R
+	cs.height = h - 6.0
+	k._add_shape(cs, Transform3D(Basis.IDENTITY, shaft.position))
+	# ring ledges every ~14 m: climbable balconies with a glowing lip
+	var y := 6.0
+	while y < h - 8.0:
+		k.cyl(Vector3(c.x, y, c.z), R + 2.4, 0.5, base, true, 32)
+		k.cyl(Vector3(c.x, y + 0.5, c.z), R + 2.4, 0.15, Mats.glow(Color(pal[2].r, pal[2].g, pal[2].b), 3.0), false, 32)
+		y += 14.0
+	k.cyl(Vector3(c.x, h, c.z), R + 1.2, 0.8, base, true, 32)
+	Props.billboard(k, Vector3(c.x, h + 0.8, c.z - R + 2.0), 0.0, 12.0, 6.0, seed_v + 4.0, 2.5, 1.5)
+	k.root.set_meta(&"roof", Vector3(c.x, h + 0.8, c.z))
+
+
 # ---------------------------------------------------------------- street level (calm, warm)
 
 static func _face_point(r: Rect2, face: String, t: float) -> Vector3:
@@ -212,8 +350,9 @@ static func _face_point(r: Rect2, face: String, t: float) -> Vector3:
 
 
 static func _street_level(k: Kit, r: Rect2, faces: Dictionary, rng: RandomNumberGenerator, spec: Dictionary) -> void:
-	if spec.style == "museum":
+	if spec.style in ["museum", "pagoda", "round"]:
 		return
+	var awn: Array = CHINA_AWN if spec.style == "chinese" else AWNINGS
 	for f in faces.keys():
 		if not faces[f]:
 			continue
@@ -224,7 +363,7 @@ static func _street_level(k: Kit, r: Rect2, faces: Dictionary, rng: RandomNumber
 				var t := (i + 0.5) / n
 				var p := _face_point(r, f, t)
 				var yaw: float = YAW[f]
-				Props.awning(k, p + Vector3(0, 0.0, 0), 5.2, yaw, AWNINGS[rng.randi() % AWNINGS.size()])
+				Props.awning(k, p + Vector3(0, 0.0, 0), 5.2, yaw, awn[rng.randi() % awn.size()])
 				if rng.randf() < 0.45:
 					var out := Vector3(sin(deg_to_rad(yaw)), 0, cos(deg_to_rad(yaw)))
 					var side := Vector3(cos(deg_to_rad(yaw)), 0, -sin(deg_to_rad(yaw)))
@@ -241,7 +380,7 @@ static func _street_level(k: Kit, r: Rect2, faces: Dictionary, rng: RandomNumber
 
 
 static func _alley_level(k: Kit, r: Rect2, h: float, faces: Dictionary, rng: RandomNumberGenerator, spec: Dictionary) -> void:
-	if spec.style == "glass" or spec.style == "museum":
+	if spec.style in ["glass", "museum", "pagoda", "round"]:
 		return
 	for f in faces.keys():
 		if faces[f]:
@@ -251,7 +390,7 @@ static func _alley_level(k: Kit, r: Rect2, h: float, faces: Dictionary, rng: Ran
 		var p := _face_point(r, f, 0.5)
 		var out := Vector3(sin(deg_to_rad(yaw)), 0, cos(deg_to_rad(yaw)))
 		var side := Vector3(cos(deg_to_rad(yaw)), 0, -sin(deg_to_rad(yaw)))
-		if h > 16.0 and spec.style != "oldtown" and rng.randf() < 0.85:
+		if h > 16.0 and spec.style != "oldtown" and spec.style != "chinese" and rng.randf() < 0.85:
 			Props.fire_escape(k, _face_point(r, f, rng.randf_range(0.3, 0.7)) + out * 0.3, yaw, minf(h, 22.0))
 		if rng.randf() < 0.7:
 			Props.dumpster(k, p + out * 0.9 + side * rng.randf_range(-length * 0.35, length * 0.35), yaw + 90.0)

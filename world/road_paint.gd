@@ -21,6 +21,17 @@ func rect(x0: float, z0: float, x1: float, z1: float, color: Color) -> void:
 	_idx.append_array([b, b + 2, b + 1, b, b + 3, b + 2])
 
 
+## Rotated stripe from a to b (XZ plane) with the given width.
+func strip(a: Vector2, b: Vector2, width: float, color: Color) -> void:
+	var d := (b - a).normalized()
+	var n := Vector2(-d.y, d.x) * width * 0.5
+	var i := _verts.size()
+	_verts.append_array([Vector3(a.x - n.x, y, a.y - n.y), Vector3(b.x - n.x, y, b.y - n.y), Vector3(b.x + n.x, y, b.y + n.y), Vector3(a.x + n.x, y, a.y + n.y)])
+	for k in 4:
+		_cols.append(color)
+	_idx.append_array([i, i + 2, i + 1, i, i + 3, i + 2])
+
+
 func build(parent: Node) -> MeshInstance3D:
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
@@ -38,6 +49,7 @@ func build(parent: Node) -> MeshInstance3D:
 	var m := StandardMaterial3D.new()
 	m.vertex_color_use_as_albedo = true
 	m.roughness = 0.3
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mi.material_override = m
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF

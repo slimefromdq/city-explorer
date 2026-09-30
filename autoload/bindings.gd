@@ -19,6 +19,7 @@ func _ready() -> void:
 	_keys(&"ability_3", [KEY_3])
 	_keys(&"ability_4", [KEY_4])
 	_keys(&"reload", [KEY_R])
+	_keys(&"map", [KEY_M])
 	# --- test-bench tools ---
 	_keys(&"dbg_help", [KEY_F1])
 	_keys(&"dbg_teleport", [KEY_F2])

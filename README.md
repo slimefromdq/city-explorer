@@ -1,7 +1,8 @@
 # City Explorer - Gunslinger prototype (Godot 4.7.2)
 
-One gunslinger, one small slice of a big vertical city, and a test bench for
-making movement + combat feel right before anything else gets built.
+One gunslinger, a large vertical city (~590 x 430 m, 35 cells, up to 170 m tall
+landmarks) and a test bench for making movement, parkour and combat feel right
+before anything else gets built.
 
 Open the folder in Godot 4.7.x (Forward+ renderer) and press F5.
 First open imports scripts (`class_name`s); if you run from CLI do
@@ -18,11 +19,29 @@ First open imports scripts (`class_name`s); if you run from CLI do
 | LMB (hold) | Quickdraw M1 combo: single, single, double-tap |
 | 1 / 2 / 3 / 4 | Burst Shot / Slide-Shot / Ricochet Round / Snapshot (hold, release) |
 | R | reload |
+| M | city map (compass strip along the top shows landmark bearings) |
+| Shift + run into a wall while airborne | **wall-run** (jump kicks off, dash cancels) |
 | F1 help, F2 teleport tour, F5 reset meters+cooldowns, F6 respawn bots, F7 cycle bot mode, F8 +3 streak, F9 rain |
 
 Bots (F7 cycles Blocker / Dodger / Aggressor): Dummy (street), Blocker
 (underpass), Dodger (alley), Aggressor (avenue), Terrace Dummy (tower terrace).
 Bots use exactly the same Fighter rules as the player.
+
+## The city (CityLayout.GRID, west to east / north to south)
+
+| District / landmark | What it is |
+|---|---|
+| **Clock Tower + plaza** (north centre) | 170 m beacon; ledge rings every ~20 m make it a vertical climb, floodlit belfry |
+| **Grand Library** (NE of plaza) | portico + grand steps, enterable hall with gallery and shelves as cover, stepped golden dome you can climb |
+| **Central Park** (centre, 228 x 146 m) | rolling hills, two rivers, a lake with pavilion island, arched bridges, Old Oak (30 m, climbable crown), ~400 trees (70 have canopy platforms), Lookout Hill gazebo, wading slows you |
+| **Metro Station** (south centre) | sunken platforms (-9 m) with tunnels and trains that shove you, concourse, mezzanine (7 m), upper walkways (14 m), roof girders (25 m) |
+| **Financial District** (NW, SE) | 70-176 m glass towers with setback terraces, mural-wrapped round towers with ring balconies, sky bridges |
+| **Chinatown** (west) | tiered-eave buildings (every eave is a ledge), lantern strings over streets, paifang gates, 7-tier pagoda |
+| **Old Town / Market** | low stair-stepped roofs, fire escapes, alleys, stalls |
+| **Layered infrastructure** | elevated highway (9.5 m) with a neon gas station (canopy roof is walkable), a 19 m N-S flyover crossing over it, and a curved 26 m sky-rail viaduct with a train |
+
+Exploration hooks: ~50 **Sky Shards** (cyan, refill dashes, +score) on roofs, ledges, tree crowns and girders;
+map + compass; distinct silhouettes per district so you can orient from anywhere.
 
 ## The combat triangle (all in `HitData` flags)
 
@@ -54,8 +73,9 @@ fighter/       Fighter = archetype-agnostic shared layer:
                CharacterModel (procedural rig, poses, afterimages), MeterRing, Nameplate, Trail3D, VFX
 abilities/     Ability base (cooldown, scheduler, channel) + gunslinger/ (one script per move)
 control/       PlayerController / BotBrain fill Fighter intents; CameraRig owns the aim ray
-world/         Kit (box/ramp/stairs builder), Props, BuildingFactory (style recipes),
-               HighwayBuilder, CityBuilder (layout as data), SkyEnv, Mats
+world/         CityLayout (map as data), CityBuilder (orchestrator), BlockBuilder, BuildingFactory (style recipes),
+               ParkBuilder+ParkTerrain, StationBuilder, LibraryBuilder, ClockPlazaBuilder, HighwayBuilder, RailBuilder,
+               Kit (box/ramp/stairs), StaticBatch (merges meshes: thousands of boxes -> few draw calls), Props, Mats, SkyEnv
 shaders/       cel bands, facade (windows in world space), mural, ring, shield, outline
 ui/            Hud, DamageNumbers (Events-driven)
 tests/         smoke_test (headless rules), screenshot (renders viewpoints)
