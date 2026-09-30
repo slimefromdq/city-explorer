@@ -132,16 +132,19 @@ static func build(parent: Node, c: Vector2) -> Dictionary:
 	# ---------------------------------------------------------------- upper level (14 m)
 	for zs: float in [-1.0, 1.0]:
 		k.box(Vector3(cx, 13.4, cz + zs * 27.5), Vector3(52.0, 0.6, 5.0), tile, true)
-		k.box(Vector3(cx, 14.0, cz + zs * 25.2), Vector3(52.0, 1.0, 0.2), steel, true)
+		# pit-edge railing, open where the mezzanine ramp lands (ramps at x = -24 north, +24 south)
+		var rail_x0 := -26.0 if zs > 0.0 else -26.0 + 4.6
+		var rail_x1 := 26.0 if zs < 0.0 else 26.0 - 4.6
+		k.box(Vector3(cx + (rail_x0 + rail_x1) * 0.5, 14.0, cz + zs * 25.2), Vector3(rail_x1 - rail_x0, 1.0, 0.2), steel, true)
 	# ramps from each mezzanine end up to the upper walkways
-	k.stairs(Vector3(cx - 24.0, 7.0, cz - 14.0), Vector3(0, 0, -1), 7.0, 12.0, 4.0, steel)
-	k.stairs(Vector3(cx + 24.0, 7.0, cz + 14.0), Vector3(0, 0, 1), 7.0, 12.0, 4.0, steel)
+	k.stairs(Vector3(cx - 24.0, 7.0, cz - 14.0), Vector3(0, 0, -1), 7.0, 11.0, 4.0, steel)   # lands flush on the walkway's inner edge (cz - 25)
+	k.stairs(Vector3(cx + 24.0, 7.0, cz + 14.0), Vector3(0, 0, 1), 7.0, 11.0, 4.0, steel)
 	# ---------------------------------------------------------------- roof girders (25 m)
 	for zi: float in [-24.0, -12.0, 0.0, 12.0, 24.0]:
 		k.box(Vector3(cx, 24.4, cz + zi), Vector3(60.0, 0.6, 1.4), steel, true)
 	k.box(Vector3(cx, 24.4, cz), Vector3(1.4, 0.6, 60.0), steel, true)
 	# maintenance stair from the upper walkway up to the roof girders (so they are not a place to nowhere)
-	k.stairs(Vector3(cx - 28.5, 14.0, cz - 25.0), Vector3(0, 0, 1), 11.0, 12.5, 1.6, steel)
+	k.stairs(Vector3(cx - 28.5, 14.0, cz - 25.0), Vector3(0, 0, 1), 11.0, 12.3, 1.6, steel)   # tops out flush with the first girder's front face (cz - 12.7)
 	k.box(Vector3(cx - 27.25, 13.4, cz - 26.5), Vector3(3.5, 0.6, 3.0), steel, true)
 	# hanging light rigs
 	for zi: float in [-18.0, 0.0, 18.0]:
@@ -150,8 +153,8 @@ static func build(parent: Node, c: Vector2) -> Dictionary:
 
 	# ---------------------------------------------------------------- concourse dressing
 	# ticket gates guard the two stairs down to the platforms (NOT the pit edge)
-	_gates(k, Vector3(cx - 16.0, 0.0, cz - 28.4), dark)
-	_gates(k, Vector3(cx + 16.0, 0.0, cz + 28.4), dark)
+	_gates(k, Vector3(cx - 16.0, 0.0, cz - 28.3), dark)
+	_gates(k, Vector3(cx + 16.0, 0.0, cz + 28.3), dark)
 	# safety railing all round the pit, open only at the two stairs (you can still vault it)
 	var rail := Mats.toon(Color(0.85, 0.75, 0.2))
 	var rl := 1.1
@@ -203,8 +206,10 @@ static func build(parent: Node, c: Vector2) -> Dictionary:
 ## A bank of two fare lanes across a stair mouth (centre `at`, lanes run along z).
 static func _gates(k: Kit, at: Vector3, mat: Material) -> void:
 	for dx: float in [-2.75, 0.0, 2.75]:
-		k.box(Vector3(at.x + dx, 0.0, at.z), Vector3(0.5, 1.1, 2.4), mat, true)
-		k.box(Vector3(at.x + dx, 1.1, at.z), Vector3(0.5, 0.08, 1.0), Mats.glow(Color(0.4, 1.0, 0.6), 3.0), false, Vector3.ZERO, false)
+		# posts are short (1.2 m) so >= 1 m stays free in front of and behind the gate line: the 3.5 m
+		# concourse strip between the wall and the pit railing must still let you walk up to each lane
+		k.box(Vector3(at.x + dx, 0.0, at.z), Vector3(0.5, 1.1, 1.2), mat, true)
+		k.box(Vector3(at.x + dx, 1.1, at.z), Vector3(0.5, 0.08, 0.8), Mats.glow(Color(0.4, 1.0, 0.6), 3.0), false, Vector3.ZERO, false)
 	k.box(Vector3(at.x - 2.75 - 1.2, 0.0, at.z), Vector3(1.4, 1.1, 0.2), mat, true)
 	k.box(Vector3(at.x + 2.75 + 1.2, 0.0, at.z), Vector3(1.4, 1.1, 0.2), mat, true)
 

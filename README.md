@@ -82,7 +82,7 @@ world/         CityLayout (map as data), CityBuilder (orchestrator), BlockBuilde
                Kit (box/ramp/stairs), StaticBatch (merges meshes: thousands of boxes -> few draw calls), Props, Mats, SkyEnv
 shaders/       cel bands, facade (windows in world space), mural, ring, shield, outline
 ui/            Hud, DamageNumbers (Events-driven)
-tests/         smoke_test (headless rules), screenshot (renders viewpoints)
+tests/         smoke_test (headless rules), audit (walkability + allowlist), screenshot (renders viewpoints)
 ```
 
 New archetype = a factory like `Gunslinger.create()` that adds Ability nodes and a
@@ -96,8 +96,28 @@ speed trail width/length and afterimage density. F8 adds streak so you can see i
 
 ```
 godot --headless --fixed-fps 60 res://tests/smoke_test.tscn                  # rules (109 checks incl. walking tests for stairs, fire escapes, gates, gangways)
+godot --headless res://tests/audit.tscn                                      # walkability audit, ~30 s, exit code 1 = failed
 xvfb-run -a godot --rendering-driver vulkan --fixed-fps 30 res://tests/screenshot.tscn   # PNGs in tests/out (slow on software GL)
 ```
+
+### Walkability audit (`tests/audit.gd`, allowlist in `tests/audit_allow.json`)
+
+Drops a ray on every square metre of the map, keeps every surface where the player capsule fits,
+links neighbours the capsule can really walk between (legal step or a straight ramp, clear sweep) and
+flood-fills from the spawn. Everything not on the walkable network is classified: HOP (one jump away),
+DASH (dash chain), TOWER (a roof you climb up to), DROP (fall-only trap), ORPHAN (unreachable).
+It fails on:
+
+* a ground-level HOP/DROP/ORPHAN island (>= 20 m2, wider than 2 m, lowest point <= 6 m) that is not in `allow`
+  (with a written reason) - this catches sealed alleys, un-stepped platforms, lips at the foot of ramps;
+* any `must_walk` place (metro mezzanine/walkways/girders, library gallery, every clock-tower ring, ship deck,
+  pier, ...) that is not on the walkable network;
+* a teleport point with no floor under it, or a ground-level one you cannot walk to from the spawn.
+
+`AUDIT_VERBOSE=1` prints every island, the lips, the boundary of the spawn network and an ASCII map;
+`PROBE=x0,z0,x1,z1` prints the nodes along a line ('W' = walkable from spawn); `EDGE=x,y,z;x,y,z` explains why two
+neighbouring spots are or are not linked. When you add a new stair/ramp/platform that is meant to be walked, add a
+`must_walk` entry for it.
 
 ## Not built yet (deliberately)
 

@@ -29,6 +29,11 @@ const HOP_UP := 1.6
 const DASH_REACH := 20.0
 const DASH_RISE := 18.0
 const MIN_AREA := 4          # ignore islands smaller than this many m^2 (bench tops, crates)
+const FAIL_AREA := 20        # unexplained HOP/DROP/ORPHAN islands at least this big fail the audit
+const THIN := 2.0            # islands no wider than this (rail tops, parapets, kerbs) are never a problem
+const ALLOW_PATH := "res://tests/audit_allow.json"
+const GROUND_Y := 4.0        # teleport points below this height must be walkable from the spawn
+const ELEVATED := 6.0        # islands whose lowest point is above this are aerial (roof networks, rings): parkour by design; the "must_walk" list guards the ones that are meant to be walked
 const CAP_R := 0.35
 const CAP_H := 1.8
 const MAX_LAYERS := 14
@@ -47,10 +52,13 @@ var parent := PackedInt32Array()
 var lips: Array = []   # [a, b, dy]
 var rejects: Array = []  # [a, b, reason] for every refused neighbour pair (<= 0.9 m apart vertically)
 var crawl: Array = []  # node positions
+var main_node: Node3D
+var verbose := OS.get_environment("AUDIT_VERBOSE") == "1"
 
 
 func _ready() -> void:
 	var main: Node3D = load("res://main.tscn").instantiate()
+	main_node = main
 	main.set("headless_test", true)
 	add_child(main)
 	await get_tree().physics_frame
@@ -68,17 +76,27 @@ func _ready() -> void:
 	_link()
 	print("linked in %.1fs" % ((Time.get_ticks_msec() - t0) / 1000.0))
 	var start: Vector3 = main.player.global_position
-	var probe := OS.get_environment("PROBE").split(",", false)   # PROBE=x,z0,z1 prints nodes along a line
-	if probe.size() == 3:
-		var sc := int((float(probe[0]) - X0) / CELL) * nz
-		for z in range(int(float(probe[1])), int(float(probe[2]))):
-			var ci := sc + int((z - Z0) / CELL)
+	var probe := OS.get_environment("PROBE").split(",", false)   # PROBE=x0,z0,x1,z1 prints the nodes along a line ('W' = walkable from the spawn)
+	if probe.size() == 4:
+		var wr := _find(_spawn_node(start))
+		var pa := Vector2(float(probe[0]), float(probe[1]))
+		var pb := Vector2(float(probe[2]), float(probe[3]))
+		for i in int(pa.distance_to(pb)) + 1:
+			var pt := pa.lerp(pb, float(i) / maxf(1.0, pa.distance_to(pb)))
+			var ci := int((pt.x - X0) / CELL) * nz + int((pt.y - Z0) / CELL)
 			var row := ""
 			for n in range(col_start[ci], col_start[ci + 1]):
-				row += "  y=%.2f c=%d" % [ys[n], _find(n) % 1000]
-			print("z=%d %s" % [z, row])
-	_report(start)
-	get_tree().quit()
+				row += "  %.2f%s" % [ys[n], "W" if _find(n) == wr else "."]
+			print("(%.0f,%.0f)%s" % [pt.x, pt.y, row])
+	var edge_env := OS.get_environment("EDGE").split(";", false)   # EDGE=x,y,z;x,y,z explains why two neighbouring spots are (not) linked
+	if edge_env.size() == 2:
+		var pa := edge_env[0].split(",")
+		var pb := edge_env[1].split(",")
+		var na := _node_near(Vector3(float(pa[0]), float(pa[1]), float(pa[2])))
+		var nb := _node_near(Vector3(float(pb[0]), float(pb[1]), float(pb[2])))
+		print("EDGE nodes %s -> %s : %s" % [_fmt(_pos(na)) if na >= 0 else "none", _fmt(_pos(nb)) if nb >= 0 else "none", "linked" if (na >= 0 and nb >= 0 and _edge(na, nb) == "") else (_edge(na, nb) if na >= 0 and nb >= 0 else "missing node")])
+	var failures := _report(start)
+	get_tree().quit(1 if failures > 0 else 0)
 
 
 func _pos(n: int) -> Vector3:
@@ -132,10 +150,12 @@ func _sample() -> void:
 					continue
 				layers += 1
 				var p := Vector3(x, hp.y, z)
-				if space.intersect_shape(_query(cap, p, 0.06), 1).is_empty():
+				# on a slope the capsule's round foot needs r*(1/cos - 1) extra clearance to not touch the surface
+				var lift := 0.06 + CAP_R * (1.0 / maxf(ny, 0.5) - 1.0)
+				if space.intersect_shape(_query(cap, p, lift), 1).is_empty():
 					ys.append(hp.y)
 					col_of.append(ci)
-				elif space.intersect_shape(_query(crouch, p, 0.06), 1).is_empty():
+				elif space.intersect_shape(_query(crouch, p, lift), 1).is_empty():
 					crawl.append(p)
 	col_start[nx * nz] = ys.size()
 	parent.resize(ys.size())
@@ -187,8 +207,8 @@ func _edge(a: int, b: int) -> String:
 			return "cliff"
 		# a ramp is a continuous surface: sample it every 10 cm and reject any jump > 12 cm (~50 deg)
 		var prev := pa.y
-		for i in range(1, 10):
-			var sp := pa.lerp(pb, i / 10.0)
+		for i in 10:
+			var sp := pa.lerp(pb, (i + 0.37) / 10.0)   # off the exact midpoint: shape seams sit on cell borders and a ray can slip through
 			var rq := PhysicsRayQueryParameters3D.create(Vector3(sp.x, maxf(pa.y, pb.y) + 0.6, sp.z), Vector3(sp.x, minf(pa.y, pb.y) - 0.6, sp.z), Fighter.LAYER_WORLD)
 			var r := space.intersect_ray(rq)
 			if r.is_empty() or absf((r.position as Vector3).y - prev) > 0.12:
@@ -196,7 +216,7 @@ func _edge(a: int, b: int) -> String:
 			prev = (r.position as Vector3).y
 		if absf(pb.y - prev) > 0.12:
 			return "step"
-		q = _query(cap, pa, 0.2)   # slopes kink at their feet/tops: give the capsule 20 cm of clearance
+		q = _query(cap, pa, 0.35)   # slopes kink at their feet/tops (a straight chord cuts the corner): give the capsule 35 cm of clearance
 	q.motion = Vector3(pb.x - pa.x, 0.0 if ady <= STEP else dy, pb.z - pa.z)
 	var res := space.cast_motion(q)
 	if res.size() >= 2 and res[0] < 1.0:
@@ -230,12 +250,8 @@ func _link() -> void:
 								lips.append([a, b, ys[b] - ys[a]])
 
 
-func _fmt(p: Vector3) -> String:
-	return "(%.0f, %.1f, %.0f)" % [p.x, p.y, p.z]
-
-
-func _report(start: Vector3) -> void:
-	# nearest node under the spawn
+## Nearest node to the spawn, preferring the right height (the ground under a pillar can be missing).
+func _spawn_node(start: Vector3) -> int:
 	var sn := -1
 	var best := 1e9
 	var six := int((start.x - X0) / CELL)
@@ -248,10 +264,39 @@ func _report(start: Vector3) -> void:
 				if score < best:
 					best = score
 					sn = n
+	return sn
+
+
+## Nearest node within 2 cells / 1.2 m of a world point, or -1.
+func _node_near(pos: Vector3) -> int:
+	var best := 1e9
+	var found := -1
+	var ix := int((pos.x - X0) / CELL)
+	var iz := int((pos.z - Z0) / CELL)
+	for dx in range(-2, 3):
+		for dz in range(-2, 3):
+			var sc := (ix + dx) * nz + iz + dz
+			if sc < 0 or sc >= nx * nz:
+				continue
+			for n in range(col_start[sc], col_start[sc + 1]):
+				var dy := absf(ys[n] - pos.y)
+				if dy <= 1.2 and dy + Vector2(dx, dz).length() * 0.3 < best:
+					best = dy + Vector2(dx, dz).length() * 0.3
+					found = n
+	return found
+
+
+func _fmt(p: Vector3) -> String:
+	return "(%.0f, %.1f, %.0f)" % [p.x, p.y, p.z]
+
+
+func _report(start: Vector3) -> int:
+	# nearest node under the spawn
+	var sn := _spawn_node(start)
 	var out: PackedStringArray = []
 	if sn < 0:
-		print("AUDIT: no walkable node under the spawn!")
-		return
+		print("AUDIT FAILED: no walkable node under the spawn!")
+		return 1
 	var walk_root := _find(sn)
 	# component stats
 	var comp := {}   # root -> {n, min, max, sample}
@@ -365,6 +410,7 @@ func _report(start: Vector3) -> void:
 					bins[key] = {}
 				bins[key][int(floor(p.y / 3.0))] = true
 	# ---- print ----
+	var tier_of := {}
 	var counts := {"WALK": 0, "HOP": 0, "DASH": 0, "DROP": 0, "ORPHAN": 0, "TOWER": 0, "OUTSIDE": 0}
 	var walk_area := 0
 	var rows := {"HOP": [], "DASH": [], "DROP": [], "ORPHAN": [], "TOWER": [], "OUTSIDE": []}
@@ -386,6 +432,7 @@ func _report(start: Vector3) -> void:
 					if not space.intersect_point(pq, 1).is_empty():
 						tier = "TOWER"   # a solid roof top: reached by wall-run / dash climbing up its walls
 						break
+		tier_of[r] = tier
 		if tier == "WALK":
 			walk_area = c.n
 			counts.WALK = c.n
@@ -400,78 +447,153 @@ func _report(start: Vector3) -> void:
 	for tier: String in ["ORPHAN", "DROP", "HOP", "TOWER"]:
 		var list: Array = rows[tier]
 		list.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.n > b.n)
+		if not verbose:
+			continue
 		print("\n-- %s: %d islands --" % [tier, list.size()])
-		for i in mini(list.size(), 60 if tier != "HOP" else 25):
+		for i in mini(list.size(), 400):
 			var c: Dictionary = list[i]
 			print("  %5d m2  x %.0f..%.0f  z %.0f..%.0f  y %.1f..%.1f  e.g. %s" % [c.n, c.lo.x, c.hi.x, c.lo.z, c.hi.z, c.y0, c.y1, _fmt(c.sample)])
 	print("\n-- DASH-only (parkour) islands: %d, %d m2 (expected: rooftops, canopies, ledges) --" % [rows.DASH.size(), counts.DASH])
-	# LIP: a small step that separates walkable ground from an unreached but big area
-	var lip_seen := {}
-	print("\n-- LIP: steps of 0.14-0.6 m between walkable ground and a region that is otherwise cut off --")
-	for l: Array in lips:
-		var ra := _find(l[0])
-		var rb := _find(l[1])
-		if ra == rb:
-			continue
-		var wa: bool = reached.get(ra, "") == "WALK" or ra == walk_root
-		var wb: bool = reached.get(rb, "") == "WALK" or rb == walk_root
-		if wa == wb:
-			continue
-		var other := rb if wa else ra
-		if comp[other].n < 8 or lip_seen.has(other):
-			continue
-		lip_seen[other] = true
-		print("  step %.2f m at %s  (cuts off %d m2)" % [absf(l[2]), _fmt(_pos(l[0])), comp[other].n])
-	if lip_seen.is_empty():
-		print("  none")
-	# BOUNDARY: what separates the spawn's network from the rest?
-	var bd := {}
-	for rj: Array in rejects:
-		var ra2 := _find(rj[0])
-		var rb2 := _find(rj[1])
-		if ra2 == rb2 or (ra2 != walk_root and rb2 != walk_root):
-			continue
-		var p2 := _pos(rj[0])
-		var key2 := "%s @ %d,%d" % [rj[2], int(floor(p2.x / 12.0)) * 12, int(floor(p2.z / 12.0)) * 12]
-		if not bd.has(key2):
-			bd[key2] = [0, p2, absf(ys[rj[1]] - ys[rj[0]])]
-		bd[key2][0] += 1
-	var bk := bd.keys()
-	bk.sort_custom(func(a: String, b: String) -> bool: return bd[a][0] > bd[b][0])
-	print("\n-- BOUNDARY of the spawn network (refused links out of it): %d spots --" % bk.size())
-	for i in mini(bk.size(), 40):
-		print("  %4d x %s near %s dy=%.2f" % [bd[bk[i]][0], String(bk[i]).split(" @")[0], _fmt(bd[bk[i]][1]), bd[bk[i]][2]])
-	# MAP: '#' = spawn network, 'o' = other ground-level surface (y < 4), ' ' = nothing
-	var B := 10.0
-	var gw := int((X1 - X0) / B)
-	var gh := int((Z1 - Z0) / B)
-	var grid := PackedByteArray()
-	grid.resize(gw * gh)
-	for n in ys.size():
-		var pp := _pos(n)
-		var gi := int((pp.z - Z0) / B) * gw + int((pp.x - X0) / B)
-		if _find(n) == walk_root:
-			grid[gi] = 2
-		elif pp.y < 4.0 and grid[gi] == 0:
-			grid[gi] = 1
-	print("\n-- MAP (10 m cells, x -300..300 left to right, z -250..490 top to bottom) --")
-	for gz in gh:
-		var line := ""
-		for gx in gw:
-			line += " o#"[grid[gz * gw + gx]]
-		print("%4d %s" % [int(Z0 + gz * B), line])
-	# CRAWL clusters
-	var cl := {}
-	for p: Vector3 in crawl:
-		var key := Vector3i(int(p.x / 8.0), int(p.y / 4.0), int(p.z / 8.0))
-		if not cl.has(key):
-			cl[key] = [0, p]
-		cl[key][0] += 1
-	print("\n-- CRAWL: places where you'd fit only crouched (headroom < 1.8 m): %d clusters --" % cl.size())
-	var ck := cl.keys()
-	ck.sort_custom(func(a: Vector3i, b: Vector3i) -> bool: return cl[a][0] > cl[b][0])
-	for i in mini(ck.size(), 15):
-		print("  %4d cells near %s" % [cl[ck[i]][0], _fmt(cl[ck[i]][1])])
-	var text := "audit done"
-	print("\n" + text)
-	DirAccess.make_dir_recursive_absolute("res://tests/out")
+	if verbose:
+		# LIP: a small step that separates walkable ground from an unreached but big area
+		var lip_seen := {}
+		print("\n-- LIP: steps of 0.14-0.6 m between walkable ground and a region that is otherwise cut off --")
+		for l: Array in lips:
+			var ra := _find(l[0])
+			var rb := _find(l[1])
+			if ra == rb:
+				continue
+			var wa: bool = reached.get(ra, "") == "WALK" or ra == walk_root
+			var wb: bool = reached.get(rb, "") == "WALK" or rb == walk_root
+			if wa == wb:
+				continue
+			var other := rb if wa else ra
+			if comp[other].n < 8 or lip_seen.has(other):
+				continue
+			lip_seen[other] = true
+			print("  step %.2f m at %s  (cuts off %d m2)" % [absf(l[2]), _fmt(_pos(l[0])), comp[other].n])
+		if lip_seen.is_empty():
+			print("  none")
+		# BOUNDARY: what separates the spawn's network from the rest?
+		var bd := {}
+		for rj: Array in rejects:
+			var ra2 := _find(rj[0])
+			var rb2 := _find(rj[1])
+			if ra2 == rb2 or (ra2 != walk_root and rb2 != walk_root):
+				continue
+			var p2 := _pos(rj[0])
+			var key2 := "%s @ %d,%d" % [rj[2], int(floor(p2.x / 12.0)) * 12, int(floor(p2.z / 12.0)) * 12]
+			if not bd.has(key2):
+				bd[key2] = [0, p2, absf(ys[rj[1]] - ys[rj[0]])]
+			bd[key2][0] += 1
+		var bk := bd.keys()
+		bk.sort_custom(func(a: String, b: String) -> bool: return bd[a][0] > bd[b][0])
+		print("\n-- BOUNDARY of the spawn network (refused links out of it): %d spots --" % bk.size())
+		for i in mini(bk.size(), 40):
+			print("  %4d x %s near %s dy=%.2f" % [bd[bk[i]][0], String(bk[i]).split(" @")[0], _fmt(bd[bk[i]][1]), bd[bk[i]][2]])
+		# MAP: '#' = spawn network, 'o' = other ground-level surface (y < 4), ' ' = nothing
+		var B := 10.0
+		var gw := int((X1 - X0) / B)
+		var gh := int((Z1 - Z0) / B)
+		var grid := PackedByteArray()
+		grid.resize(gw * gh)
+		for n in ys.size():
+			var pp := _pos(n)
+			var gi := int((pp.z - Z0) / B) * gw + int((pp.x - X0) / B)
+			if _find(n) == walk_root:
+				grid[gi] = 2
+			elif pp.y < 4.0 and grid[gi] == 0:
+				grid[gi] = 1
+		print("\n-- MAP (10 m cells, x -300..300 left to right, z -250..490 top to bottom) --")
+		for gz in gh:
+			var line := ""
+			for gx in gw:
+				line += " o#"[grid[gz * gw + gx]]
+			print("%4d %s" % [int(Z0 + gz * B), line])
+		# CRAWL clusters
+		var cl := {}
+		for p: Vector3 in crawl:
+			var key := Vector3i(int(p.x / 8.0), int(p.y / 4.0), int(p.z / 8.0))
+			if not cl.has(key):
+				cl[key] = [0, p]
+			cl[key][0] += 1
+		print("\n-- CRAWL: places where you'd fit only crouched (headroom < 1.8 m): %d clusters --" % cl.size())
+		var ck := cl.keys()
+		ck.sort_custom(func(a: Vector3i, b: Vector3i) -> bool: return cl[a][0] > cl[b][0])
+		for i in mini(ck.size(), 15):
+			print("  %4d cells near %s" % [cl[ck[i]][0], _fmt(cl[ck[i]][1])])
+	# ---- verdict: every HOP / DROP / ORPHAN island must be explained by the allowlist ----
+	var allow: Array = []
+	var must: Array = []
+	var af := FileAccess.open(ALLOW_PATH, FileAccess.READ)
+	if af != null:
+		var parsed: Variant = JSON.parse_string(af.get_as_text())
+		if parsed is Dictionary:
+			allow = parsed.get("allow", [])
+			must = parsed.get("must_walk", [])
+	var used := PackedInt32Array()
+	used.resize(allow.size())
+	var failures := 0
+	for tier: String in ["HOP", "DROP", "ORPHAN"]:
+		for c: Dictionary in rows[tier]:
+			if c.n < FAIL_AREA or minf(c.hi.x - c.lo.x, c.hi.z - c.lo.z) <= THIN or c.y0 > ELEVATED:
+				continue
+			var center := Vector2((c.lo.x + c.hi.x) * 0.5, (c.lo.z + c.hi.z) * 0.5)
+			var hit := -1
+			for i in allow.size():
+				var a: Dictionary = allow[i]
+				var rc: Array = a.rect
+				var yr: Array = a.get("y", [-1000.0, 1000.0])
+				if a.tier == tier and Rect2(rc[0], rc[1], rc[2] - rc[0], rc[3] - rc[1]).has_point(center) and c.y0 <= yr[1] and c.y1 >= yr[0]:
+					hit = i
+					break
+			if hit >= 0:
+				used[hit] += 1
+			else:
+				failures += 1
+				print("  UNEXPLAINED %s island: %d m2  x %.0f..%.0f  z %.0f..%.0f  y %.1f..%.1f  e.g. %s" % [tier, c.n, c.lo.x, c.hi.x, c.lo.z, c.hi.z, c.y0, c.y1, _fmt(c.sample)])
+	for i in allow.size():
+		if used[i] == 0:
+			print("  note: allowlist entry matches nothing any more (remove it?): %s" % allow[i].why)
+	# ---- every teleport point must have a floor, and ground-level ones must be walkable ----
+	var tps: Array = (main_node.get("city") as Object).get("markers")["tp"]
+	for t: Array in tps:
+		var tp: Vector3 = t[1]
+		var n := _node_near(tp)
+		if n < 0:
+			failures += 1
+			print("  BAD teleport point '%s' %s: no walkable floor within reach (inside geometry, or floating)" % [t[0], _fmt(tp)])
+		elif tp.y < GROUND_Y and String(tier_of.get(_find(n), "")) != "WALK":
+			failures += 1
+			print("  BAD teleport point '%s' %s: ground-level but not walkable from the spawn (%s)" % [t[0], _fmt(tp), tier_of.get(_find(n), "?")])
+	# ---- places that are designed to be walked (stairs, galleries, rings, decks) must be on the network ----
+	for m: Dictionary in must:
+		var mp := Vector3.ZERO
+		var mname: String = m.get("name", m.get("tp", "?"))
+		if m.has("tp"):
+			var found_tp := false
+			for t: Array in tps:
+				if t[0] == m.tp:
+					mp = t[1]
+					found_tp = true
+			if not found_tp:
+				failures += 1
+				print("  BAD must_walk: no teleport point called '%s'" % m.tp)
+				continue
+		else:
+			mp = Vector3(m.p[0], m.p[1], m.p[2])
+		var mn := _node_near(mp)
+		if mn < 0:
+			failures += 1
+			print("  BAD must_walk '%s' %s: no floor there (moved geometry?)" % [mname, _fmt(mp)])
+		elif _find(mn) != walk_root:
+			failures += 1
+			print("  BAD must_walk '%s' %s: not reachable on foot from the spawn (%s)" % [mname, _fmt(mp), tier_of.get(_find(mn), "?")])
+	print("teleport points by tier:")
+	var tp_line := ""
+	for t: Array in tps:
+		var tn := _node_near(t[1])
+		tp_line += "  %s=%s" % [t[0], tier_of.get(_find(tn), "-") if tn >= 0 else "NONE"]
+	print(tp_line)
+	print("\n%s: %d unexplained problems, %d allowlisted islands" % ["AUDIT PASSED" if failures == 0 else "AUDIT FAILED", failures, used.size() - used.count(0)])
+	return failures

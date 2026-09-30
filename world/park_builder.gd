@@ -82,8 +82,23 @@ func _landmarks_and_hills() -> void:
 	var roof := g.cyl(Vector3(0, 4.7, 0), 5.8, 2.6, Mats.toon(Color(0.2, 0.42, 0.4)), false, 6, 0.3)
 	roof.rotation_degrees.y = 30
 	g.sphere(Vector3(0, 7.5, 0), 0.5, Mats.glow(Color(1.0, 0.85, 0.4), 4.0))
+	_steps_onto(g, Vector3(hill.x, hy, hill.y), 5.2, 0.5, [30.0, 150.0, 270.0])
 	shard_spots.append(Vector3(hill.x, hy + 1.6, hill.y))
 	landmarks.append(["Lake", Vector3(terrain.lake_c.x, 0, terrain.lake_c.y)])
+
+
+## Stone steps from the surrounding terrain up onto a raised round platform, one flight per
+## angle (degrees). The foot of each flight sits exactly on the terrain so there is no lip.
+func _steps_onto(g: Kit, origin: Vector3, r: float, top: float, angles: Array, run := 3.4, width := 3.0) -> void:
+	for a: float in angles:
+		var d := Vector3(cos(deg_to_rad(a)), 0.0, sin(deg_to_rad(a)))
+		var bx := origin.x + d.x * (r + run)
+		var bz := origin.z + d.z * (r + run)
+		var by := _h(bx, bz) - origin.y
+		var rise := top - by
+		if rise < 0.15:
+			continue
+		g.stairs(Vector3(d.x * (r + run), by, d.z * (r + run)), -d, rise, run, width, _stone())
 
 
 func _pavilion() -> void:
@@ -101,6 +116,7 @@ func _pavilion() -> void:
 	for k in 6:
 		var a2 := k * TAU / 6.0
 		g.sphere(Vector3(cos(a2) * 4.6, 3.6, sin(a2) * 4.6), 0.28, Mats.glow(Color(1.0, 0.25, 0.2), 4.0))
+	_steps_onto(g, Vector3(i.x, y, i.y), 5.0, 0.4, [0.0, 90.0, 180.0, 270.0])
 	shard_spots.append(Vector3(i.x, y + 1.6, i.y))
 
 

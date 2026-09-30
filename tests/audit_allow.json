@@ -1,0 +1,163 @@
+{
+ "_readme": "allow: HOP/DROP/ORPHAN islands (>= 20 m2, wider than 2 m, lowest point <= 6 m) that are deliberate. An entry matches an island when the island's bbox centre is inside rect [x0,z0,x1,z1] and its y range overlaps y [lo,hi]. must_walk: places designed to be walked; each must be on the spawn's walkable network ({tp: name} or {name, p:[x,y,z]}). Run: godot --headless res://tests/audit.tscn (AUDIT_VERBOSE=1 for the full report); exit code 1 = failed.",
+ "allow": [
+  {
+   "tier": "HOP",
+   "rect": [
+    -22,
+    30,
+    22,
+    116
+   ],
+   "y": [
+    -10,
+    0.5
+   ],
+   "why": "metro track beds: a 1.2 m drop from the platform edge; you hop back up onto the platform"
+  },
+  {
+   "tier": "HOP",
+   "rect": [
+    -32,
+    -196,
+    32,
+    -134
+   ],
+   "y": [
+    0.5,
+    1.5
+   ],
+   "why": "clock plaza fountain basins (0.9 m high cover, jump onto them)"
+  },
+  {
+   "tier": "HOP",
+   "rect": [
+    -45,
+    348,
+    65,
+    378
+   ],
+   "y": [
+    4.5,
+    8.5
+   ],
+   "why": "ship deck hatches and deckhouse tops: cover you jump onto"
+  }
+ ],
+ "must_walk": [
+  {
+   "name": "Metro mezzanine (7 m)",
+   "p": [
+    -24,
+    7.0,
+    82
+   ]
+  },
+  {
+   "name": "Metro upper walkway north (14 m)",
+   "p": [
+    0,
+    14.0,
+    54.5
+   ]
+  },
+  {
+   "name": "Metro upper walkway south (14 m)",
+   "p": [
+    0,
+    14.0,
+    109.5
+   ]
+  },
+  {
+   "name": "Metro roof girders (25 m)",
+   "p": [
+    0,
+    25.0,
+    70
+   ]
+  },
+  {
+   "name": "Library reading hall",
+   "p": [
+    82,
+    3.0,
+    -170
+   ]
+  },
+  {
+   "name": "Library gallery (10 m)",
+   "p": [
+    63.25,
+    10.0,
+    -176
+   ]
+  },
+  {
+   "name": "Clock tower base roof",
+   "p": [
+    0,
+    10.1,
+    -152.5
+   ]
+  },
+  {
+   "name": "Clock tower 30 m ring",
+   "p": [
+    0,
+    30.5,
+    -173.3
+   ]
+  },
+  {
+   "name": "Clock tower 50 m ring",
+   "p": [
+    0,
+    50.5,
+    -173.3
+   ]
+  },
+  {
+   "name": "Clock tower 70 m ring",
+   "p": [
+    0,
+    70.5,
+    -173.3
+   ]
+  },
+  {
+   "name": "Clock tower 90 m ring",
+   "p": [
+    0,
+    90.5,
+    -173.3
+   ]
+  },
+  {
+   "name": "Lookout Hill gazebo",
+   "p": [
+    62,
+    11.6,
+    -75
+   ]
+  },
+  {
+   "tp": "Ship deck"
+  },
+  {
+   "tp": "Harbour pier"
+  },
+  {
+   "tp": "Lake Bridge"
+  },
+  {
+   "tp": "Rail ramp"
+  },
+  {
+   "tp": "Metro east portal"
+  },
+  {
+   "tp": "Highway deck"
+  }
+ ]
+}

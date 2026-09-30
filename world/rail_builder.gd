@@ -22,6 +22,8 @@ const TRENCH_W := 10.0
 const TRENCH_X0 := 52.0
 const TRENCH_X1 := 100.0
 const UNDER_Y := -9.0
+const PAD := 12.0        # flat, street-level stretch at the foot of each ramp so you can walk on and off the line
+const PAD_Y := 0.05
 
 
 static func trench_holes() -> Array:
@@ -37,14 +39,16 @@ static func loop_points() -> PackedVector3Array:
 		[TRACK_X, UNDER_Y, U_Z, 0.0],
 		[TRACK_X, UNDER_Y, ROW_Z, 14.0],
 		[TRENCH_X0, UNDER_Y, ROW_Z, 0.0],
-		[TRENCH_X1, 0.0, ROW_Z, 0.0],
+		[TRENCH_X1, PAD_Y, ROW_Z, 0.0],
+		[TRENCH_X1 + PAD, PAD_Y, ROW_Z, 0.0],
 		[EDGE_X - 25.0, RAIL_Y, ROW_Z, 0.0],
 		[EDGE_X, RAIL_Y, ROW_Z, 20.0],
 		[EDGE_X, RAIL_Y, NORTH_Z, 20.0],
 		[-EDGE_X, RAIL_Y, NORTH_Z, 20.0],
 		[-EDGE_X, RAIL_Y, ROW_Z, 20.0],
 		[-(EDGE_X - 25.0), RAIL_Y, ROW_Z, 0.0],
-		[-TRENCH_X1, 0.0, ROW_Z, 0.0],
+		[-(TRENCH_X1 + PAD), PAD_Y, ROW_Z, 0.0],
+		[-TRENCH_X1, PAD_Y, ROW_Z, 0.0],
 		[-TRENCH_X0, UNDER_Y, ROW_Z, 0.0],
 		[-TRACK_X, UNDER_Y, ROW_Z, 14.0],
 		[-TRACK_X, UNDER_Y, U_Z, 0.0],
@@ -197,7 +201,7 @@ static func build(parent: Node) -> Dictionary:
 		tr.stripe_color = Color(0.2, 0.55, 0.95)
 		parent.add_child(tr)
 	info.landmarks.append(["Sky Rail", Vector3(0.0, RAIL_Y + 4.0, NORTH_Z)])
-	var ramp_y := (150.0 - TRENCH_X1) / (EDGE_X - 25.0 - TRENCH_X1) * RAIL_Y
+	var ramp_y := (150.0 - TRENCH_X1 - PAD) / (EDGE_X - 25.0 - TRENCH_X1 - PAD) * RAIL_Y
 	info.tp.append(["Rail viaduct", Vector3(-100.0, RAIL_Y + 0.4, NORTH_Z), PI * 0.5])
 	info.tp.append(["Rail ramp", Vector3(150.0, ramp_y + 0.4, ROW_Z), PI * 0.5])
 	info.tp.append(["Metro east portal", Vector3(75.0, lerpf(UNDER_Y, 0.0, (75.0 - TRENCH_X0) / (TRENCH_X1 - TRENCH_X0)) + 0.4, ROW_Z), PI * 0.5])

@@ -311,9 +311,23 @@ static func _pagoda(k: Kit, r: Rect2, rng: RandomNumberGenerator, spec: Dictiona
 	# paved courtyard, low wall, gate, lions, trees
 	_slab(k, inset(r, 0.5), 0.0, 0.5, stone)
 	var court := inset(r, 0.5)
-	for side in [[Vector3(c.x, 0.5, court.position.y + 0.3), Vector3(court.size.x, 1.6, 0.6)], [Vector3(c.x, 0.5, court.end.y - 0.3), Vector3(court.size.x, 1.6, 0.6)],
-			[Vector3(court.position.x + 0.3, 0.5, c.z), Vector3(0.6, 1.6, court.size.y)], [Vector3(court.end.x - 0.3, 0.5, c.z), Vector3(0.6, 1.6, court.size.y)]]:
-		k.box(side[0], side[1], Mats.toon(Color(0.7, 0.2, 0.18), 0.3), true)
+	# low wall with a 5 m gate in the middle of every side, and steps up from the street to each gate
+	var wall_m := Mats.toon(Color(0.7, 0.2, 0.18), 0.3)
+	var gate := 5.0
+	for zs: float in [-1.0, 1.0]:
+		var wz := court.position.y + 0.3 if zs < 0.0 else court.end.y - 0.3
+		for xs: float in [-1.0, 1.0]:
+			var seg := (court.size.x - gate) * 0.5
+			k.box(Vector3(c.x + xs * (gate * 0.5 + seg * 0.5), 0.5, wz), Vector3(seg, 1.6, 0.6), wall_m, true)
+		var bz := court.position.y - 1.7 if zs < 0.0 else court.end.y + 1.7
+		k.stairs(Vector3(c.x, 0.0, bz), Vector3(0, 0, -zs), 0.5, 1.7, gate - 0.6, stone)
+	for xs: float in [-1.0, 1.0]:
+		var wx := court.position.x + 0.3 if xs < 0.0 else court.end.x - 0.3
+		for zs: float in [-1.0, 1.0]:
+			var seg2 := (court.size.y - gate) * 0.5
+			k.box(Vector3(wx, 0.5, c.z + zs * (gate * 0.5 + seg2 * 0.5)), Vector3(0.6, 1.6, seg2), wall_m, true)
+		var bx := court.position.x - 1.7 if xs < 0.0 else court.end.x + 1.7
+		k.stairs(Vector3(bx, 0.0, c.z), Vector3(-xs, 0, 0), 0.5, 1.7, gate - 0.6, stone)
 	# 7-tier pagoda
 	var y := 0.5
 	var w := 13.0
@@ -329,7 +343,7 @@ static func _pagoda(k: Kit, r: Rect2, rng: RandomNumberGenerator, spec: Dictiona
 	k.sphere(Vector3(c.x, y + 12.6, c.z), 0.8, gold)
 	for sx in [-1.0, 1.0]:
 		Props.tree(k, Vector3(c.x + sx * 10.5, 0.5, c.z + 11.0), 6.0)
-		k.box(Vector3(c.x + sx * 3.0, 0.5, court.end.y - 2.5), Vector3(1.4, 1.5, 1.4), stone, true)
+		k.box(Vector3(c.x + sx * 3.7, 0.5, court.end.y - 2.5), Vector3(1.4, 1.5, 1.4), stone, true)
 	k.root.set_meta(&"roof", Vector3(c.x, y, c.z))
 	k.root.set_meta(&"landmark", "Pagoda")
 
@@ -423,7 +437,12 @@ static func _alley_level(k: Kit, r: Rect2, h: float, faces: Dictionary, rng: Ran
 		var p := _face_point(r, f, 0.5)
 		var out := Vector3(sin(deg_to_rad(yaw)), 0, cos(deg_to_rad(yaw)))
 		var side := Vector3(cos(deg_to_rad(yaw)), 0, -sin(deg_to_rad(yaw)))
-		if h > 16.0 and spec.style != "oldtown" and spec.style != "chinese" and rng.randf() < 0.85:
+		# The two lots facing each other across a 6 m alley must leave a walkable lane, so fire
+		# escapes and market stalls (~2.7 m deep) only go on the east/south faces; the west/north
+		# faces get shallow clutter only (<= ~1.5 m deep). Worst case: 6 - 2.7 - 1.5 = 1.8 m lane.
+		var deep_side: bool = f == "e" or f == "s"
+		var has_escape := false
+		if deep_side and h > 16.0 and spec.style != "oldtown" and spec.style != "chinese" and rng.randf() < 0.85:
 			var wall_in := 1.0 if spec.style == "billboard" else 0.3
 			var ep := _face_point(r, f, rng.randf_range(0.3, 0.7)) - out * wall_in
 			var eh := minf(h, 22.0)
@@ -432,18 +451,20 @@ static func _alley_level(k: Kit, r: Rect2, h: float, faces: Dictionary, rng: Ran
 			var c1 := ep + xa * 3.0
 			var c2 := ep - xa * 3.0 + out * 2.7
 			escapes.append({"rect": Rect2(minf(c1.x, c2.x), minf(c1.z, c2.z), absf(c1.x - c2.x), absf(c1.z - c2.z)).grow(0.4), "top": 3.0 + int((eh - 2.0) / 3.2) * 3.2})
-		if rng.randf() < 0.7:
-			Props.dumpster(k, p + out * 0.9 + side * rng.randf_range(-length * 0.35, length * 0.35), yaw + 90.0)
-		if rng.randf() < 0.6:
-			Props.crates(k, p + out * 0.9 + side * rng.randf_range(-length * 0.35, length * 0.35), yaw, rng, 3)
-		if rng.randf() < 0.5:
-			Props.barrel(k, p + out * 0.8 + side * rng.randf_range(-length * 0.4, length * 0.4))
+			has_escape = true
+		if not has_escape:
+			if rng.randf() < 0.7:
+				Props.dumpster(k, p + out * 0.9 + side * rng.randf_range(-length * 0.35, length * 0.35), yaw + 90.0)
+			if rng.randf() < 0.6:
+				Props.crates(k, p + out * 0.9 + side * rng.randf_range(-length * 0.35, length * 0.35), yaw, rng, 3)
+			if rng.randf() < 0.5:
+				Props.barrel(k, p + out * 0.8 + side * rng.randf_range(-length * 0.4, length * 0.4))
 		# warm alley lamp mid-height
 		var col: Color = Props.NEON[rng.randi() % Props.NEON.size()]
 		k.box(p + out * 0.2 + side * rng.randf_range(-6, 6) + Vector3(0, 4.2, 0), Vector3(0.3, 0.3, 0.3), Mats.glow(Color(1.0, 0.75, 0.4), 5.0), false, Vector3.ZERO, false)
-		if spec.style == "oldtown":
+		if spec.style == "oldtown" and deep_side:
 			for i in 2:
-				Props.stall(k, p + out * 2.2 + side * (i * 5.0 - 5.0), yaw + 90.0, AWNINGS[rng.randi() % AWNINGS.size()], rng)
+				Props.stall(k, p + out * 1.9 + side * (i * 5.0 - 5.0), yaw + 90.0, AWNINGS[rng.randi() % AWNINGS.size()], rng)
 		# laundry hung across the alley: visual only, above dash height clutter
 		var line_col := Color(0.9, 0.9, 0.95) if rng.randf() < 0.5 else col
 		k.box(p + out * 2.6 + Vector3(0, 6.0, 0) - side * 2.0, Vector3(0.05, 0.05, 0.05) + Vector3(abs(side.x), 0, abs(side.z)) * 6.0, Mats.toon(Color(0.2, 0.2, 0.2)), false)
