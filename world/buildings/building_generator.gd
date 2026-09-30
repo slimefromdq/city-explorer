@@ -52,12 +52,10 @@ static func plan(width_m: float, depth_m: float, floors: int, floor_height_m: fl
 	p.width_u = BuildingGrid.to_units(width_m)
 	p.depth_u = BuildingGrid.to_units(depth_m)
 	p.floor_units = BuildingGrid.to_units(floor_height_m)
-	# Only crash-guards here; the full input checks arrive with the validator (Phase 2).
-	if width_m <= 0.0 or depth_m <= 0.0 or floor_height_m <= 0.0 or floors < 1:
-		p.errors.append("invalid input: width %.2f, depth %.2f, floors %d, floor height %.2f must all be positive" % [width_m, depth_m, floors, floor_height_m])
-		return p
-	if p.floor_units < 1 or minf(p.width_u, p.depth_u) < MIN_FOOTPRINT_UNITS:
-		p.errors.append("footprint %.1f x %.1f m (or floor height) is too small; minimum footprint is %.1f m" % [width_m, depth_m, BuildingGrid.to_metres(MIN_FOOTPRINT_UNITS)])
+	# Input rules live in BuildingValidator so there is one source of truth.
+	for issue in BuildingValidator.check_inputs(width_m, depth_m, floors, floor_height_m):
+		p.errors.append(issue.text)
+	if not p.errors.is_empty():
 		return p
 
 	var w := p.width_u

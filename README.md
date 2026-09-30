@@ -104,7 +104,10 @@ xvfb-run -a godot --rendering-driver vulkan --fixed-fps 30 res://tests/screensho
 
 `BuildingGenerator.plan(width, depth, floors, floor height, seed)` -> `BuildingPlan` (pure numbers, whole 0.5 m grid
 units) -> `BuildingBuilder.build()` makes the nodes. Try it: `godot res://tests/building_lab.tscn`
-(right-drag orbit, wheel zoom). Headless checks: `godot --headless res://tests/building_gen_test.tscn`.
+(right-drag orbit, wheel zoom). Headless checks: `godot --headless res://tests/building_gen_test.tscn` (determinism) and
+`godot --headless res://tests/building_validation_test.tscn` (the validator breaks good buildings on purpose to prove it
+catches overlap / floating / gaps / bad sizes / out-of-lot footprints, then validates a batch of random buildings;
+`BATCH=2000` for more). In the lab: `T` top-down view, `F` footprint overlay (red = problem or overlap).
 
 ### Walkability audit (`tests/audit.gd`, allowlist in `tests/audit_allow.json`)
 

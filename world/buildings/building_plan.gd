@@ -26,9 +26,15 @@ class Piece:
 	func top() -> int:
 		return at.y + size.y
 
+	## Short name, e.g. "floor 7", "roof".
+	func label() -> String:
+		return kind if floor_index < 0 else "%s %d" % [kind, floor_index]
+
+	## Name plus where it is, in metres (the units a human thinks in).
 	func describe() -> String:
-		var tag := kind if floor_index < 0 else "%s %d" % [kind, floor_index]
-		return "%s at %s size %s" % [tag, at, size]
+		var s := BuildingGrid.to_vec(size)
+		var a := BuildingGrid.to_vec(at)
+		return "%s (x %.1f, y %.1f, z %.1f; size %.1f x %.1f x %.1f m)" % [label(), a.x, a.y, a.z, s.x, s.y, s.z]
 
 
 var seed_value := 0
