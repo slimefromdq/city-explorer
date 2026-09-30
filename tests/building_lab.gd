@@ -19,14 +19,20 @@ extends Node3D
 const GAP_M := 10.0
 
 const CASES := [
+	# sizes and heights from the existing city; style "auto" is picked from the size
 	{"name": "thin tower", "w": 12.0, "d": 12.0, "floors": 30, "fh": 3.5, "seed": 7},
 	{"name": "short + wide", "w": 40.0, "d": 24.0, "floors": 3, "fh": 3.5, "seed": 3},
 	{"name": "lot 96 m, seed 1", "lot": Rect2(0, 0, 29, 29), "h": 96.0, "fh": 4.0, "seed": 1},
 	{"name": "lot 96 m, seed 2", "lot": Rect2(0, 0, 29, 29), "h": 96.0, "fh": 4.0, "seed": 2},
 	{"name": "lot 96 m, seed 3", "lot": Rect2(0, 0, 29, 29), "h": 96.0, "fh": 4.0, "seed": 3},
-	{"name": "lot 22 m old town", "lot": Rect2(0, 0, 29, 29), "h": 22.0, "fh": 3.0, "seed": 11},
-	{"name": "lot 14 m low", "lot": Rect2(0, 0, 29, 29), "h": 14.0, "fh": 3.5, "seed": 5},
+	{"name": "lot 22 m", "lot": Rect2(0, 0, 29, 29), "h": 22.0, "fh": 3.0, "seed": 11},
+	{"name": "lot 14 m", "lot": Rect2(0, 0, 29, 29), "h": 14.0, "fh": 3.5, "seed": 5},
 	{"name": "long block", "w": 50.0, "d": 14.0, "floors": 6, "fh": 3.5, "seed": 9},
+	# the four styles, same footprint, same seed
+	{"name": "style: tower", "lot": Rect2(0, 0, 29, 29), "h": 60.0, "fh": 3.5, "seed": 4, "style": "tower", "pos": Vector3(0, 0, 50)},
+	{"name": "style: apartment", "lot": Rect2(0, 0, 29, 29), "h": 24.0, "fh": 3.5, "seed": 4, "style": "apartment", "pos": Vector3(39, 0, 50)},
+	{"name": "style: warehouse", "lot": Rect2(0, 0, 29, 29), "h": 10.0, "fh": 4.0, "seed": 4, "style": "warehouse", "pos": Vector3(78, 0, 50)},
+	{"name": "style: cottage", "lot": Rect2(0, 0, 29, 29), "h": 10.0, "fh": 3.0, "seed": 4, "style": "cottage", "pos": Vector3(117, 0, 50)},
 	# deliberately overlapping footprints, to show the overlay and the overlap check working
 	{"name": "overlap demo A", "w": 20.0, "d": 20.0, "floors": 5, "fh": 3.5, "seed": 21, "pos": Vector3(0, 0, -60)},
 	{"name": "overlap demo B", "w": 20.0, "d": 20.0, "floors": 8, "fh": 3.5, "seed": 22, "pos": Vector3(14, 0, -54)},
@@ -86,9 +92,9 @@ func _build_buildings() -> void:
 	for c: Dictionary in CASES:
 		var plan: BuildingPlan
 		if c.has("lot"):
-			plan = BuildingGenerator.plan_for_lot(c.lot, c.h, c.fh, c.seed)
+			plan = BuildingGenerator.plan_for_lot(c.lot, c.h, c.fh, c.seed, c.get("style", "auto"))
 		else:
-			plan = BuildingGenerator.plan(c.w, c.d, c.floors, c.fh, c.seed)
+			plan = BuildingGenerator.plan(c.w, c.d, c.floors, c.fh, c.seed, c.get("style", "auto"))
 		var w := BuildingGrid.to_metres(plan.width_u)
 		var d := BuildingGrid.to_metres(plan.depth_u)
 		var at := Vector3(x, 0.0, 0.0)
@@ -130,7 +136,7 @@ func _build_buildings() -> void:
 		var bad := problems.has(e.name)
 		_add_footprint(at, w, d, bad)
 		var label := Label3D.new()
-		label.text = "%s\n%.0f x %.0f m, %d floors, %.1f m tall\n%s" % [e.name, w, d, plan.floors, BuildingGrid.to_metres(plan.height_units()), "PROBLEMS" if bad else "valid"]
+		label.text = "%s\n%.0f x %.0f m, %d floors, %.1f m tall\n%s, %s roof, %s" % [e.name, w, d, plan.floors, BuildingGrid.to_metres(plan.height_units()), plan.style_name, plan.roof_variant, "PROBLEMS" if bad else "valid"]
 		label.modulate = Color(1.0, 0.45, 0.4) if bad else Color.WHITE
 		label.outline_modulate = Color.BLACK
 		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -138,8 +144,8 @@ func _build_buildings() -> void:
 		label.no_depth_test = true
 		label.position = Vector3(at.x + w * 0.5, 4.0, at.z + d + 3.0)
 		add_child(label)
-	_target = Vector3(row_right * 0.5, row_h * 0.3, -5.0)
-	_dist = maxf(90.0, row_right * 0.5)
+	_target = Vector3(row_right * 0.5, row_h * 0.25, _bounds.get_center().y)
+	_dist = maxf(90.0, maxf(row_right * 0.55, _bounds.size.y * 1.6))
 
 
 ## The building's ground rectangle: a translucent fill plus a solid outline, drawn

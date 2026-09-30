@@ -35,11 +35,14 @@ func good_plan() -> BuildingPlan:
 
 
 ## A fresh plan whose roof is the given variant (and, optionally, that has a plant room).
+## Each variant is only offered by some styles, so ask the right one.
 func _plan_with_roof(variant: String, with_rooftop := false) -> BuildingPlan:
+	var style_name := "cottage" if variant == "gable" else "tower"
 	for sd in 400:
-		var p := BuildingGenerator.plan(29, 29, 10, 3.5, sd)
+		var p := BuildingGenerator.plan(29, 29, 10, 3.5, sd, style_name)
 		if p.roof_variant == variant and (not with_rooftop or not _pieces_of(p, "rooftop").is_empty()):
 			return p
+	check("found a %s plan for testing" % variant, false)
 	return BuildingGenerator.plan(29, 29, 10, 3.5, 1)
 
 
@@ -194,11 +197,12 @@ func _ready() -> void:
 
 	# Roof variants (feature 3)
 	var seen := {}
-	for sd in 60:
-		var rp := BuildingGenerator.plan(29, 29, 10, 3.5, sd)
-		seen[rp.roof_variant] = true
-		if not BuildingValidator.validate(rp).is_empty():
-			check("roof variant %s (seed %d) is valid" % [rp.roof_variant, sd], false, BuildingValidator.format("x", BuildingValidator.validate(rp)))
+	for style_name: String in BuildingStyle.NAMES:
+		for sd in 40:
+			var rp := BuildingGenerator.plan(29, 29, 10, 3.5, sd, style_name)
+			seen[rp.roof_variant] = true
+			if not BuildingValidator.validate(rp).is_empty():
+				check("roof variant %s (%s, seed %d) is valid" % [rp.roof_variant, style_name, sd], false, BuildingValidator.format("x", BuildingValidator.validate(rp)))
 	check("all four roof variants occur (%s)" % ", ".join(seen.keys()), seen.size() == 4)
 	var parapet := _plan_with_roof("parapet")
 	var kp := _pieces_of(parapet, "parapet")
@@ -221,11 +225,39 @@ func _ready() -> void:
 		box[0].at.x = 1
 		check("plant room pushed into the parapet -> OVERLAP", has_code(BuildingValidator.validate(pr), "OVERLAP"))
 	var no_box := true
-	for sd in 60:
-		var rp2 := BuildingGenerator.plan(29, 29, 10, 3.5, sd)
-		if rp2.roof_variant in ["stepped", "gable"] and not _pieces_of(rp2, "rooftop").is_empty():
-			no_box = false
+	for style_name: String in BuildingStyle.NAMES:
+		for sd in 40:
+			var rp2 := BuildingGenerator.plan(29, 29, 10, 3.5, sd, style_name)
+			if rp2.roof_variant in ["stepped", "gable"] and not _pieces_of(rp2, "rooftop").is_empty():
+				no_box = false
 	check("stepped/gable roofs never carry a plant room", no_box)
+
+	# Styles (feature 4)
+	check("unknown style -> INPUT", has_code(BuildingValidator.validate(BuildingGenerator.plan(29, 29, 10, 3.5, 1, "gothic")), "INPUT"))
+	var style_fail := 0
+	var style_total := 0
+	for style_name: String in BuildingStyle.NAMES:
+		for sd in 30:
+			for size: Array in [[29.0, 29.0, 12], [12.0, 40.0, 3], [50.0, 14.0, 6], [7.0, 7.0, 2], [60.0, 60.0, 30]]:
+				style_total += 1
+				var sp := BuildingGenerator.plan(size[0], size[1], size[2], 3.5, sd, style_name)
+				var si := BuildingValidator.validate(sp)
+				if not si.is_empty():
+					style_fail += 1
+					print(BuildingValidator.format("%s seed %d %s" % [style_name, sd, size], si))
+	check("%d buildings across all four styles and five shapes are valid" % style_total, style_fail == 0)
+	var cottage := BuildingGenerator.plan(29, 29, 4, 3.5, 5, "cottage")
+	check("cottage has a raised 1.5 m plinth and a gable roof", cottage.pieces[0].size.y == 3 and cottage.roof_variant == "gable")
+	var tower_w := _pieces_of(BuildingGenerator.plan(29, 29, 12, 3.5, 5, "tower"), "window").size()
+	var shed_w := _pieces_of(BuildingGenerator.plan(29, 29, 12, 3.5, 5, "warehouse"), "window").size()
+	check("a warehouse has far fewer windows than a tower (%d vs %d)" % [shed_w, tower_w], shed_w * 2 < tower_w)
+	check("only towers step in", BuildingGenerator.plan(29, 29, 30, 3.5, 5, "apartment").pieces.filter(func(pc: BuildingPlan.Piece) -> bool: return pc.tier > 0).is_empty())
+	check("auto style: 96 m -> tower, 24 m -> apartment, 10 m small -> cottage, 10 m big -> warehouse",
+		BuildingStyle.auto_for(96, 29, 29) == "tower" and BuildingStyle.auto_for(24, 29, 29) == "apartment" and BuildingStyle.auto_for(10, 20, 20) == "cottage" and BuildingStyle.auto_for(10, 40, 40) == "warehouse")
+	check("style is part of the seed-determined result (same seed+style -> identical)", BuildingGenerator.plan(29, 29, 12, 3.5, 9, "tower").signature() == BuildingGenerator.plan(29, 29, 12, 3.5, 9, "tower").signature())
+	check("style changes the building (same seed, different style)", BuildingGenerator.plan(29, 29, 12, 3.5, 9, "tower").signature() != BuildingGenerator.plan(29, 29, 12, 3.5, 9, "apartment").signature())
+	var lot_plan := BuildingGenerator.plan_for_lot(Rect2(0, 0, 29, 29), 12.0, 3.0, 4, "cottage")
+	check("plan_for_lot accounts for the style's taller plinth (%d floors)" % lot_plan.floors, lot_plan.floors == BuildingGenerator.floors_for_height(12.0, 3.0, 3))
 
 	# Built nodes must match the plan.
 	var built := BuildingBuilder.build(self, good)
@@ -265,13 +297,14 @@ func _batch() -> void:
 		var fl := rng.randi_range(1, 45)
 		var fh := snappedf(rng.randf_range(2.5, 5.0), 0.5)
 		var s := rng.randi_range(0, 99999)
-		var plan := BuildingGenerator.plan(w, d, fl, fh, s)
+		var style_pick: String = ["auto", "tower", "apartment", "warehouse", "cottage"][rng.randi_range(0, 4)]
+		var plan := BuildingGenerator.plan(w, d, fl, fh, s, style_pick)
 		var issues := BuildingValidator.validate(plan)
 		if plan.ok():
 			var node := BuildingBuilder.build(self, plan)
 			issues.append_array(BuildingValidator.check_built(node, plan))
 			node.queue_free()
-		var title := "#%d seed %d: %.1f x %.1f m, %d floors of %.1f m" % [i + 1, s, w, d, fl, fh]
+		var title := "#%d seed %d: %s %.1f x %.1f m, %d floors of %.1f m" % [i + 1, s, style_pick, w, d, fl, fh]
 		if issues.is_empty():
 			ok_count += 1
 		elif BuildingValidator.codes(issues) == PackedStringArray(["INPUT"]):

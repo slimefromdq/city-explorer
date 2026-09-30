@@ -28,8 +28,10 @@ const EPS := 0.001    # only used when comparing built nodes (metres as floats)
 # ------------------------------------------------------------------ inputs
 
 ## The raw numbers someone asks for. Used by the generator before it builds anything.
-static func check_inputs(width_m: float, depth_m: float, floors: int, floor_height_m: float) -> Array[Issue]:
+static func check_inputs(width_m: float, depth_m: float, floors: int, floor_height_m: float, style_name := "auto") -> Array[Issue]:
 	var out: Array[Issue] = []
+	if style_name != "auto" and not BuildingStyle.NAMES.has(style_name):
+		out.append(Issue.new("INPUT", "unknown style '%s'; choose auto or one of %s" % [style_name, ", ".join(BuildingStyle.NAMES)]))
 	if width_m <= 0.0:
 		out.append(Issue.new("INPUT", "width is %.2f m; it must be greater than zero" % width_m))
 	if depth_m <= 0.0:

@@ -103,7 +103,10 @@ xvfb-run -a godot --rendering-driver vulkan --fixed-fps 30 res://tests/screensho
 ### Building generator (work in progress, `world/buildings/`, not yet used by the city)
 
 `BuildingGenerator.plan(width, depth, floors, floor height, seed)` -> `BuildingPlan` (pure numbers, whole 0.5 m grid
-units) -> `BuildingBuilder.build()` makes the nodes. Try it: `godot res://tests/building_lab.tscn`
+units) -> `BuildingBuilder.build()` makes the nodes. Detail features, each in its own small file and each driven only by the
+seed and the grid: windows (`building_windows.gd`), a front door (`building_doors.gd`), roof variants - flat / parapet /
+stepped / gable (`building_roofs.gd`), and styles - tower / apartment / warehouse / cottage (`building_style.gd`, presets of
+numbers the other features read). `BuildingGenerator.plan(w, d, floors, floor_h, seed, style = "auto")`. Try it: `godot res://tests/building_lab.tscn`
 (right-drag orbit, wheel zoom). Headless checks: `godot --headless res://tests/building_gen_test.tscn` (determinism) and
 `godot --headless res://tests/building_validation_test.tscn` (the validator breaks good buildings on purpose to prove it
 catches overlap / floating / gaps / bad sizes / out-of-lot footprints, then validates a batch of random buildings;

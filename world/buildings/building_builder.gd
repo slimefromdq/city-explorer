@@ -19,7 +19,7 @@ static func build(parent: Node, plan: BuildingPlan, at := Vector3.ZERO) -> Node3
 	if not plan.ok():
 		push_error("BuildingBuilder: plan is not valid: %s" % ", ".join(plan.errors))
 		return k.root
-	var wall: Color = BuildingGenerator.PALETTE[plan.palette_index]
+	var wall: Color = BuildingStyle.get_style(plan.style_name).palette[plan.palette_index]
 	for piece in plan.pieces:
 		k.box(BuildingGrid.bottom_centre(piece.at, piece.size), BuildingGrid.to_vec(piece.size), _material(piece, wall), false)
 	for block in collision_blocks(plan):

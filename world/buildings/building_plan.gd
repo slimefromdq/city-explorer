@@ -54,6 +54,7 @@ var floors := 0
 var floor_units := 0
 var palette_index := 0
 var roof_variant := "flat"
+var style_name := ""
 var pieces: Array[Piece] = []
 var errors: PackedStringArray = []
 
@@ -73,7 +74,7 @@ func height_units() -> int:
 ## exactly when their signatures are equal (used by the tests).
 func signature() -> String:
 	var lines := PackedStringArray()
-	lines.append("%d|%d|%d|%d|%d|%d|%s" % [seed_value, width_u, depth_u, floors, floor_units, palette_index, roof_variant])
+	lines.append("%d|%d|%d|%d|%d|%d|%s|%s" % [seed_value, width_u, depth_u, floors, floor_units, palette_index, roof_variant, style_name])
 	for p in pieces:
 		lines.append("%s,%d,%d,%d,%d,%d,%d,%d,%s,%d" % [p.kind, p.tier, p.at.x, p.at.y, p.at.z, p.size.x, p.size.y, p.size.z, p.face, p.variant])
 	return "\n".join(lines)
