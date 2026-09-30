@@ -100,6 +100,12 @@ godot --headless res://tests/audit.tscn                                      # w
 xvfb-run -a godot --rendering-driver vulkan --fixed-fps 30 res://tests/screenshot.tscn   # PNGs in tests/out (slow on software GL)
 ```
 
+### Building generator (work in progress, `world/buildings/`, not yet used by the city)
+
+`BuildingGenerator.plan(width, depth, floors, floor height, seed)` -> `BuildingPlan` (pure numbers, whole 0.5 m grid
+units) -> `BuildingBuilder.build()` makes the nodes. Try it: `godot res://tests/building_lab.tscn`
+(right-drag orbit, wheel zoom). Headless checks: `godot --headless res://tests/building_gen_test.tscn`.
+
 ### Walkability audit (`tests/audit.gd`, allowlist in `tests/audit_allow.json`)
 
 Drops a ray on every square metre of the map, keeps every surface where the player capsule fits,
