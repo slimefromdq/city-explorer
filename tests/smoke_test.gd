@@ -331,7 +331,7 @@ func _landmarks_climb() -> void:
 	await _walk_path(Vector3(0.0, 0.1, cz + 30.0), [[0.0, "z", cz + 11.5, -1]])
 	check("clock tower grand stair climbs onto the base roof", p.global_position.y > 10.0, "y=%.1f" % p.global_position.y)
 	await _walk_path(Vector3(-9.5, 10.2, cz + 9.3), [[-PI * 0.5, "x", 8.6, 1], [0.0, "z", cz - 9.4, -1]])
-	check("clock tower spiral ramps lead ring to ring (30 m ring reached)", p.global_position.y > 29.6, "y=%.1f" % p.global_position.y)
+	check("clock tower spiral ramps lead ring to ring (walk onto the 30 m ring)", p.global_position.y > 30.4, "y=%.1f" % p.global_position.y)
 	# library: up the grand steps, through the door, up the gallery ramp
 	var lz := -164.0
 	await _walk_path(Vector3(82.0, 0.1, lz + 35.0), [[0.0, "z", lz + 2.0, -1]])

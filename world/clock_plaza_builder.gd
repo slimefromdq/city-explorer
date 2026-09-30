@@ -53,7 +53,7 @@ static func build(parent: Node, c: Vector2) -> Dictionary:
 		k.ramp(Vector3(cx - 9.0, y0, zs), Vector3(cx + 8.0, ym, zs), 2.0, 0.3, ledge_m)
 		k.box(Vector3(xe, y0, zs), Vector3(2.6, ym - y0 - 0.4, 2.6), ledge_m, true)
 		k.box(Vector3(xe, ym - 0.4, zs), Vector3(2.6, 0.4, 2.6), ledge_m, true)
-		k.ramp(Vector3(xe, ym, cz + 8.0), Vector3(xe, y1, cz - 9.0), 2.0, 0.3, ledge_m)
+		k.ramp(Vector3(xe, ym, cz + 8.0), Vector3(xe, y1, cz - 8.0), 2.0, 0.3, ledge_m)   # tops out flush with the north ledge (which starts at cz-8)
 	# four clock faces
 	var face := Mats.glow(Color(1.0, 0.94, 0.72), 2.6)
 	var hand := Mats.toon(Color(0.06, 0.06, 0.08))
