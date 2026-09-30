@@ -30,7 +30,10 @@ static func build(parent: Node, r: Rect2, spec: Dictionary, faces: Dictionary, d
 		"round": _round(k, r, h, rng, spec)
 		_: _brick(k, r, h, rng, spec, faces, true)
 	_street_level(k, r, faces, rng, spec)
-	_alley_level(k, r, h, faces, rng, spec)
+	var esc: Array = _alley_level(k, r, h, faces, rng, spec)
+	if k.root.has_meta(&"walk"):
+		var wk: Dictionary = k.root.get_meta(&"walk")
+		wk["escapes"] = esc
 	if not k.root.has_meta(&"roof"):
 		var c := center(r)
 		k.root.set_meta(&"roof", Vector3(c.x, h, c.z))
@@ -408,9 +411,10 @@ static func _street_level(k: Kit, r: Rect2, faces: Dictionary, rng: RandomNumber
 			k.label(WORDS[rng.randi() % WORDS.size()], p2 + out2 * 0.68 + Vector3(0, 7.2, 0), 1.3, Color(1, 1, 1), yaw2)
 
 
-static func _alley_level(k: Kit, r: Rect2, h: float, faces: Dictionary, rng: RandomNumberGenerator, spec: Dictionary) -> void:
+static func _alley_level(k: Kit, r: Rect2, h: float, faces: Dictionary, rng: RandomNumberGenerator, spec: Dictionary) -> Array:
+	var escapes: Array = []
 	if spec.style in ["glass", "museum", "pagoda", "round"]:
-		return
+		return escapes
 	for f in faces.keys():
 		if faces[f]:
 			continue
@@ -421,7 +425,13 @@ static func _alley_level(k: Kit, r: Rect2, h: float, faces: Dictionary, rng: Ran
 		var side := Vector3(cos(deg_to_rad(yaw)), 0, -sin(deg_to_rad(yaw)))
 		if h > 16.0 and spec.style != "oldtown" and spec.style != "chinese" and rng.randf() < 0.85:
 			var wall_in := 1.0 if spec.style == "billboard" else 0.3
-			Props.fire_escape(k, _face_point(r, f, rng.randf_range(0.3, 0.7)) - out * wall_in, yaw, minf(h, 22.0))
+			var ep := _face_point(r, f, rng.randf_range(0.3, 0.7)) - out * wall_in
+			var eh := minf(h, 22.0)
+			Props.fire_escape(k, ep, yaw, eh)
+			var xa := Vector3(cos(deg_to_rad(yaw)), 0.0, -sin(deg_to_rad(yaw)))
+			var c1 := ep + xa * 3.0
+			var c2 := ep - xa * 3.0 + out * 2.7
+			escapes.append({"rect": Rect2(minf(c1.x, c2.x), minf(c1.z, c2.z), absf(c1.x - c2.x), absf(c1.z - c2.z)).grow(0.4), "top": 3.0 + int((eh - 2.0) / 3.2) * 3.2})
 		if rng.randf() < 0.7:
 			Props.dumpster(k, p + out * 0.9 + side * rng.randf_range(-length * 0.35, length * 0.35), yaw + 90.0)
 		if rng.randf() < 0.6:
@@ -438,3 +448,4 @@ static func _alley_level(k: Kit, r: Rect2, h: float, faces: Dictionary, rng: Ran
 		var line_col := Color(0.9, 0.9, 0.95) if rng.randf() < 0.5 else col
 		k.box(p + out * 2.6 + Vector3(0, 6.0, 0) - side * 2.0, Vector3(0.05, 0.05, 0.05) + Vector3(abs(side.x), 0, abs(side.z)) * 6.0, Mats.toon(Color(0.2, 0.2, 0.2)), false)
 		k.box(p + out * 2.6 + Vector3(0, 4.9, 0) - side * 1.0, Vector3(0.9, 1.1, 0.06) if abs(out.z) > 0.5 else Vector3(0.06, 1.1, 0.9), Mats.toon(line_col), false)
+	return escapes

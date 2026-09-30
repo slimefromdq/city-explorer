@@ -5,7 +5,7 @@ extends Node
 const SHOTS := [
 	# name, teleport name (from city markers) or Vector3, yaw(deg), pitch(deg), optional action
 	["start_plaza", "Start", 180.0, 6.0],
-	["tower_up", Vector3(0, 0.1, -140), 0.0, 38.0],
+	["tower_up", Vector3(-14, 0.1, -132), 0.0, 30.0],
 	["belfry_view", "Clock belfry", 180.0, -16.0],
 	["lookout_hill", "Lookout Hill", 200.0, -6.0],
 	["lake_bridge", "Lake Bridge", 90.0, -6.0],

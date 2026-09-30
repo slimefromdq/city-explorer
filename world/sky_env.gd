@@ -17,7 +17,7 @@ static func build(parent: Node) -> WorldEnvironment:
 	env.background_mode = Environment.BG_SKY
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	env.ambient_light_energy = 1.35
+	env.ambient_light_energy = 1.7
 	env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	env.tonemap_exposure = 1.0
@@ -49,7 +49,7 @@ static func build(parent: Node) -> WorldEnvironment:
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-12.0, 4.0, 0.0)
 	sun.light_color = Color(1.0, 0.62, 0.4)
-	sun.light_energy = 1.9
+	sun.light_energy = 1.5
 	sun.shadow_enabled = true
 	sun.shadow_blur = 0.4
 	sun.light_angular_distance = 0.0
@@ -64,7 +64,7 @@ static func build(parent: Node) -> WorldEnvironment:
 	var fill := DirectionalLight3D.new()
 	fill.rotation_degrees = Vector3(-32.0, 190.0, 0.0)
 	fill.light_color = Color(0.4, 0.55, 0.95)
-	fill.light_energy = 0.4
+	fill.light_energy = 0.35
 	fill.shadow_enabled = false
 	parent.add_child(fill)
 	var to_sun := sun.transform.basis.z

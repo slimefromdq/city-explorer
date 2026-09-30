@@ -166,7 +166,7 @@ static func _cranes(k: Kit, info: Dictionary) -> void:
 
 static func _crane(k: Kit, cx: float, info: Dictionary) -> void:
 	var red := Mats.toon(Color(0.78, 0.16, 0.14))
-	var white := Mats.toon(Color(0.88, 0.88, 0.9))
+	var white := Mats.toon(Color(0.66, 0.68, 0.72))
 	var dark := Mats.toon(Color(0.12, 0.13, 0.16))
 	var leg_h := 24.2   # walkway top = 25.4 = the fire escape's top landing
 	for lx: float in [-9.0, 9.0]:
@@ -235,9 +235,8 @@ static func _piers(k: Kit, info: Dictionary, rng: RandomNumberGenerator) -> void
 		Props.lamp(k, Vector3(-7.0, 0.0, zl), 90.0, 7.0)
 		Props.lamp(k, Vector3(7.0, 0.0, zl), -90.0, 7.0)
 	# dock clutter: crates and a harbour office at the head of the stem
-	Props.crates(k, Vector3(-100.0, 0.0, 337.0), 0.0, rng, 3)
-	Props.crates(k, Vector3(-125.0, 0.0, 341.0), 0.0, rng, 3)
-	Props.crates(k, Vector3(110.0, 0.0, 337.0), 0.0, rng, 3)
+	Props.crates(k, Vector3(-128.0, 0.0, 340.0), 0.0, rng, 3)
+	Props.crates(k, Vector3(112.0, 0.0, 340.0), 0.0, rng, 3)
 	k.box(Vector3(-100.0, 0.0, 310.0), Vector3(6.0, 3.6, 5.0), Mats.toon(Color(0.86, 0.84, 0.78), 0.4), true)
 	k.box(Vector3(-100.0, 3.6, 310.0), Vector3(6.6, 0.3, 5.6), Mats.toon(Color(0.7, 0.2, 0.15)), false)
 	k.label("HARBOUR MASTER", Vector3(-100.0, 2.4, 307.4), 0.5, Color(0.1, 0.1, 0.1), 0.0)
@@ -263,7 +262,7 @@ static func _bounds(k: Kit) -> void:
 	for sx: float in [-300.5, 300.5]:
 		k.collision_box(Vector3(sx, -4.0, (QUAY_Z + zmax) * 0.5), Vector3(1.0, 14.0, zmax - QUAY_Z))
 	# buoy line so the edge of the shallows is readable
-	var buoy := Mats.glow(Color(1.0, 0.45, 0.2), 3.5)
+	var buoy := Mats.glow(Color(1.0, 0.45, 0.2), 1.3)
 	var line := Mats.toon(Color(0.1, 0.1, 0.12))
 	var x := -296.0
 	while x <= 296.0:

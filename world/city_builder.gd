@@ -34,7 +34,6 @@ func build() -> void:
 	lb.position = Vector3(-228.5, 60.8, -137.0)
 	add_child(lb)
 	var wf := WaterfrontBuilder.build(self)
-	_walks.append_array(wf.walks)
 	_absorb(wf)
 	roof_links = RoofRoutes.build(self, _walks)
 	_paifang_gates()
@@ -48,6 +47,7 @@ func build() -> void:
 
 
 func _absorb(info: Dictionary) -> void:
+	_walks.append_array(info.get("walks", []))
 	landmarks.append_array(info.get("landmarks", []))
 	_tp.append_array(info.get("tp", []))
 	for s in info.get("shards", []):

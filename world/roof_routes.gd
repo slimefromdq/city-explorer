@@ -132,6 +132,11 @@ static func _route(k: Kit, hi: Dictionary, lo: Dictionary, axis: String, lat: fl
 	for w: Dictionary in walks:
 		if w != hi and w != lo and (w.rect as Rect2).intersects(corridor):
 			return {}
+	# fire escapes hang in the alleys: keep the deck clear of them
+	for w: Dictionary in [hi, lo]:
+		for e: Dictionary in w.get("escapes", []):
+			if (e.rect as Rect2).intersects(corridor) and yh < float(e.top) + 1.5:
+				return {}
 	# local frame: +X runs from the hi roof edge toward the lo roof
 	var origin := Vector3(e_hi, 0.0, lat) if axis == "x" else Vector3(lat, 0.0, e_hi)
 	var yaw := 0.0

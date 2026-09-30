@@ -66,6 +66,7 @@ func _ready() -> void:
 	await _metro_and_rail()
 	await _roofs()
 	await _harbour()
+	await _landmarks_climb()
 	await _combat_matrix()
 	await _abilities()
 	await _bots()
@@ -114,12 +115,12 @@ func _traversal() -> void:
 	var p: Fighter = main.player
 	# open street at the west avenue, facing the east face of the 24 m concrete lot? use SW lot of block(-82,-41):
 	# oldtown h=14 (x -114..-85, z -38..-9): east face at x~-85.3 looking from alley side is cluttered, use avenue x=-123 -> west face x=-113.7
-	main.teleport_player(Vector3(0, 0.1, -146), 0.0)
+	main.teleport_player(Vector3(-20, 0.1, -161), -PI * 0.5)   # plaza, west of the tower base (clear of the grand stair)
 	await frames(20)
 	var start := p.global_position
 	# aim up-and-toward the building (east = +x), yaw = -90deg
-	p.aim_yaw = 0.0
-	p.aim_dir = Vector3(0, 0.8, -0.6).normalized()
+	p.aim_yaw = -PI * 0.5
+	p.aim_dir = Vector3(0.6, 0.8, 0).normalized()
 	p.move_input = Vector2(0, 1)
 	var pool_before := p.loco.dash_pool.charges
 	p.loco.request_dash()
@@ -138,7 +139,7 @@ func _traversal() -> void:
 	check("3-dash chain from the street reaches the first ledge (>9 m)", best > 9.0, str(best))
 	# mantling refunds a dash: keep climbing the shaft toward the 30 m ledge
 	await frames(30)
-	p.aim_dir = Vector3(0, 0.85, -0.5).normalized()
+	p.aim_dir = Vector3(0.5, 0.85, 0).normalized()
 	for n in 3:
 		p.loco.request_dash()
 		await frames(12)
@@ -320,6 +321,23 @@ func _harbour() -> void:
 	await frames(240)
 	p.move_input = Vector2.ZERO
 	check("the shallows are bounded (z stays < 481)", p.global_position.z < CityLayout.RIVER_MAX_Z + 0.5, "z=%.1f" % p.global_position.z)
+
+
+func _landmarks_climb() -> void:
+	print("landmark stairs")
+	var p: Fighter = main.player
+	var cz := -164.0
+	# clock tower: grand stair to the base roof, then the first spiral flight to the 30 m ring
+	await _walk_path(Vector3(0.0, 0.1, cz + 30.0), [[0.0, "z", cz + 11.5, -1]])
+	check("clock tower grand stair climbs onto the base roof", p.global_position.y > 10.0, "y=%.1f" % p.global_position.y)
+	await _walk_path(Vector3(-9.5, 10.2, cz + 9.3), [[-PI * 0.5, "x", 8.6, 1], [0.0, "z", cz - 9.4, -1]])
+	check("clock tower spiral ramps lead ring to ring (30 m ring reached)", p.global_position.y > 29.6, "y=%.1f" % p.global_position.y)
+	# library: up the grand steps, through the door, up the gallery ramp
+	var lz := -164.0
+	await _walk_path(Vector3(82.0, 0.1, lz + 35.0), [[0.0, "z", lz + 2.0, -1]])
+	check("library: grand steps and door lead into the reading hall", p.global_position.y > 2.8 and p.global_position.y < 3.6 and p.global_position.z < lz + 4.0, "y=%.1f z=%.1f" % [p.global_position.y, p.global_position.z])
+	await _walk_path(Vector3(63.0, 3.2, lz + 12.5), [[0.0, "z", lz - 3.5, -1]])
+	check("library: gallery ramp climbs to the gallery", p.global_position.y > 9.5, "y=%.1f" % p.global_position.y)
 
 
 func _metro_and_rail() -> void:

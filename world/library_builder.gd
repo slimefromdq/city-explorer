@@ -6,7 +6,7 @@ extends RefCounted
 ## lantern is a landmark visible across the city.
 
 static func build(parent: Node, c: Vector2) -> Dictionary:
-	var info := {"landmarks": [], "tp": [], "shards": []}
+	var info := {"landmarks": [], "tp": [], "shards": [], "walks": []}
 	var k := Kit.new(parent, "GrandLibrary")
 	var cx := c.x
 	var cz := c.y
@@ -21,7 +21,7 @@ static func build(parent: Node, c: Vector2) -> Dictionary:
 
 	# plinth + grand steps toward the park (south side)
 	k.box(Vector3(cx, 0.0, cz), Vector3(62.0, floor_y, 62.0), stone_m, true)
-	k.stairs(Vector3(cx, 0.0, cz + 36.0), Vector3(0, 0, -1), floor_y, 6.0, 26.0, stone_m)
+	k.stairs(Vector3(cx, 0.0, cz + 37.0), Vector3(0, 0, -1), floor_y, 6.0, 26.0, stone_m)   # top lands flush on the plinth edge (cz+31)
 
 	# main hall shell with a door on the south wall
 	var hx0 := -22.0
@@ -65,7 +65,7 @@ static func build(parent: Node, c: Vector2) -> Dictionary:
 	k.box(Vector3(cx, gy, cz + hz0 + 3.25), Vector3(44.0, 0.6, 5.0), wood, true)
 	for sx: float in [-1.0, 1.0]:
 		k.box(Vector3(cx + sx * 16.6, gy + 0.6, cz - 12.0), Vector3(0.2, 1.0, 24.0), wood, true)
-		k.stairs(Vector3(cx + sx * 19.0, floor_y, cz + 12.0), Vector3(0, 0, -1), 7.0, 14.0, 4.0, wood)
+		k.stairs(Vector3(cx + sx * 19.0, floor_y, cz + 12.0), Vector3(0, 0, -1), gy + 0.6 - floor_y, 12.0, 4.0, wood)   # tops out flush with the gallery floor at cz
 	k.box(Vector3(cx, gy + 0.6, cz + hz0 + 5.8), Vector3(36.0, 1.0, 0.2), wood, true)
 	# skylight roof glow + chandeliers
 	for i in 3:
@@ -78,6 +78,8 @@ static func build(parent: Node, c: Vector2) -> Dictionary:
 		k.box(Vector3(cx + sx * 26.5, floor_y + 14.0, cz - 5.0), Vector3(8.0, 0.8, 39.0), dark_stone, true)
 		for i in 4:
 			k.cyl(Vector3(cx + sx * 30.0, floor_y + 14.8, cz - 20.0 + i * 10.0), 0.6, 2.0, stone_m, false, 8)
+	for sx: float in [-1.0, 1.0]:
+		info.walks.append({"rect": Rect2(cx + sx * 26.5 - 4.0, cz - 24.5, 8.0, 39.0), "y": floor_y + 14.8, "avoid": Rect2(), "clutter": []})
 	# rear reading tower
 	k.box(Vector3(cx, floor_y, cz - 29.0), Vector3(14.0, 34.0, 6.0), wall, true)
 	k.box(Vector3(cx, floor_y + 34.0, cz - 29.0), Vector3(15.0, 1.0, 7.0), dark_stone, true)
