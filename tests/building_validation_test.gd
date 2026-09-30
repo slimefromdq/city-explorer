@@ -148,6 +148,41 @@ func _ready() -> void:
 		any_decor = any_decor or b.is_decoration()
 	check("windows add no collision", not any_decor)
 
+	# Doors (feature 2)
+	var doors := _pieces_of(good, "door")
+	check("a generated building has exactly one door", doors.size() == 1)
+	var dp := good_plan()
+	var d0 := _pieces_of(dp, "door")[0]
+	d0.at.y += 2
+	var dr := BuildingValidator.validate(dp)
+	check("door lifted off the plinth -> FLOATING", has_code(dr, "FLOATING"), BuildingValidator.format("x", dr))
+	dp = good_plan()
+	d0 = _pieces_of(dp, "door")[0]
+	d0.at += _outward(d0.face)
+	check("door pulled off its wall -> DETACHED", has_code(BuildingValidator.validate(dp), "DETACHED"))
+	dp = good_plan()
+	d0 = _pieces_of(dp, "door")[0]
+	var extra := BuildingPlan.Piece.new("window", d0.at, d0.size, d0.tier, 0)
+	extra.face = d0.face
+	dp.pieces.append(extra)
+	check("a window placed over the door -> OVERLAP", has_code(BuildingValidator.validate(dp), "OVERLAP"))
+	dp = good_plan()
+	d0 = _pieces_of(dp, "door")[0]
+	d0.size.y = 40
+	check("door taller than the ground floor -> DETACHED", has_code(BuildingValidator.validate(dp), "DETACHED"))
+	var door_faces := {}
+	for sd in 40:
+		for pc in BuildingGenerator.plan(29, 29, 6, 3.5, sd).pieces:
+			if pc.kind == "door":
+				door_faces[pc.face] = true
+	check("the seed picks different faces for the door (%d of 4 seen in 40 seeds)" % door_faces.size(), door_faces.size() == 4)
+	var clear := true
+	for sd in 40:
+		var pp := BuildingGenerator.plan(29, 29, 6, 3.5, sd)
+		if not BuildingValidator.validate(pp).is_empty():
+			clear = false
+	check("windows keep clear of the door on 40 seeds", clear)
+
 	# Built nodes must match the plan.
 	var built := BuildingBuilder.build(self, good)
 	check("built nodes match the plan and have collision", BuildingValidator.check_built(built, good).is_empty(), BuildingValidator.format("built", BuildingValidator.check_built(built, good)))

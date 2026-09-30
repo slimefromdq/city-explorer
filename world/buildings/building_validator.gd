@@ -105,11 +105,12 @@ static func _check_overlaps(plan: BuildingPlan, out: Array[Issue]) -> void:
 
 ## Every structural piece must rest on the ground or fully on the top of the piece(s)
 ## below it. Windows are exempt here: a window is held up by the wall beside it
-## (see _check_attached), not by anything underneath.
+## (see _check_attached), not by anything underneath. A door gets both checks: it is
+## attached to the wall AND must stand on the plinth.
 static func _check_support(plan: BuildingPlan, out: Array[Issue]) -> void:
 	var by_top := {}     # height -> structural pieces whose top face is at that height
 	for q in plan.pieces:
-		if q.kind != "window":
+		if not q.is_decoration():   # dressing never holds anything up
 			if not by_top.has(q.top()):
 				by_top[q.top()] = []
 			by_top[q.top()].append(q)
@@ -125,7 +126,7 @@ static func _check_support(plan: BuildingPlan, out: Array[Issue]) -> void:
 			var nearest_below := 0
 			var nearest_name := "the ground"
 			for q in plan.pieces:
-				if q != p and q.kind != "window" and _footprints_overlap(p, q) and q.top() <= p.at.y and q.top() > nearest_below:
+				if q != p and not q.is_decoration() and _footprints_overlap(p, q) and q.top() <= p.at.y and q.top() > nearest_below:
 					nearest_below = q.top()
 					nearest_name = q.label()
 			out.append(Issue.new("FLOATING", "%s floats %s above %s" % [p.describe(), _m(p.at.y - nearest_below), nearest_name]))

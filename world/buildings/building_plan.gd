@@ -9,11 +9,11 @@ extends RefCounted
 ## Origin = the footprint's north-west corner on the ground; +x east, +z south, +y up.
 
 
-const DECORATION := ["window"]
+const DECORATION := ["window", "door"]
 
 
 class Piece:
-	var kind: String           # "base" | "floor" | "roof" | "rooftop" | "window" (more added per feature)
+	var kind: String           # "base" | "floor" | "roof" | "rooftop" | "window" | "door" (more added per feature)
 	var tier := -1             # which section of the tower (0 = lowest); -1 if not a floor
 	var floor_index := -1      # 0 = first floor above the base (for a window: the floor it belongs to)
 	var face := ""             # for wall decorations: which wall they sit on, "n" "e" "s" "w"

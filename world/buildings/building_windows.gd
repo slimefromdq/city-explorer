@@ -21,7 +21,9 @@ const FACES := ["n", "e", "s", "w"]
 
 ## `r` must be the WINDOWS random stream. Exactly two numbers are drawn per bay,
 ## in a fixed order, so the result never depends on earlier decisions.
-static func add(plan: BuildingPlan, pitch: int, fill: float, lit: float, r: RandomNumberGenerator) -> void:
+## `keep_clear` is an optional piece (the door): a window that would touch it is skipped,
+## but its two random numbers are still drawn so the rest of the facade does not change.
+static func add(plan: BuildingPlan, pitch: int, fill: float, lit: float, r: RandomNumberGenerator, keep_clear: BuildingPlan.Piece = null) -> void:
 	var fh := plan.floor_units
 	if fh < 4:
 		return   # floors too short for a window to fit with a sill above and a lintel below
@@ -55,6 +57,10 @@ static func add(plan: BuildingPlan, pitch: int, fill: float, lit: float, r: Rand
 					"e":
 						at = Vector3i(f.at.x + f.size.x, y, f.at.z + along)
 						size = Vector3i(DEPTH, win_h, WIDTH)
+				if keep_clear != null and f.floor_index == keep_clear.floor_index and face == keep_clear.face \
+						and mini(at.x + size.x, keep_clear.at.x + keep_clear.size.x) > maxi(at.x, keep_clear.at.x) \
+						and mini(at.z + size.z, keep_clear.at.z + keep_clear.size.z) > maxi(at.z, keep_clear.at.z):
+					continue
 				var w := BuildingPlan.Piece.new("window", at, size, f.tier, f.floor_index)
 				w.face = face
 				w.variant = 1 if is_lit else 0

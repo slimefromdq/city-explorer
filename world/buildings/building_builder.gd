@@ -50,6 +50,7 @@ static func _material(piece: BuildingPlan.Piece, wall: Color) -> Material:
 		"base": return Mats.toon(wall.darkened(0.35))
 		"roof": return Mats.toon(wall.darkened(0.45))
 		"rooftop": return Mats.toon(Color(0.55, 0.56, 0.6))
+		"door": return Mats.toon(Color(0.28, 0.18, 0.12))
 		"window": return Mats.glow(Color(1.0, 0.85, 0.5), 1.6) if piece.variant == 1 else Mats.toon(Color(0.1, 0.16, 0.24))
 	# Alternate floors light/dark so the storeys (and any misalignment) are visible.
 	return Mats.toon(wall.darkened(0.08) if piece.floor_index % 2 == 1 else wall)
