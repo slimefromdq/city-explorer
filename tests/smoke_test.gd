@@ -63,6 +63,9 @@ func _ready() -> void:
 	await _traversal()
 	await _parkour()
 	await _world()
+	await _metro_and_rail()
+	await _roofs()
+	await _harbour()
 	await _combat_matrix()
 	await _abilities()
 	await _bots()
@@ -74,7 +77,8 @@ func _ready() -> void:
 func _movement() -> void:
 	print("movement")
 	var p: Fighter = main.player
-	main.teleport_player(Vector3(-287, 0.1, -20), 0.0)
+	main.teleport_player(Vector3(-200, 0.1, -205), -PI * 0.5)
+	main.player.aim_yaw = -PI * 0.5
 	await frames(30)
 	check("player stands on the floor", p.is_on_floor(), str(p.global_position))
 	p.move_input = Vector2(0, 1)
@@ -146,7 +150,7 @@ func _traversal() -> void:
 	p.move_input = Vector2.ZERO
 	# mantle test: walk into a 1.5 m obstacle in the air
 	# Dash recharge on ground
-	main.teleport_player(Vector3(-287, 0.1, -23.5), 0.0)
+	main.teleport_player(Vector3(-200, 0.1, -205), 0.0)
 	p.loco.dash_pool.charges = 0.0
 	await frames(120)
 	check("dash charges refill fast on the ground", p.loco.dash_pool.available() >= 2, str(p.loco.dash_pool.charges))
@@ -196,10 +200,167 @@ func _world() -> void:
 		check("bot '%s' spawned on solid ground" % b.display_name, b.is_on_floor(), str(b.global_position))
 
 
+func _walk(pos: Vector3, yaw: float, seconds: float) -> float:
+	var p: Fighter = main.player
+	main.teleport_player(pos, yaw)
+	p.aim_yaw = yaw
+	await frames(20)
+	p.move_input = Vector2(0, 1)
+	p.wants_sprint = false
+	var lowest := p.global_position.y
+	var highest := p.global_position.y
+	for i in int(seconds * 60.0):
+		await get_tree().physics_frame
+		lowest = minf(lowest, p.global_position.y)
+		highest = maxf(highest, p.global_position.y)
+	p.move_input = Vector2.ZERO
+	# report the extreme in the direction the walker travelled
+	return lowest if lowest < pos.y - 1.0 else highest
+
+
+func _find(parent: Array, x: int) -> int:
+	while parent[x] != x:
+		parent[x] = parent[parent[x]]
+		x = parent[x]
+	return x
+
+
+func _roofs() -> void:
+	print("roof routes")
+	var links: Array = main.city.roof_links
+	print("      %d catwalks" % links.size())
+	check("roof network has 60+ catwalks", links.size() >= 60, str(links.size()))
+	# connectivity of the rooftop graph (union-find over lots)
+	var total: int = main.city.get("_walks").size()
+	var parent := []
+	for i in total:
+		parent.append(i)
+	for l: Dictionary in links:
+		var ra := _find(parent, l.ids[0])
+		var rb := _find(parent, l.ids[1])
+		parent[ra] = rb
+	var sizes := {}
+	for i in total:
+		var r := _find(parent, i)
+		sizes[r] = sizes.get(r, 0) + 1
+	var biggest := 0
+	for v in sizes.values():
+		biggest = maxi(biggest, v)
+	var szl := sizes.values()
+	szl.sort()
+	szl.reverse()
+	print("      %d roofs, largest connected network %d, all: %s" % [total, biggest, str(szl)])
+	check("largest rooftop network links 30+ roofs", biggest >= 30, str(biggest))
+	var p: Fighter = main.player
+	var step := maxi(1, links.size() / 16)
+	var bad := 0
+	for i in range(0, links.size(), step):
+		var l: Dictionary = links[i]
+		for end in ["a", "b"]:
+			var y: float = l.yh if end == "a" else l.yl
+			main.teleport_player(l[end], 0.0)
+			await frames(25)
+			if not (p.is_on_floor() and absf(p.global_position.y - y) < 1.3):
+				bad += 1
+				print("      bad %s end of link %d: y=%.2f expected %.2f at %s" % [end, i, p.global_position.y, y, l[end]])
+	check("both ends of sampled catwalks stand on solid roof", bad == 0, "%d bad" % bad)
+
+
+## Walk a scripted path. Each step is [yaw, axis, target, sign]: walk facing `yaw`
+## until the player's x/z coordinate reaches `target` (sign +1: >=, -1: <=).
+## Returns the highest y reached.
+func _walk_path(pos: Vector3, steps: Array) -> float:
+	var p: Fighter = main.player
+	main.teleport_player(pos, steps[0][0])
+	await frames(15)
+	var top := p.global_position.y
+	for st in steps:
+		p.aim_yaw = st[0]
+		p.move_input = Vector2(0, 1)
+		for i in 240:
+			await get_tree().physics_frame
+			top = maxf(top, p.global_position.y)
+			var v: float = p.global_position.x if st[1] == "x" else p.global_position.z
+			if (st[3] > 0 and v >= st[2]) or (st[3] < 0 and v <= st[2]):
+				break
+	p.move_input = Vector2.ZERO
+	await frames(10)
+	return top
+
+
+func _harbour() -> void:
+	print("harbour + fire escapes")
+	var p: Fighter = main.player
+	# a fire escape built in the open street: two full flights, landing to landing
+	var kit := Kit.new(main, "TestEscape")
+	kit.box(Vector3(-150.0, 0.0, -209.5), Vector3(24.0, 16.0, 2.0), Mats.toon(Color.WHITE), true)
+	Props.fire_escape(kit, Vector3(-150.0, 0.0, -208.5), 0.0, 14.0)
+	await frames(5)
+	# flight 1: ground -> first landing (walk west up the flight, then north onto the landing)
+	await _walk_path(Vector3(-146.0, 0.1, -206.6), [[PI * 0.5, "x", -152.0, -1], [0.0, "z", -207.9, -1]])
+	check("fire escape: first flight climbs onto the first landing", p.global_position.y > 2.85, "y=%.2f" % p.global_position.y)
+	# landing -> pad -> second flight (east along the landing, south onto the pad, west up the flight)
+	await _walk_path(Vector3(-149.5, 3.2, -207.85), [[-PI * 0.5, "x", -148.0, 1], [PI, "z", -207.0, 1], [PI * 0.5, "x", -152.0, -1]])
+	check("fire escape: the landing steps level onto the next flight and climbs", p.global_position.y > 5.9, "y=%.2f" % p.global_position.y)
+	kit.root.queue_free()
+
+	# walk from the T-pier up a gangway and onto the ship's deck
+	await _walk_path(Vector3(30.0, 0.1, 334.0), [[PI, "z", 356.0, 1]])
+	check("gangway leads from the pier onto the ship deck", p.global_position.y > 4.3 and p.global_position.z > 352.0, "y=%.1f z=%.1f" % [p.global_position.y, p.global_position.z])
+	# ...and from the river shallows up the boarding stair
+	await _walk_path(Vector3(-56.0, -2.6, 375.6), [[-PI * 0.5, "x", -36.5, 1], [0.0, "z", 366.0, -1]])
+	check("boarding stair leads from the shallows onto the deck", p.global_position.y > 4.2 and p.global_position.z < 372.0, "y=%.1f z=%.1f" % [p.global_position.y, p.global_position.z])
+	# wading in the shallows slows you down
+	main.teleport_player(Vector3(0.0, -2.5, 420.0), 0.0)
+	await frames(30)
+	check("river shallows are wadeable and slow you", p.is_on_floor() and p.move_scale() < 0.7, "scale %.2f floor %s" % [p.move_scale(), p.is_on_floor()])
+	# the shallows end at an invisible wall + buoy line, not a void
+	p.aim_yaw = PI
+	p.move_input = Vector2(0, 1)
+	await frames(240)
+	p.move_input = Vector2.ZERO
+	check("the shallows are bounded (z stays < 481)", p.global_position.z < CityLayout.RIVER_MAX_Z + 0.5, "z=%.1f" % p.global_position.z)
+
+
+func _metro_and_rail() -> void:
+	print("metro + rail loop")
+	var loop := RailBuilder.densify(RailBuilder.loop_points(), 6.0)
+	var worst_turn := 0.0
+	var miny := 99.0
+	var maxy := -99.0
+	var through_pit := 0
+	var n := loop.size()
+	for i in n:
+		var d0 := (loop[(i + 1) % n] - loop[i]).normalized()
+		var d1 := (loop[(i + 2) % n] - loop[(i + 1) % n]).normalized()
+		worst_turn = maxf(worst_turn, rad_to_deg(d0.angle_to(d1)))
+		miny = minf(miny, loop[i].y)
+		maxy = maxf(maxy, loop[i].y)
+		if CityLayout.station_pit().has_point(Vector2(loop[i].x, loop[i].z)):
+			through_pit += 1
+	check("rail loop is one closed line with no kinks (max turn %.0f deg)" % worst_turn, worst_turn < 25.0)
+	check("loop dives to the metro and climbs to the viaduct", miny <= -8.9 and maxy >= 25.9, "%.1f..%.1f" % [miny, maxy])
+	check("loop runs through the station pit on both tracks", through_pit >= 15, str(through_pit))
+	var trains := 0
+	for t in get_tree().get_nodes_in_group(&"trains"):
+		trains += 1
+	check("two loop trains are running", trains == 2, str(trains))
+	var cz := CityLayout.station_center().y
+	# the gate lane leads to the stairs and down to the platform
+	var low: float = await _walk(Vector3(-17.4, 0.1, cz - 29.6), PI, 6.0)
+	check("walking through the fare gates takes you down the stairs to the platform", low < -7.0, "lowest y %.1f" % low)
+	# ...and the open pit edge elsewhere is fenced, so you can't just step onto the tracks
+	var edge: float = await _walk(Vector3(0.0, 0.1, cz - 29.0), PI, 3.0)
+	check("the pit edge is railed (no accidental drop onto the tracks)", edge > -0.5, "y %.1f" % edge)
+	# the maintenance stair reaches the roof girders
+	var top: float = await _walk(Vector3(-28.5, 14.2, cz - 24.4), PI, 5.0)
+	check("maintenance stair climbs to the roof girders", top > 24.0, "top y %.1f" % top)
+
+
 func _combat_matrix() -> void:
 	print("combat matrix")
-	var a := spawn("A", Vector3(-287, 0.1, -90))
-	var v := spawn("V", Vector3(-287, 0.1, -78))
+	var a := spawn("A", Vector3(-200, 0.1, -205))
+	var v := spawn("V", Vector3(-188, 0.1, -205))
 	await frames(10)
 	face(v, a)
 	face(a, v)
@@ -219,7 +380,7 @@ func _combat_matrix() -> void:
 	res = hit(a, v, 10.0, 8.0, false, true)
 	check("unblockable beats guard", res == HitData.Result.HIT, str(res))
 	# hit from behind ignores block
-	var behind := spawn("B", Vector3(-287, 0.1, -66))
+	var behind := spawn("B", Vector3(-176, 0.1, -205))
 	var h := HitData.new()
 	h.attacker = behind
 	h.damage = 5.0
@@ -283,8 +444,8 @@ func _combat_matrix() -> void:
 
 func _abilities() -> void:
 	print("abilities")
-	var a := spawn("Shooter", Vector3(-287, 0.1, -90))
-	var v := spawn("Target", Vector3(-287, 0.1, -76))
+	var a := spawn("Shooter", Vector3(-200, 0.1, -205))
+	var v := spawn("Target", Vector3(-186, 0.1, -205))
 	await frames(10)
 	face(a, v)
 	face(v, a)
@@ -356,7 +517,7 @@ func _abilities() -> void:
 	# ricochet bounce
 	a.reset_meters()
 	await frames(20)
-	var wall_dir := Vector3(-1, 0, 0)
+	var wall_dir := Vector3(0, 0, -1)
 	a.aim_dir = wall_dir
 	a.aim_point = a.center() + wall_dir * 20.0
 	a.press_ability(3)
@@ -372,7 +533,7 @@ func _abilities() -> void:
 		await frames(1)
 		for n in get_tree().get_nodes_in_group(&"projectiles"):
 			var p2 := n as Projectile
-			if p2 != null and p2.tag == &"ricochet" and p2.velocity.x > 0.0:
+			if p2 != null and p2.tag == &"ricochet" and p2.velocity.z > 0.0:
 				bounced = true
 	check("ricochet round bounced off the wall", bounced)
 	a.queue_free()
@@ -390,8 +551,8 @@ func _brain(f: Fighter, target: Fighter, mode: BotBrain.Mode) -> BotBrain:
 
 func _bots() -> void:
 	print("bots")
-	var shooter := spawn("Shooter", Vector3(-287, 0.1, -90))
-	var bot := spawn("BotB", Vector3(-287, 0.1, -74))
+	var shooter := spawn("Shooter", Vector3(-200, 0.1, -205))
+	var bot := spawn("BotB", Vector3(-188, 0.1, -205))
 	await frames(10)
 	face(shooter, bot)
 	var brain := _brain(bot, shooter, BotBrain.Mode.BLOCKER)
@@ -438,8 +599,8 @@ func _h(attacker: Fighter, victim: Fighter, dmg: float, flinch := 0.0) -> HitDat
 
 func _bounty() -> void:
 	print("bounty")
-	var a := spawn("Killer", Vector3(-287, 0.1, -60))
-	var v := spawn("Victim", Vector3(-287, 0.1, -48))
+	var a := spawn("Killer", Vector3(-100, 0.1, -205))
+	var v := spawn("Victim", Vector3(-88, 0.1, -205))
 	v.respawn_delay = 1.0
 	await frames(10)
 	v.bounty.add_streak(4)

@@ -31,7 +31,7 @@ func _ready() -> void:
 	_arm.shape = shape
 	_arm.add_child(camera)
 	camera.fov = _fov
-	camera.far = 1200.0
+	camera.far = 4500.0
 	camera.current = true
 	Events.camera_shake.connect(func(a: float) -> void: _shake = maxf(_shake, a))
 

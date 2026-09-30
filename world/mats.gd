@@ -56,6 +56,15 @@ static func water() -> ShaderMaterial:
 	return _cache["water"]
 
 
+static func river() -> ShaderMaterial:
+	if not _cache.has("river"):
+		var m := ShaderMaterial.new()
+		m.shader = _sh("res://shaders/river.gdshader")
+		m.render_priority = -1
+		_cache["river"] = m
+	return _cache["river"]
+
+
 static func glow(color: Color, energy := 2.5) -> StandardMaterial3D:
 	var key := "glow_%s_%s" % [color.to_html(), energy]
 	if not _cache.has(key):

@@ -32,24 +32,24 @@ const LOTS := {
 	"FIN_F": [["glass", 94], ["glass", 120], ["round", 86], ["glass", 70]],
 	"FIN_G": [["glass", 92], ["glass", 112], ["glass", 68], ["plaza", 0]],
 	"FIN_H": [["glass", 78], ["glass", 100], ["billboard", 72], ["glass", 60]],
-	"OLD_A": [["brick", 24], ["oldtown", 14], ["concrete", 32], ["oldtown", 18]],
-	"OLD_B": [["concrete", 30], ["brick", 22], ["oldtown", 12], ["brick", 36]],
-	"OLD_C": [["oldtown", 16], ["brick", 28], ["concrete", 22], ["oldtown", 12]],
-	"OLD_D": [["brick", 34], ["concrete", 26], ["oldtown", 16], ["brick", 20]],
-	"OLD_E": [["oldtown", 12], ["brick", 24], ["concrete", 38], ["oldtown", 18]],
-	"OLD_F": [["concrete", 30], ["oldtown", 14], ["brick", 22], ["oldtown", 20]],
-	"OLD_G": [["brick", 26], ["oldtown", 14], ["concrete", 34], ["oldtown", 12]],
-	"OLD_H": [["oldtown", 16], ["brick", 30], ["oldtown", 12], ["concrete", 24]],
-	"OLD_I": [["brick", 32], ["concrete", 24], ["oldtown", 16], ["brick", 28]],
-	"MARKET": [["oldtown", 12], ["oldtown", 14], ["oldtown", 10], ["oldtown", 16]],
-	"MIX_A": [["glass", 58], ["brick", 30], ["billboard", 44], ["concrete", 26]],
-	"MIX_B": [["brick", 40], ["glass", 66], ["concrete", 28], ["oldtown", 16]],
-	"MIX_C": [["billboard", 52], ["brick", 34], ["glass", 48], ["concrete", 30]],
-	"MIX_D": [["glass", 72], ["billboard", 46], ["brick", 36], ["concrete", 28]],
-	"MIX_E": [["concrete", 32], ["glass", 56], ["brick", 26], ["billboard", 48]],
-	"CHINA_A": [["chinese", 17], ["chinese", 21], ["chinese", 14], ["chinese", 23]],
-	"CHINA_B": [["chinese", 19], ["pagoda", 0], ["chinese", 15], ["chinese", 21]],
-	"CHINA_C": [["chinese", 16], ["chinese", 22], ["chinese", 14], ["chinese", 18]],
+	"OLD_A": [["brick", 28], ["oldtown", 24], ["concrete", 31], ["oldtown", 22]],
+	"OLD_B": [["concrete", 17], ["brick", 23], ["oldtown", 14], ["brick", 20]],
+	"OLD_C": [["oldtown", 17], ["brick", 23], ["concrete", 14], ["oldtown", 20]],
+	"OLD_D": [["brick", 21], ["concrete", 27], ["oldtown", 18], ["brick", 24]],
+	"OLD_E": [["oldtown", 21], ["brick", 27], ["concrete", 18], ["oldtown", 24]],
+	"OLD_F": [["concrete", 28], ["oldtown", 24], ["brick", 31], ["oldtown", 22]],
+	"OLD_G": [["brick", 22], ["oldtown", 24], ["concrete", 25], ["oldtown", 24]],
+	"OLD_H": [["oldtown", 21], ["brick", 27], ["oldtown", 18], ["concrete", 24]],
+	"OLD_I": [["brick", 25], ["concrete", 31], ["oldtown", 22], ["brick", 28]],
+	"MARKET": [["oldtown", 20], ["oldtown", 17], ["oldtown", 23], ["oldtown", 14]],
+	"MIX_A": [["brick", 31], ["brick", 22], ["billboard", 28], ["concrete", 25]],
+	"MIX_B": [["brick", 23], ["brick", 14], ["concrete", 20], ["oldtown", 17]],
+	"MIX_C": [["billboard", 18], ["brick", 24], ["brick", 21], ["concrete", 27]],
+	"MIX_D": [["brick", 20], ["billboard", 17], ["brick", 23], ["concrete", 14]],
+	"MIX_E": [["concrete", 24], ["brick", 21], ["brick", 27], ["billboard", 18]],
+	"CHINA_A": [["chinese", 22], ["chinese", 22], ["chinese", 22], ["chinese", 22]],
+	"CHINA_B": [["chinese", 16], ["pagoda", 0], ["chinese", 22], ["chinese", 22]],
+	"CHINA_C": [["chinese", 22], ["chinese", 16], ["chinese", 16], ["chinese", 16]],
 }
 
 const SPECIAL := ["PARK", "CLOCK", "LIBRARY", "METRO"]
@@ -65,6 +65,17 @@ const DISTRICT_COLORS := {
 	"mixed": Color(0.65, 0.45, 0.85),
 	"market": Color(0.9, 0.65, 0.3),
 }
+
+
+const QUAY_Z := 214.0          # end of the street grid; the harbour quay starts here
+const WATER_Z := 251.0         # quay face; the river starts here
+const WATER_Y := -1.5
+const BED_Y := -2.7
+const RIVER_MAX_Z := 480.0     # last walkable shallows (invisible wall + buoy line)
+
+
+static func river_hole() -> Rect2:
+	return Rect2(-1000.0, WATER_Z - 1.0, 2000.0, 900.0)
 
 
 static func cell_center(c: int, r: int) -> Vector2:

@@ -11,6 +11,8 @@ var gap := 1.2
 var speed := 16.0
 var interval := 26.0
 var hazard := false
+var loop := false            # closed path: runs forever, wraps around
+var phase := 0.0             # 0..1 start offset around a loop
 var body_color := Color(0.86, 0.88, 0.93)
 var stripe_color := Color(0.9, 0.2, 0.25)
 
@@ -25,6 +27,10 @@ var _hit_cd := {}
 
 
 func _ready() -> void:
+	add_to_group(&"trains")
+	if loop:
+		path = path.duplicate()
+		path.append(path[0])
 	_lens.append(0.0)
 	for i in path.size() - 1:
 		_len += path[i].distance_to(path[i + 1])
@@ -33,7 +39,10 @@ func _ready() -> void:
 		var c := _make_car(i == 0)
 		add_child(c)
 		_cars.append(c)
-	visible = false
+	visible = loop
+	if loop:
+		_running = true
+		_s = phase * _len + float(cars) * (car_len + gap)
 	set_physics_process(true)
 
 
@@ -87,7 +96,7 @@ func _make_car(head: bool) -> Node3D:
 
 
 func _sample(s: float) -> Array:
-	s = clampf(s, 0.0, _len)
+	s = fposmod(s, _len) if loop else clampf(s, 0.0, _len)
 	var i := 0
 	while i < _lens.size() - 2 and _lens[i + 1] < s:
 		i += 1
@@ -117,10 +126,10 @@ func _physics_process(dt: float) -> void:
 		var dir: Vector3 = mid[1]
 		_cars[i].global_position = pos
 		_cars[i].global_transform.basis = Basis.looking_at(dir, Vector3.UP)
-		_cars[i].visible = head_s > 0.0 and head_s - car_len < _len
+		_cars[i].visible = loop or (head_s > 0.0 and head_s - car_len < _len)
 	if hazard:
 		_shove(dt)
-	if _s - span > _len:
+	if not loop and _s - span > _len:
 		_running = false
 		visible = false
 		_wait = interval
@@ -130,7 +139,7 @@ func _shove(dt: float) -> void:
 	for k in _hit_cd.keys():
 		_hit_cd[k] -= dt
 	for a in _areas:
-		if not a.get_parent().visible:
+		if not a.get_parent().visible or a.get_parent().global_position.y > 6.0:
 			continue
 		for b in a.get_overlapping_bodies():
 			var f := b as Fighter

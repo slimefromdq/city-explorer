@@ -145,24 +145,33 @@ static func random_palette(rng: RandomNumberGenerator) -> Array:
 	return _palette(rng)
 
 
-## Zig-zag fire escape hung on a wall. `at` is the wall point on the ground,
-## `yaw` rotates local +Z to point out of the wall.
-static func fire_escape(k: Kit, at: Vector3, yaw: float, height: float, span := 3.4) -> void:
+## Fire escape hung flush on a wall. `at` is the wall point on the ground and
+## `yaw` rotates local +Z to point out of the wall. Landings (6 x 1.3 m, top at
+## 3.0 + n*3.2) are joined by straight 1.2 m wide flights in front of them. Both
+## ends of every flight are FLAT 1.2 m pads that belong to the landing (start pad
+## on the right, arrival pad on the left), so stepping on or off is always level;
+## the front rail is open along the pads. Flights stack directly above each
+## other, so there is always headroom.
+static func fire_escape(k: Kit, at: Vector3, yaw: float, height: float, span := 6.0) -> void:
 	var f := k.sub("FireEscape", at, yaw)
 	var iron := Mats.toon(Color(0.1, 0.11, 0.14))
 	var rail := Mats.toon(Color(0.16, 0.17, 0.2))
 	var dz := 3.2
+	var pw := 1.2
 	var floors := int(floor((height - 2.0) / dz))
+	var half := span * 0.5
 	for i in floors:
 		var y := 3.0 + i * dz
-		f.box(Vector3(0, y, 0), Vector3(span, 0.12, 1.3), iron, true)
-		f.box(Vector3(0, y + 0.12, 1.25), Vector3(span, 1.0, 0.05), rail, false)
-		f.box(Vector3(-span * 0.5 + 0.03, y + 0.12, 0.6), Vector3(0.05, 1.0, 1.2), rail, false)
-		f.box(Vector3(span * 0.5 - 0.03, y + 0.12, 0.6), Vector3(0.05, 1.0, 1.2), rail, false)
-		if i < floors - 1 or floors == 1:
-			var left := i % 2 == 0
-			var xa := span * 0.5 - 0.1 if left else -span * 0.5 + 0.1
-			var xb := -span * 0.5 + 0.1 if left else span * 0.5 - 0.1
-			f.ramp(Vector3(xa, y + 0.12, 1.75), Vector3(xb, y + dz + 0.12, 1.75), 0.9, 0.12, iron)
-	# drop ladder stub so the first landing is reachable with a dash/jump
-	f.box(Vector3(span * 0.5 - 0.3, 1.2, 0.3), Vector3(0.1, 1.8, 0.1), rail, false)
+		f.box(Vector3(0, y - 0.12, 0.65), Vector3(span, 0.12, 1.3), iron, true)
+		f.box(Vector3(0, y, 1.25), Vector3(span - 2.0 * pw, 1.0, 0.05), rail, false)
+		f.box(Vector3(-half + 0.03, y, 0.65), Vector3(0.05, 1.0, 1.3), rail, false)
+		f.box(Vector3(half - 0.03, y, 0.65), Vector3(0.05, 1.0, 1.3), rail, false)
+		# arrival pad (left) for the flight below, start pad (right) for the flight above
+		f.box(Vector3(-half + pw * 0.5, y - 0.12, 1.9), Vector3(pw, 0.12, 1.2), iron, true)
+		if i + 1 < floors:
+			f.box(Vector3(half - pw * 0.5, y - 0.12, 1.9), Vector3(pw, 0.12, 1.2), iron, true)
+	for i in range(-1, floors - 1):
+		var y0 := 0.0 if i < 0 else 3.0 + i * dz
+		var y1 := 3.0 + (i + 1) * dz
+		f.ramp(Vector3(half - pw, y0, 1.9), Vector3(-half + pw, y1, 1.9), 1.2, 0.12, iron)
+		f.ramp(Vector3(half - pw, y0 + 1.0, 2.5), Vector3(-half + pw, y1 + 1.0, 2.5), 0.05, 0.05, rail, false)

@@ -14,6 +14,8 @@ var shard_spots: Array[Vector3] = []
 var park: ParkBuilder
 var _tp: Array = []
 var _roofs: Array = []
+var _walks: Array = []
+var roof_links: Array = []
 var _rng := RandomNumberGenerator.new()
 
 
@@ -31,6 +33,10 @@ func build() -> void:
 	lb.name = "Leaderboard"
 	lb.position = Vector3(-228.5, 60.8, -137.0)
 	add_child(lb)
+	var wf := WaterfrontBuilder.build(self)
+	_walks.append_array(wf.walks)
+	_absorb(wf)
+	roof_links = RoofRoutes.build(self, _walks)
 	_paifang_gates()
 	_street_furniture()
 	_edge_walls()
@@ -73,6 +79,9 @@ func _ground() -> void:
 	var rects: Array = [Rect2(-1000, -1000, 2000, 2000)]
 	rects = _subtract(rects, CityLayout.park_rect())
 	rects = _subtract(rects, CityLayout.station_pit())
+	rects = _subtract(rects, CityLayout.river_hole())
+	for h: Rect2 in RailBuilder.trench_holes():
+		rects = _subtract(rects, h)
 	for r: Rect2 in rects:
 		k.box(Vector3(r.get_center().x, -2.0, r.get_center().y), Vector3(r.size.x, 2.0, r.size.y), Mats.road(), true)
 
@@ -168,6 +177,7 @@ func _cell(c: int, r: int) -> void:
 		_:
 			var res := BlockBuilder.build(self, id, ctr, c, r)
 			_roofs.append_array(res.roofs)
+			_walks.append_array(res.walks)
 			landmarks.append_array(res.landmarks)
 			_tp.append_array(res.tp)
 			if id == "FIN_E":
@@ -238,17 +248,18 @@ func _edge_walls() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 555
 	var t := 14.0
-	for side in [-1.0, 1.0]:
-		var x := -PLAY_X - 20.0
-		while x < PLAY_X + 20.0:
-			var w := rng.randf_range(24.0, 44.0)
-			_edge_box(k, Vector3(x + w * 0.5, 0.0, side * (PLAY_Z + t * 0.5)), Vector3(w, rng.randf_range(60.0, 140.0), t), rng)
-			x += w
+	# north edge only: the south edge is the harbour and the river
+	var x := -PLAY_X - 20.0
+	while x < PLAY_X + 20.0:
+		var w := rng.randf_range(24.0, 44.0)
+		_edge_box(k, Vector3(x + w * 0.5, 0.0, -(PLAY_Z + t * 0.5)), Vector3(w, rng.randf_range(60.0, 140.0), t), rng)
+		x += w
 	for side in [-1.0, 1.0]:
 		var z := -PLAY_Z
-		while z < PLAY_Z:
-			var d := rng.randf_range(24.0, 44.0)
-			_edge_box(k, Vector3(side * (PLAY_X + t * 0.5), 0.0, z + d * 0.5), Vector3(t, rng.randf_range(60.0, 140.0), d), rng)
+		while z < CityLayout.WATER_Z:
+			var d := minf(rng.randf_range(24.0, 44.0), CityLayout.WATER_Z - z)
+			var tall := rng.randf_range(60.0, 140.0) if z < PLAY_Z - 20.0 else rng.randf_range(16.0, 30.0)
+			_edge_box(k, Vector3(side * (PLAY_X + t * 0.5), 0.0, z + d * 0.5), Vector3(t, tall, d), rng)
 			z += d
 	StaticBatch.merge(k.root)
 
@@ -271,7 +282,7 @@ func _skyline() -> void:
 		var ang := rng.randf() * TAU
 		var dist := rng.randf_range(300.0, 1100.0)
 		var p := Vector3(cos(ang) * dist * 1.25, 0.0, sin(ang) * dist)
-		if absf(p.x) < PLAY_X + 40.0 and absf(p.z) < PLAY_Z + 40.0:
+		if (absf(p.x) < PLAY_X + 40.0 and absf(p.z) < PLAY_Z + 40.0) or p.z > CityLayout.WATER_Z - 20.0:
 			continue
 		placed += 1
 		var w := rng.randf_range(34.0, 80.0)
@@ -321,7 +332,7 @@ func _pickups() -> void:
 			var pk := Pickup.new()
 			pk.position = Vector3(ax + 5.0, 0.0, sz + 5.0)
 			add_child(pk)
-	for p in [Vector3(82, 3.4, -172), Vector3(0, 0.15, 82), Vector3(-16, -7.7, 82), Vector3(-86, 9.6, 41), Vector3(0, 0.15, -150)]:
+	for p in [Vector3(-60, 0.15, 232), Vector3(60, 0.15, 232), Vector3(0, 0.1, 340), Vector3(82, 3.4, -172),Vector3(0, 0.15, 82), Vector3(-16, -7.7, 82), Vector3(-86, 9.6, 41), Vector3(0, 0.15, -150)]:
 		var pk2 := Pickup.new()
 		pk2.position = p
 		add_child(pk2)
@@ -347,7 +358,7 @@ func _markers() -> void:
 		"bot_dummy": Vector3(22, 0.1, -123),
 		"bot_blocker": Vector3(-60, 0.1, 41),
 		"bot_dodger": Vector3(164, 0.2, -164),
-		"bot_aggressor": Vector3(-90, 0.1, -123),
+		"bot_aggressor": Vector3(-90, 0.1, -128),
 		"bot_terrace": Vector3(-275.3, 6.05, -181.0),
 		"arena": Vector3(-287, 0.1, -60),
 	}

@@ -38,7 +38,7 @@ static func build(parent: Node, id: String, c: Vector2, c_idx: int, r_idx: int) 
 		{"s": true, "w": true, "n": false, "e": false},
 		{"s": true, "e": true, "n": false, "w": false},
 	]
-	var out := {"roofs": [], "landmarks": [], "tp": []}
+	var out := {"roofs": [], "landmarks": [], "tp": [], "walks": []}
 	for i in 4:
 		var style: String = lots[i][0]
 		var spec := {"style": style, "h": float(lots[i][1]), "seed": c_idx * 13 + r_idx * 7 + i}
@@ -48,6 +48,8 @@ static func build(parent: Node, id: String, c: Vector2, c_idx: int, r_idx: int) 
 		var kit := BuildingFactory.build(group, rects[i], spec, faces[i], false)
 		if kit.root.has_meta(&"roof"):
 			out.roofs.append(kit.root.get_meta(&"roof"))
+		if kit.root.has_meta(&"walk"):
+			out.walks.append(kit.root.get_meta(&"walk"))
 		if kit.root.has_meta(&"landmark"):
 			var rf: Vector3 = kit.root.get_meta(&"roof")
 			out.landmarks.append([kit.root.get_meta(&"landmark"), rf + Vector3(0, 12, 0)])

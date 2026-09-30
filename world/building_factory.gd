@@ -65,15 +65,33 @@ static func _parapet(k: Kit, r: Rect2, y: float, mat: Material) -> void:
 	k.box(Vector3(r.position.x + r.size.x - t * 0.5, y, c.z), Vector3(t, ht, r.size.y), mat, false)
 
 
-static func _roof_clutter(k: Kit, r: Rect2, y: float, rng: RandomNumberGenerator, mat: Material, extras := true) -> void:
+## Register the walkable roof surface (and what sits on it) so RoofRoutes can
+## attach bridges only where they land on clear roof.
+static func _walk(k: Kit, rect: Rect2, y: float, clutter: Array, avoid := Rect2()) -> void:
+	k.root.set_meta(&"walk", {"rect": rect, "y": y, "avoid": avoid, "clutter": clutter})
+
+
+static func _blot(pos: Vector3, size: Vector2, margin := 1.2) -> Rect2:
+	return Rect2(pos.x - size.x * 0.5 - margin, pos.z - size.y * 0.5 - margin, size.x + margin * 2.0, size.y + margin * 2.0)
+
+
+static func _roof_clutter(k: Kit, r: Rect2, y: float, rng: RandomNumberGenerator, mat: Material, extras := true) -> Array:
 	var c := center(r)
 	var w := r.size.x
 	var d := r.size.y
-	Props.stairhouse(k, Vector3(c.x + rng.randf_range(-0.2, 0.2) * w, y, c.z + rng.randf_range(-0.2, 0.2) * d), Vector3(4.5, 3.2, 3.5), mat)
+	var out: Array = []
+	var sp := Vector3(c.x + rng.randf_range(-0.2, 0.2) * w, y, c.z + rng.randf_range(-0.2, 0.2) * d)
+	Props.stairhouse(k, sp, Vector3(4.5, 3.2, 3.5), mat)
+	out.append(_blot(sp, Vector2(4.9, 3.9)))
 	for i in rng.randi_range(2, 4):
-		Props.ac_unit(k, Vector3(r.position.x + rng.randf_range(2.0, w - 2.0), y, r.position.y + rng.randf_range(2.0, d - 2.0)), rng.randf_range(0, 90))
+		var ap := Vector3(r.position.x + rng.randf_range(2.0, w - 2.0), y, r.position.y + rng.randf_range(2.0, d - 2.0))
+		Props.ac_unit(k, ap, rng.randf_range(0, 90))
+		out.append(_blot(ap, Vector2(2.2, 2.2)))
 	if extras and rng.randf() < 0.6 and w > 12.0:
-		Props.water_tower(k, Vector3(r.position.x + w * rng.randf_range(0.25, 0.75), y, r.position.y + d * rng.randf_range(0.25, 0.75)))
+		var wp := Vector3(r.position.x + w * rng.randf_range(0.25, 0.75), y, r.position.y + d * rng.randf_range(0.25, 0.75))
+		Props.water_tower(k, wp)
+		out.append(_blot(wp, Vector2(4.2, 4.2)))
+	return out
 
 
 static func _mural_on_face(k: Kit, r: Rect2, face: String, y_center: float, size: Vector2, seed_v: float, energy := 1.2) -> void:
@@ -118,6 +136,8 @@ static func _glass(k: Kit, r: Rect2, h: float, rng: RandomNumberGenerator, spec:
 	Props.planter(k, Vector3(podium.end.x - 1.6, 6.0, podium.end.y - 8.0), Vector3(1.2, 0.9, 3.0))
 	Props.ac_unit(k, Vector3(top_rect.position.x + 2.0, h, top_rect.position.y + 2.0))
 	k.root.set_meta(&"roof", Vector3(c.x, h, c.z))
+	# the 4.5 m podium ring is the connectable level for the financial skywalk network
+	_walk(k, podium, 6.0, [_blot(Vector3(podium.position.x + 1.6, 0, podium.position.y + 8.0), Vector2(1.2, 3.0)), _blot(Vector3(podium.end.x - 1.6, 0, podium.end.y - 8.0), Vector2(1.2, 3.0))], inset(r, 5.0).grow(0.4))
 
 
 static func _brick(k: Kit, r: Rect2, h: float, rng: RandomNumberGenerator, spec: Dictionary, faces: Dictionary, is_brick: bool) -> void:
@@ -129,11 +149,13 @@ static func _brick(k: Kit, r: Rect2, h: float, rng: RandomNumberGenerator, spec:
 	var cor := Rect2(body.position - Vector2(0.4, 0.4), body.size + Vector2(0.8, 0.8))
 	_slab(k, cor, h - 0.9, 0.9, Mats.toon(wall.lightened(0.12), 0.5), false)
 	_parapet(k, body, h, Mats.toon(wall.darkened(0.2)))
-	_roof_clutter(k, inset(body, 1.5), h, rng, Mats.toon(wall.darkened(0.15), 0.4))
+	var clut := _roof_clutter(k, inset(body, 1.5), h, rng, Mats.toon(wall.darkened(0.15), 0.4))
 	# roof billboard on some brick towers
 	if rng.randf() < 0.55:
 		var c := center(body)
 		Props.billboard(k, Vector3(c.x, h, body.position.y + 3.0), 180.0, 12.0, 5.0, seed_v + 1.0, 2.5)
+		clut.append(_blot(Vector3(c.x, h, body.position.y + 3.0), Vector2(13.0, 1.6)))
+	_walk(k, body, h, clut)
 	if not is_brick:
 		for f in faces.keys():
 			if faces[f]:
@@ -145,19 +167,23 @@ static func _oldtown(k: Kit, r: Rect2, h: float, rng: RandomNumberGenerator, spe
 	var seed_v := float(spec.get("seed", 1))
 	var parts := 3
 	var seg := r.size.x / parts
+	var clut: Array = []
 	for i in parts:
-		var hh := h * rng.randf_range(0.65, 1.15)
+		var hh := h   # one roof level per lot so the roof reads as one surface
 		var wall: Color = BRICKS[rng.randi() % BRICKS.size()].lerp(Color(0.6, 0.5, 0.4), 0.25)
 		var mat := Mats.facade(wall, seed_v + i, 0.3, Vector2(2.6, 3.0), Vector2(0.45, 0.55), 4.0)
 		var pr := Rect2(Vector2(r.position.x + i * seg + 0.15, r.position.y + 0.3), Vector2(seg - 0.3, r.size.y - 0.6))
 		_slab(k, pr, 0.0, hh, mat)
 		_parapet(k, pr, hh, Mats.toon(wall.darkened(0.25)))
 		var pc := center(pr)
-		Props.ac_unit(k, Vector3(pc.x, hh, pc.z + rng.randf_range(-3, 3)), rng.randf_range(0, 90))
+		var acp := Vector3(pc.x, hh, pc.z + rng.randf_range(-3, 3))
+		Props.ac_unit(k, acp, rng.randf_range(0, 90))
+		clut.append(_blot(acp, Vector2(2.2, 2.2)))
 		if rng.randf() < 0.6:
 			# rooftop laundry / shack
 			k.box(Vector3(pc.x + 2.0, hh, pc.z - 2.0), Vector3(3.0, 2.4, 2.6), Mats.toon(Color(0.35, 0.4, 0.42), 0.7), true)
-		# neighbouring roofs step up/down like a real old-town skyline
+			clut.append(_blot(Vector3(pc.x + 2.0, hh, pc.z - 2.0), Vector2(3.0, 2.6)))
+	_walk(k, inset(r, 0.3), h, clut)
 
 
 static func _billboard(k: Kit, r: Rect2, h: float, rng: RandomNumberGenerator, spec: Dictionary, faces: Dictionary) -> void:
@@ -189,6 +215,7 @@ static func _billboard(k: Kit, r: Rect2, h: float, rng: RandomNumberGenerator, s
 				break
 	Props.billboard(k, Vector3(c.x, h, c.z), 0.0, 16.0, 7.0, seed_v + 9.0, 3.5, 1.6)
 	Props.stairhouse(k, Vector3(c.x + 6.0, h, c.z + 5.0), Vector3(4.0, 3.0, 3.0), Mats.toon(wall.darkened(0.15)))
+	_walk(k, body, h, [_blot(Vector3(c.x, h, c.z), Vector2(17.0, 1.6)), _blot(Vector3(c.x + 6.0, h, c.z + 5.0), Vector2(4.0, 3.0))])
 
 
 static func _museum(k: Kit, r: Rect2, h: float, rng: RandomNumberGenerator, spec: Dictionary, faces: Dictionary) -> void:
@@ -261,6 +288,8 @@ static func _chinese(k: Kit, r: Rect2, h: float, rng: RandomNumberGenerator, spe
 	k.sphere(Vector3(c.x, y + 3.8, c.z), 0.45, gold)
 	Props.ac_unit(k, Vector3(tr.position.x + 2.0, y, tr.position.y + 2.0))
 	k.root.set_meta(&"roof", Vector3(c.x, y, c.z))
+	var pav := minf(tr.size.x, tr.size.y) * 0.62 * 2.0
+	_walk(k, tr, y, [_blot(Vector3(c.x, y, c.z), Vector2(pav, pav), 0.5), _blot(Vector3(tr.position.x + 2.0, y, tr.position.y + 2.0), Vector2(2.2, 2.2))])
 	# vertical shop signs with lantern glow
 	var col := Color(1.0, 0.8, 0.25)
 	var word: String = ["TEA HOUSE", "DIM SUM", "NOODLES", "HERBS", "LUCKY"][rng.randi() % 5]
@@ -391,7 +420,8 @@ static func _alley_level(k: Kit, r: Rect2, h: float, faces: Dictionary, rng: Ran
 		var out := Vector3(sin(deg_to_rad(yaw)), 0, cos(deg_to_rad(yaw)))
 		var side := Vector3(cos(deg_to_rad(yaw)), 0, -sin(deg_to_rad(yaw)))
 		if h > 16.0 and spec.style != "oldtown" and spec.style != "chinese" and rng.randf() < 0.85:
-			Props.fire_escape(k, _face_point(r, f, rng.randf_range(0.3, 0.7)) + out * 0.3, yaw, minf(h, 22.0))
+			var wall_in := 1.0 if spec.style == "billboard" else 0.3
+			Props.fire_escape(k, _face_point(r, f, rng.randf_range(0.3, 0.7)) - out * wall_in, yaw, minf(h, 22.0))
 		if rng.randf() < 0.7:
 			Props.dumpster(k, p + out * 0.9 + side * rng.randf_range(-length * 0.35, length * 0.35), yaw + 90.0)
 		if rng.randf() < 0.6:

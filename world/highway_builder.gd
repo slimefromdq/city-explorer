@@ -36,10 +36,12 @@ static func build_flyover(parent: Node) -> Dictionary:
 	var k := Kit.new(parent, "Flyover", Vector3(205.0, 0, 0), -90.0)
 	var half := CityLayout.PLAY_Z - 4.0
 	var streets: Array = CityLayout.streets_z()
-	_deck(k, -half + 80.0, half - 80.0, y, -half, false, [], true, [streets, 41.0])
-	# ramps down to ground at both ends (local +X == world +Z after the yaw)
-	k.ramp(Vector3(-half, 0.0, 0.0), Vector3(-half + 80.0, y, 0.0), HALF_W * 2.0, DECK_T, Mats.toon(Color(0.42, 0.43, 0.47), 0.8))
-	k.ramp(Vector3(half, 0.0, 0.0), Vector3(half - 80.0, y, 0.0), HALF_W * 2.0, DECK_T, Mats.toon(Color(0.42, 0.43, 0.47), 0.8))
+	# deck spans world z -130..50 (over the highway at z=41); it ramps down both ends.
+	# The south ramp lands before the rail ramp at z=123 so the rail crosses OVER it.
+	_deck(k, -half + 80.0, 50.0, y, -half, false, [], true, [streets, 41.0])
+	var conc := Mats.toon(Color(0.42, 0.43, 0.47), 0.8)
+	k.ramp(Vector3(-half, 0.0, 0.0), Vector3(-half + 80.0, y, 0.0), HALF_W * 2.0, DECK_T, conc)
+	k.ramp(Vector3(130.0, 0.0, 0.0), Vector3(50.0, y, 0.0), HALF_W * 2.0, DECK_T, conc)
 	info.tp.append(["Flyover", Vector3(205.0, y + 0.4, 0.0), 0.0])
 	info.shards.append(Vector3(205.0, y + 1.4, 41.0))
 	info.landmarks.append(["Flyover", Vector3(205.0, y + 3.0, -60.0)])

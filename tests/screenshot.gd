@@ -20,6 +20,14 @@ const SHOTS := [
 	["rail", "Rail viaduct", 90.0, -3.0],
 	["dash_streak", "Start", 180.0, 6.0, "dash"],
 	["map", "Start", 180.0, 6.0, "map"],
+	["quay_river", "Quay", 180.0, 4.0],
+	["sunset_pier", "Harbour pier", 180.0, 5.0],
+	["ship_deck", "Ship deck", 90.0, 4.0],
+	["crane", "Crane walkway", 180.0, -8.0],
+	["metro_gates", Vector3(-17.4, 0.1, 51.0), 180.0, -4.0],
+	["rail_portal", "Metro east portal", -90.0, 6.0],
+	["roof_route", "link:25", 0.0, -8.0],
+	["rail_loop_sky", "Rail viaduct", 90.0, 8.0],
 ]
 
 
@@ -35,13 +43,19 @@ func _ready() -> void:
 		if not only.is_empty() and not only.has(s[0]):
 			continue
 		var pos: Vector3
-		if s[1] is String:
+		var yaw_deg: float = s[2]
+		if s[1] is String and s[1].begins_with("link:"):
+			var lk: Dictionary = main.city.roof_links[int(s[1].substr(5))]
+			pos = lk.a + Vector3(0, 0.4, 0)
+			var dv: Vector3 = lk.b - lk.a
+			yaw_deg = rad_to_deg(atan2(-dv.x, -dv.z))
+		elif s[1] is String:
 			for t in main.city.markers["tp"]:
 				if t[0] == s[1]:
 					pos = t[1]
 		else:
 			pos = s[1]
-		main.teleport_player(pos, deg_to_rad(s[2]))
+		main.teleport_player(pos, deg_to_rad(yaw_deg))
 		main.rig.pitch = deg_to_rad(s[3])
 		var p: Fighter = main.player
 		if s.size() > 4 and s[4] == "map":

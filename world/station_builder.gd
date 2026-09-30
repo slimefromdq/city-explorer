@@ -75,27 +75,37 @@ static func build(parent: Node, c: Vector2) -> Dictionary:
 		k.box(Vector3(cx - 15.5, PIT_Y, zz), Vector3(9.0, -PIT_Y, 1.0), conc, true)
 		k.box(Vector3(cx + 15.5, PIT_Y, zz), Vector3(9.0, -PIT_Y, 1.0), conc, true)
 		k.box(Vector3(cx, -2.0, zz), Vector3(22.0, 2.0, 1.0), conc, true)
-		# tunnels: floor + side walls, dead-ending under the streets
-		var tl := 22.0 if zs < 0.0 else 40.0
-		var tz := cz + zs * (27.0 + tl * 0.5)
-		k.box(Vector3(cx, PIT_Y - 1.0, tz), Vector3(21.0, 1.0, tl), conc, true)
-		for sx: float in [-10.5, 10.5]:
-			k.box(Vector3(cx + sx, PIT_Y, tz), Vector3(1.0, 7.0, tl), conc, true)
-			k.box(Vector3(cx + sx * 0.96, -4.0, tz), Vector3(0.1, 0.25, tl - 1.0), Mats.glow(Color(1.0, 0.85, 0.5), 3.0), false, Vector3.ZERO, false)
-		k.box(Vector3(cx, PIT_Y, cz + zs * (27.0 + tl)), Vector3(21.0, 7.0, 1.0), dark, true)
-	# rails + sleepers
-	for tx: float in [-7.5, 7.5]:
-		for rx: float in [-0.72, 0.72]:
-			k.box(Vector3(cx + tx + rx, PIT_Y, cz), Vector3(0.14, 0.16, 100.0), Mats.toon(Color(0.55, 0.56, 0.6)), false, Vector3.ZERO, false)
-		var zi := -46.0
-		while zi < 60.0:
-			k.box(Vector3(cx + tx, PIT_Y, cz + zi), Vector3(2.2, 0.1, 0.35), dark, false, Vector3.ZERO, false)
-			zi += 2.0
+	var glow_strip := Mats.glow(Color(1.0, 0.85, 0.5), 3.0)
+	# north turn-back chamber: both tracks join in a U-turn loop under the highway street
+	k.box(Vector3(cx, PIT_Y - 1.0, cz - 38.5), Vector3(21.0, 1.0, 23.0), conc, true)
+	for sx: float in [-10.5, 10.5]:
+		k.box(Vector3(cx + sx, PIT_Y, cz - 38.5), Vector3(1.0, 7.0, 23.0), conc, true)
+		k.box(Vector3(cx + sx * 0.96, -4.0, cz - 38.5), Vector3(0.1, 0.25, 22.0), glow_strip, false, Vector3.ZERO, false)
+	k.box(Vector3(cx, PIT_Y, cz - 50.0), Vector3(21.0, 7.0, 1.0), dark, true)
+	# south junction chamber: the two tracks fan out into the east / west tunnels that climb to the elevated rail
+	k.box(Vector3(cx, PIT_Y - 1.0, cz + 38.0), Vector3(21.0, 1.0, 24.0), conc, true)
+	for sx: float in [-10.5, 10.5]:
+		# wall with a 10 m opening for the side tunnel (tunnel centre = cz + 41)
+		k.box(Vector3(cx + sx, PIT_Y, cz + 32.5), Vector3(1.0, 7.0, 11.0), conc, true)
+		k.box(Vector3(cx + sx, PIT_Y, cz + 47.5), Vector3(1.0, 7.0, 11.0), conc, true)
+		k.box(Vector3(cx + sx * 0.96, -4.0, cz + 32.5), Vector3(0.1, 0.25, 10.0), glow_strip, false, Vector3.ZERO, false)
+	k.box(Vector3(cx, PIT_Y, cz + 50.5), Vector3(21.0, 7.0, 1.0), dark, true)
+	# side tunnels along the street: floor + walls, roofed by the ground slab until the open cut
+	for sx: float in [-1.0, 1.0]:
+		var tx0 := cx + sx * 10.5
+		var tx1 := cx + sx * RailBuilder.TRENCH_X0
+		var mid_x := (tx0 + tx1) * 0.5
+		var len := absf(tx1 - tx0)
+		k.box(Vector3(mid_x, PIT_Y - 1.0, RailBuilder.ROW_Z), Vector3(len, 1.0, RailBuilder.TRENCH_W + 1.2), conc, true)
+		for sz: float in [-1.0, 1.0]:
+			k.box(Vector3(mid_x, PIT_Y, RailBuilder.ROW_Z + sz * (RailBuilder.TRENCH_W * 0.5 + 0.3)), Vector3(len, 7.0, 0.6), conc, true)
+			k.box(Vector3(mid_x, -4.0, RailBuilder.ROW_Z + sz * (RailBuilder.TRENCH_W * 0.5 - 0.05)), Vector3(len - 2.0, 0.25, 0.1), glow_strip, false, Vector3.ZERO, false)
 	# platform signs + light strips
 	for sx: float in [-16.0, 16.0]:
 		for zi: float in [-16.0, 0.0, 16.0]:
 			k.box(Vector3(cx + sx, -3.4, cz + zi), Vector3(0.2, 0.9, 5.0), Mats.glow(Color(0.4, 0.9, 1.0), 2.6), false, Vector3.ZERO, false)
-			k.box(Vector3(cx + sx * 0.6, PLAT_Y, cz + zi), Vector3(1.2, 0.5, 1.2), dark, true)
+		for zb: float in [-4.0, 4.0]:
+			Props.bench(k, Vector3(cx + sx, PLAT_Y, cz + zb), 90.0)
 	k.label("PLATFORM 1  >>", Vector3(cx - 11.0, -3.6, cz - 8.0), 1.0, Color(1, 1, 1), 90.0)
 	k.label("PLATFORM 2  >>", Vector3(cx + 11.0, -3.6, cz + 8.0), 1.0, Color(1, 1, 1), -90.0)
 	# stairs from the concourse down to the platforms (north-west and south-east)
@@ -130,17 +140,25 @@ static func build(parent: Node, c: Vector2) -> Dictionary:
 	for zi: float in [-24.0, -12.0, 0.0, 12.0, 24.0]:
 		k.box(Vector3(cx, 24.4, cz + zi), Vector3(60.0, 0.6, 1.4), steel, true)
 	k.box(Vector3(cx, 24.4, cz), Vector3(1.4, 0.6, 60.0), steel, true)
+	# maintenance stair from the upper walkway up to the roof girders (so they are not a place to nowhere)
+	k.stairs(Vector3(cx - 28.5, 14.0, cz - 25.0), Vector3(0, 0, 1), 11.0, 12.5, 1.6, steel)
+	k.box(Vector3(cx - 27.25, 13.4, cz - 26.5), Vector3(3.5, 0.6, 3.0), steel, true)
 	# hanging light rigs
 	for zi: float in [-18.0, 0.0, 18.0]:
 		for xi: float in [-10.0, 10.0]:
 			k.box(Vector3(cx + xi, 21.0, cz + zi), Vector3(6.0, 0.25, 0.8), glowm, false, Vector3.ZERO, false)
 
 	# ---------------------------------------------------------------- concourse dressing
-	for zs: float in [-1.0, 1.0]:
-		for i in 5:
-			var gx := cx - 8.0 + i * 4.0
-			k.box(Vector3(gx, 0.0, cz + zs * 23.5), Vector3(0.5, 1.1, 2.6), dark, true)
-			k.box(Vector3(gx, 1.1, cz + zs * 23.5), Vector3(0.5, 0.1, 1.0), Mats.glow(Color(0.4, 1.0, 0.6), 3.0), false, Vector3.ZERO, false)
+	# ticket gates guard the two stairs down to the platforms (NOT the pit edge)
+	_gates(k, Vector3(cx - 16.0, 0.0, cz - 28.4), dark)
+	_gates(k, Vector3(cx + 16.0, 0.0, cz + 28.4), dark)
+	# safety railing all round the pit, open only at the two stairs (you can still vault it)
+	var rail := Mats.toon(Color(0.85, 0.75, 0.2))
+	var rl := 1.1
+	k.box(Vector3(cx - 20.4, 0.0, cz), Vector3(0.2, rl, 53.0), rail, true)
+	k.box(Vector3(cx + 20.4, 0.0, cz), Vector3(0.2, rl, 53.0), rail, true)
+	for seg in [[-20.4, -18.5, -1.0], [-13.5, 20.4, -1.0], [-20.4, 13.5, 1.0], [18.5, 20.4, 1.0]]:
+		k.box(Vector3(cx + (seg[0] + seg[1]) * 0.5, 0.0, cz + seg[2] * 26.5), Vector3(seg[1] - seg[0], rl, 0.2), rail, true)
 	for i in 4:
 		var bx := cx - 27.0 if i < 2 else cx + 27.0
 		Props.bench(k, Vector3(bx, 0.0, cz - 20.0 + (i % 2) * 40.0), 90.0)
@@ -152,7 +170,7 @@ static func build(parent: Node, c: Vector2) -> Dictionary:
 		var m := Mats.mural(pal[0], pal[1], pal[2], rng.randf() * 20.0, 4.0, 1.3, 0.04)
 		k.mural_quad(Vector3(cx + sx, 9.0, cz), Vector2(20.0, 4.0), 90.0 if sx < 0.0 else -90.0, m)
 	# entrance kiosks
-	Props.stall(k, Vector3(cx - 18.0, 0.0, cz - 27.0), 0.0, Color(0.9, 0.3, 0.3), rng)
+	Props.stall(k, Vector3(cx - 27.0, 0.0, cz - 6.0), 90.0, Color(0.9, 0.3, 0.3), rng)
 
 	# ---------------------------------------------------------------- landmark signage (visible from far away)
 	var ring_mat := Mats.glow(Color(0.35, 0.85, 1.0), 4.5)
@@ -178,21 +196,17 @@ static func build(parent: Node, c: Vector2) -> Dictionary:
 	info.tp.append(["Metro girders", Vector3(cx, 25.0 + 0.3, cz - 12.0), 0.0])
 	info.shards.append_array([Vector3(cx, 26.0, cz), Vector3(cx - 16.0, PLAT_Y + 1.4, cz), Vector3(cx + 24.0, 8.2, cz), Vector3(cx, 15.2, cz + 27.5)])
 
-	# ---------------------------------------------------------------- trains
-	for tx: float in [-7.5, 7.5]:
-		var tr := TrainRunner.new()
-		tr.name = "Train%d" % int(tx * 2.0)
-		var a := Vector3(cx + tx, PIT_Y + 0.25, cz - 48.0)
-		var b := Vector3(cx + tx, PIT_Y + 0.25, cz + 66.0)
-		tr.path = PackedVector3Array([a, b] if tx < 0.0 else [b, a])
-		tr.cars = 4
-		tr.speed = 18.0
-		tr.interval = 30.0
-		tr.hazard = true
-		tr._wait = 8.0 if tx < 0.0 else 22.0
-		parent.add_child(tr)
 	StaticBatch.merge(k.root)
 	return info
+
+
+## A bank of two fare lanes across a stair mouth (centre `at`, lanes run along z).
+static func _gates(k: Kit, at: Vector3, mat: Material) -> void:
+	for dx: float in [-2.75, 0.0, 2.75]:
+		k.box(Vector3(at.x + dx, 0.0, at.z), Vector3(0.5, 1.1, 2.4), mat, true)
+		k.box(Vector3(at.x + dx, 1.1, at.z), Vector3(0.5, 0.08, 1.0), Mats.glow(Color(0.4, 1.0, 0.6), 3.0), false, Vector3.ZERO, false)
+	k.box(Vector3(at.x - 2.75 - 1.2, 0.0, at.z), Vector3(1.4, 1.1, 0.2), mat, true)
+	k.box(Vector3(at.x + 2.75 + 1.2, 0.0, at.z), Vector3(1.4, 1.1, 0.2), mat, true)
 
 
 static func _wall(k: Kit, cx: float, cz: float, along_x: bool, line: float, a0: float, a1: float, y0: float, y1: float, thick: float, mat: Material) -> void:
