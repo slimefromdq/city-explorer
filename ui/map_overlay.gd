@@ -21,7 +21,7 @@ func _process(_dt: float) -> void:
 
 
 func _draw() -> void:
-	var vp := size
+	var vp := get_viewport_rect().size
 	draw_rect(Rect2(Vector2.ZERO, vp), Color(0.02, 0.03, 0.08, 0.86))
 	var world := Vector2(CityLayout.PLAY_X * 2.0, CityLayout.PLAY_Z * 2.0)
 	var sc := minf(vp.x * 0.86 / world.x, vp.y * 0.82 / world.y)
