@@ -17,6 +17,8 @@ const LotPlan := preload("res://city/lot_plan.gd")
 const BuildingPlan := preload("res://city/building_plan.gd")
 const Sightlines := preload("res://city/sightlines.gd")
 const LandmarkBuilder := preload("res://city/landmark_builder.gd")
+const GreeneryPlan := preload("res://city/greenery_plan.gd")
+const SignPlan := preload("res://city/sign_plan.gd")
 
 const DISTRICT_TYPES := ["core", "midrise", "lowrise", "harbour", "park", "financial"]
 const LANDMARK_RIVER_MARGIN := 25.0  # landmark must stand at least this far from the water (m)
@@ -57,6 +59,9 @@ func _init() -> void:
 	_check_lots(city)
 	_check_buildings(city)
 	_check_sightlines(city)
+	_check_precinct(city)
+	_check_greenery(city)
+	_check_signs(city)
 	_finish()
 
 
@@ -952,6 +957,276 @@ func _check_sightlines(city: Dictionary) -> void:
 		if home.is_empty() or Geo2D.overlap_area(corners, home) < Geo2D.polygon_area(corners) * 0.99:
 			misfit.append(lm["id"])
 	_expect(misfit.is_empty(), "every landmark's structure fits inside the lot or plaza reserved for it%s" % ("" if misfit.is_empty() else " (not: %s)" % ", ".join(misfit)))
+
+
+# Meridian Square: a big open space round the tower, with gardens, a pool, a mall and shops that all
+# fit inside it, clear of the tower and of each other, and low enough not to block the sightlines.
+func _check_precinct(city: Dictionary) -> void:
+	var network := RoadNetwork.new(city)
+	var lot_plan := LotPlan.new(city, network)
+	var terrain := TerrainHeight.new(city)
+	var sightlines := Sightlines.new(city, terrain)
+	var precinct: Dictionary = city["precinct"]
+	var home := PackedVector2Array()
+	for lot in lot_plan.lots:
+		if lot["id"] == "site_%s" % precinct["site"]:
+			home = lot["polygon"]
+	_expect(not home.is_empty(), "the square (site '%s') exists as a reserved lot" % precinct["site"])
+	if home.is_empty():
+		return
+	var area := Geo2D.polygon_area(home)
+	_expect(area >= 40000.0, "the square is big (%d m2; at least 40000)" % int(area))
+
+	var tower_lm := {}
+	for lm in city["landmarks"]:
+		if lm["id"] == sightlines.target_id:
+			tower_lm = lm
+	var tower_box := BuildingPlan.rect_corners(sightlines.target_position, Vector2.RIGHT, LandmarkBuilder.ground_footprint(tower_lm)["half"])
+	var clearance := INF
+	for corner in tower_box:
+		clearance = minf(clearance, -Geo2D.polygon_signed_distance(corner, home))
+	_expect(clearance >= 50.0, "there is at least 50 m of open ground between the tower's base and the edge of the square (%.0f m)" % clearance)
+
+	var kinds := {}
+	var shapes := []   # {"name", "kind", "poly"}
+	for f in precinct["features"]:
+		kinds[f["kind"]] = int(kinds.get(f["kind"], 0)) + 1
+		var poly := PackedVector2Array()
+		match f["kind"]:
+			"garden":
+				poly = CityData.to_points(f["polygon"])
+			"pool":
+				var centre := Vector2(f["center"][0], f["center"][1])
+				for k in 16:
+					poly.append(centre + Vector2.from_angle(TAU * k / 16.0) * float(f["radius"]))
+			_:
+				poly = BuildingPlan.rect_corners(Vector2(f["center"][0], f["center"][1]), Vector2.from_angle(deg_to_rad(float(f.get("yaw", 0.0)))), Vector2(f["size"][0], f["size"][1]) * 0.5)
+		shapes.append({"name": f["name"], "kind": f["kind"], "poly": poly, "feature": f})
+	_expect(int(kinds.get("garden", 0)) >= 2 and int(kinds.get("pool", 0)) >= 1 and int(kinds.get("podium", 0)) >= 1 and int(kinds.get("pavilion", 0)) >= 4,
+		"the square has gardens, a pool, a mall and shops (%s)" % str(kinds))
+
+	var outside := []
+	var on_tower := []
+	for sh in shapes:
+		if Geo2D.overlap_area(sh["poly"], home) < Geo2D.polygon_area(sh["poly"]) * 0.999:
+			outside.append(sh["name"])
+		if Geo2D.overlap_area(sh["poly"], tower_box) > 0.5:
+			on_tower.append(sh["name"])
+	_expect(outside.is_empty(), "every feature lies inside the square%s" % ("" if outside.is_empty() else " (not: %s)" % ", ".join(outside)))
+	_expect(on_tower.is_empty(), "nothing is built on the tower's base%s" % ("" if on_tower.is_empty() else " (%s)" % ", ".join(on_tower)))
+	var clashes := []
+	for i in shapes.size():
+		for j in range(i + 1, shapes.size()):
+			var pair := [shapes[i]["kind"], shapes[j]["kind"]]
+			if "pool" in pair and "garden" in pair:
+				continue  # a fountain pool may sit inside a garden
+			if Geo2D.overlap_area(shapes[i]["poly"], shapes[j]["poly"]) > 0.5:
+				clashes.append("%s / %s" % [shapes[i]["name"], shapes[j]["name"]])
+	_expect(clashes.is_empty(), "features do not overlap each other%s" % ("" if clashes.is_empty() else " (%s)" % ", ".join(clashes)))
+
+	var too_tall := []
+	for sh in shapes:
+		var f: Dictionary = sh["feature"]
+		if f.has("height"):
+			var rect := Geo2D.min_area_rect(sh["poly"])
+			var ground := terrain.height_at(rect["center"])
+			if ground + float(f["height"]) > sightlines.ceiling_over(rect["center"], rect["u"], rect["half"]):
+				too_tall.append(sh["name"])
+	_expect(too_tall.is_empty(), "no feature in the square blocks a line of sight to the tower%s" % ("" if too_tall.is_empty() else " (%s)" % ", ".join(too_tall)))
+
+
+# Greenery: the park has a pond and paths that do not collide; every tree stands somewhere sensible;
+# green roofs follow the data; the whole plan is reproducible.
+func _check_greenery(city: Dictionary) -> void:
+	var network := RoadNetwork.new(city)
+	var lot_plan := LotPlan.new(city, network)
+	var terrain := TerrainHeight.new(city)
+	var sightlines := Sightlines.new(city, terrain)
+	var building_plan := BuildingPlan.new(city, lot_plan, terrain, sightlines)
+	var plan := GreeneryPlan.new(city, network, lot_plan, building_plan, sightlines, terrain)
+	var g: Dictionary = city["greenery"]
+
+	var park := PackedVector2Array()
+	for d in city["districts"]:
+		if d["type"] == "park":
+			park = CityData.to_points(d["polygon"])
+	var museum := PackedVector2Array()
+	for site in city["sites"]:
+		if site["kind"] == "museum":
+			museum = CityData.to_points(site["polygon"])
+
+	# ponds: in the park, really underwater
+	var ponds_ok := true
+	for pond in city["terrain"].get("ponds", []):
+		var centre := Vector2(pond["center"][0], pond["center"][1])
+		ponds_ok = ponds_ok and Geo2D.polygon_signed_distance(centre, park) < -(float(pond["radius"]) + 15.0) \
+			and terrain.height_at(centre) < terrain.sea_level - 1.0 and terrain.height_at(centre + Vector2(float(pond["radius"]) * 1.3, 0.0)) > terrain.sea_level + 1.0
+	_expect(ponds_ok and city["terrain"].get("ponds", []).size() >= 1, "the park has a pond that is underwater, with dry banks, well inside the park")
+
+	# paths: inside the park, not through the pond or the museum
+	var paths_ok := true
+	for path in plan.paths:
+		for p in path["points"]:
+			paths_ok = paths_ok and Geometry2D.is_point_in_polygon(p, park) and not Geometry2D.is_point_in_polygon(p, museum)
+			for pond in city["terrain"].get("ponds", []):
+				paths_ok = paths_ok and p.distance_to(Vector2(pond["center"][0], pond["center"][1])) > float(pond["radius"]) + float(path["width"]) * 0.5
+	_expect(paths_ok and plan.paths.size() >= 3, "%d footpaths stay inside the park, off the pond and the museum" % plan.paths.size())
+
+	# trees
+	var zones := {}
+	for t in plan.trees:
+		zones[t["zone"]] = int(zones.get(t["zone"], 0)) + 1
+	_expect(plan.trees.size() >= 400 and zones.has("park") and zones.has("street") and zones.has("garden"), "trees grow in the park, along the streets and in the gardens (%s)" % str(zones))
+
+	var roads: Array = network.ribbons(0.0)
+	var land_ok := true
+	var on_road := 0
+	var in_lot := 0
+	var in_water := 0
+	var in_pond := 0
+	var too_high := 0
+	var blocks_view := 0
+	var off_park := 0
+	var lots_with_box := []
+	for lot in lot_plan.lots:
+		lots_with_box.append({"poly": lot["polygon"], "box": _box(lot["polygon"])})
+	for t in plan.trees:
+		var p: Vector2 = t["pos"]
+		land_ok = land_ok and _inside_any(p, network.interior)
+		if _inside_any(p, network.water_zone):
+			in_water += 1
+		for r in roads:
+			if _box(r).has_point(p) and Geometry2D.is_point_in_polygon(p, r):
+				on_road += 1
+				break
+		if t["zone"] != "garden":  # (the square's gardens are inside a reserved lot on purpose)
+			for l in lots_with_box:
+				if l["box"].has_point(p) and Geometry2D.is_point_in_polygon(p, l["poly"]):
+					in_lot += 1
+					break
+		for pond in city["terrain"].get("ponds", []):
+			if p.distance_to(Vector2(pond["center"][0], pond["center"][1])) < float(pond["radius"]):
+				in_pond += 1
+		var height: float = float(GreeneryPlan.TREE_HEIGHT[t["kind"]]) * float(t["scale"])
+		if height > float(g["tree_max_height"]) + 0.01:
+			too_high += 1
+		if terrain.height_at(p) + height > sightlines.ceiling_over(p, Vector2.RIGHT, Vector2(1.5, 1.5)):
+			blocks_view += 1
+		if t["zone"] == "park" and not Geometry2D.is_point_in_polygon(p, park):
+			off_park += 1
+	_expect(land_ok, "every tree stands on land inside the coast road")
+	_expect(on_road == 0 and in_lot == 0 and in_water == 0 and in_pond == 0,
+		"no tree is on a road (%d), in a lot (%d), in the water (%d) or in a pond (%d)" % [on_road, in_lot, in_water, in_pond])
+	_expect(off_park == 0, "park trees stay inside the park")
+	_expect(too_high == 0, "no tree is taller than %d m" % int(g["tree_max_height"]))
+	_expect(blocks_view == 0, "no tree rises into a line of sight to the tower")
+
+	# green roofs and sky gardens follow the data
+	var by_group := {}
+	var roofed := {}
+	for b in building_plan.buildings:
+		by_group[b["group"]] = int(by_group.get(b["group"], 0)) + 1
+	var by_id := {}
+	for b in building_plan.buildings:
+		by_id[b["id"]] = b
+	var roofs_inside := true
+	for roof in plan.roofs:
+		var b: Dictionary = by_id[roof["building"]]
+		roofed[b["group"]] = int(roofed.get(b["group"], 0)) + 1
+		roofs_inside = roofs_inside and roof["size"].x <= b["size"].x and roof["size"].y <= b["size"].y
+	var fraction_ok := true
+	var text := []
+	for group in g["green_roof_fraction"]:
+		if int(by_group.get(group, 0)) >= 30:
+			var share := float(roofed.get(group, 0)) / float(by_group[group])
+			fraction_ok = fraction_ok and absf(share - float(g["green_roof_fraction"][group])) <= 0.15
+			text.append("%s %d%%" % [group, int(share * 100.0)])
+	_expect(fraction_ok, "the share of green roofs matches the data (%s)" % ", ".join(text))
+	_expect(roofs_inside, "every roof garden lies within its building's footprint")
+	var financial_roofs := float(roofed.get("financial", 0)) / maxf(float(by_group.get("financial", 1)), 1.0)
+	_expect(financial_roofs > float(roofed.get("lowrise", 0)) / maxf(float(by_group.get("lowrise", 1)), 1.0), "the financial towers are the greenest (Singapore): %d%% roofs vs low-rise" % int(financial_roofs * 100.0))
+	var band_ok := true
+	for band in plan.sky_gardens:
+		var b: Dictionary = by_id[band["building"]]
+		band_ok = band_ok and int(b["floors"]) >= GreeneryPlan.SKY_GARDEN_MIN_FLOORS and float(band["level"]) < float(b["height"]) and float(band["level"]) > 0.0
+	_expect(band_ok and plan.sky_gardens.size() > 0, "%d sky-garden bands sit on tall towers, below their roofs" % plan.sky_gardens.size())
+
+	# same JSON -> same plants
+	var again := GreeneryPlan.new(city, RoadNetwork.new(city), lot_plan, building_plan, sightlines, terrain)
+	var same := again.trees.size() == plan.trees.size() and again.roofs.size() == plan.roofs.size()
+	if same:
+		for i in plan.trees.size():
+			same = same and again.trees[i]["pos"].is_equal_approx(plan.trees[i]["pos"]) and is_equal_approx(float(again.trees[i]["scale"]), float(plan.trees[i]["scale"]))
+	_expect(same, "the planting is reproducible (%d trees, %d roof gardens)" % [plan.trees.size(), plan.roofs.size()])
+
+
+# Signs: mounted on the facade that faces a road, at shop height, inside the lot, in the count the data asks.
+func _check_signs(city: Dictionary) -> void:
+	var network := RoadNetwork.new(city)
+	var lot_plan := LotPlan.new(city, network)
+	var terrain := TerrainHeight.new(city)
+	var sightlines := Sightlines.new(city, terrain)
+	var building_plan := BuildingPlan.new(city, lot_plan, terrain, sightlines)
+	var plan := SignPlan.new(city, network, building_plan)
+	var g: Dictionary = city["greenery"]
+	var by_id := {}
+	for b in building_plan.buildings:
+		by_id[b["id"]] = b
+	var lots_by_id := {}
+	for lot in lot_plan.lots:
+		lots_by_id[lot["id"]] = lot["polygon"]
+
+	_expect(plan.signs.size() >= 400, "the streets are signage-heavy (%d signs)" % plan.signs.size())
+	var per_building := {}
+	var off_wall := 0
+	var wrong_height := 0
+	var outside_lot := 0
+	var too_many := 0
+	var low := float(g["sign_min_height"])
+	var high := float(g["sign_max_height"])
+	for s in plan.signs:
+		var b: Dictionary = by_id[s["building"]]
+		per_building[s["building"]] = int(per_building.get(s["building"], 0)) + 1
+		# on the wall: in the building's own frame the sign sits on one face
+		var u: Vector2 = b["u"]
+		var local := Vector2((s["pos"] - b["center"]).dot(u), (s["pos"] - b["center"]).dot(u.orthogonal()))
+		var half: Vector2 = b["size"] * 0.5
+		var on_x_face := absf(absf(local.x) - half.x) < 0.05 and absf(local.y) <= half.y + 0.05
+		var on_y_face := absf(absf(local.y) - half.y) < 0.05 and absf(local.x) <= half.x + 0.05
+		if not (on_x_face or on_y_face):
+			off_wall += 1
+		if float(s["above_base"]) < low - 0.01 or float(s["above_base"]) + float(s["size"].y) > float(b["height"]):
+			wrong_height += 1
+		# the sign must not poke out of the lot (so it cannot reach the road)
+		var tip: Vector2 = s["pos"] + (s["normal"] as Vector2) * float(s["size"].z)
+		if not Geometry2D.is_point_in_polygon(tip, lots_by_id[b["lot"]]):
+			outside_lot += 1
+		if float(s["above_base"]) > high + 0.01:
+			wrong_height += 1
+	for id in per_building:
+		if per_building[id] > int(g["signs"].get(by_id[id]["group"], 0)):
+			too_many += 1
+	_expect(off_wall == 0, "every sign is mounted on a wall (%d floating)" % off_wall)
+	_expect(wrong_height == 0, "every sign is at shop height, below its roof (%d wrong)" % wrong_height)
+	_expect(outside_lot == 0, "no sign sticks out of its lot towards the road (%d do)" % outside_lot)
+	_expect(too_many == 0, "no building has more signs than the data allows")
+	var groups := {}
+	for s in plan.signs:
+		groups[by_id[s["building"]]["group"]] = true
+	_expect(groups.has("midrise") and groups.has("core") and groups.has("harbour") and groups.has("lowrise"), "signs appear in every district type that should have them")
+	var again := SignPlan.new(city, RoadNetwork.new(city), building_plan)
+	var same := again.signs.size() == plan.signs.size()
+	if same:
+		for i in plan.signs.size():
+			same = same and again.signs[i]["pos"].is_equal_approx(plan.signs[i]["pos"]) and again.signs[i]["color"] == plan.signs[i]["color"]
+	_expect(same, "the signs are reproducible (%d signs)" % plan.signs.size())
+
+
+func _inside_any(p: Vector2, polygons: Array) -> bool:
+	for poly in polygons:
+		if Geometry2D.is_point_in_polygon(p, poly):
+			return true
+	return false
 
 
 # ---- helpers ---------------------------------------------------------------

@@ -17,12 +17,13 @@ const TYPE_COLORS := {
 	"lowrise": Color(0.93, 0.87, 0.58),
 	"harbour": Color(0.50, 0.72, 0.84),
 }
+const PARK_COLOR := Color(0.38, 0.66, 0.32)  # park blocks (lawn) are drawn too, though they have no lots
 const SITE_COLORS := {
 	"station": Color(0.22, 0.22, 0.27),
 	"library": Color(0.50, 0.30, 0.15),
 	"museum": Color(0.12, 0.50, 0.50),
 	"performance_hall": Color(0.65, 0.15, 0.48),
-	"plaza": Color(0.82, 0.82, 0.78),
+	"plaza": Color(0.78, 0.74, 0.66),
 }
 
 
@@ -30,9 +31,15 @@ static func build(plan, terrain) -> MeshInstance3D:
 	var verts := PackedVector3Array()
 	var colors := PackedColorArray()
 	var indices := PackedInt32Array()
+	var patches: Array = []  # {"polygon", "color"}: every lot, then the park lawns
 	for lot in plan.lots:
-		var color := _lot_color(lot)
-		for poly in Geometry2D.offset_polygon(lot["polygon"], -DISPLAY_INSET):
+		patches.append({"polygon": lot["polygon"], "color": _lot_color(lot)})
+	for block in plan.block_map.blocks:
+		if block["type"] == "park":
+			patches.append({"polygon": block["polygon"], "color": PARK_COLOR})
+	for patch in patches:
+		var color: Color = patch["color"]
+		for poly in Geometry2D.offset_polygon(patch["polygon"], -DISPLAY_INSET):
 			var tris := Geometry2D.triangulate_polygon(poly)
 			for t in range(0, tris.size(), 3):
 				var a := poly[tris[t]]

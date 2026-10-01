@@ -68,11 +68,22 @@ func _init() -> void:
 		_expect(tower != null, "the tower exists")
 		if tower != null:
 			var top := 0.0
-			for part in tower.get_children():
+			for part in tower.find_children("*", "MeshInstance3D", true, false):
 				var box: AABB = (part as MeshInstance3D).global_transform * (part as MeshInstance3D).get_aabb()
 				top = maxf(top, box.end.y)
-			_expect(absf(top - 320.0 - gen.terrain.height_at(Vector2(920, 325))) < 6.0, "the tower reaches its data height (top %.0f m)" % top)
+			var foot: float = gen.terrain.height_at(Vector2(920, 325))
+			_expect(top - foot >= 320.0 and top - foot <= 336.0, "the tower reaches its data height plus its mast (top %.0f m above ground)" % (top - foot))
 	_expect(gen.sightlines.find_blockers(gen.building_plan.buildings).is_empty(), "no line of sight to the tower is blocked in the generated city")
+	var precinct: Node3D = gen.get_node_or_null("Precinct")
+	_expect(precinct != null and precinct.get_child_count() >= 10, "generator built the square's features (%d parts)" % (precinct.get_child_count() if precinct != null else 0))
+	var greenery: Node3D = gen.get_node_or_null("Greenery")
+	_expect(greenery != null and greenery.get_node_or_null("TreeCrownsRound") != null and greenery.get_node_or_null("RoofGardens") != null and greenery.get_node_or_null("Paths") != null, "generator built trees, roof gardens and paths")
+	if greenery != null:
+		var trunks := (greenery.get_node("TreeTrunks") as MultiMeshInstance3D).multimesh.instance_count
+		var crowns := (greenery.get_node("TreeCrownsRound") as MultiMeshInstance3D).multimesh.instance_count + (greenery.get_node("TreeCrownsCone") as MultiMeshInstance3D).multimesh.instance_count
+		_expect(trunks == gen.greenery_plan.trees.size() and crowns == trunks, "every planned tree is drawn (%d trees)" % trunks)
+	var signs: MultiMeshInstance3D = gen.get_node_or_null("Signs")
+	_expect(signs != null and signs.multimesh.instance_count == gen.sign_plan.signs.size() and signs.multimesh.instance_count > 400, "the neon signs are drawn (%d)" % (signs.multimesh.instance_count if signs != null else 0))
 	var cam: Camera3D = view.get_node("FlyCamera")
 	_expect(cam.position.y > 100.0, "camera was framed above the city")
 	print("generated in %d ms" % (Time.get_ticks_msec() - started))
