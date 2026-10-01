@@ -88,12 +88,13 @@ extends Node3D
 @export var raise_window_sills := true: set = _set_raise_window_sills
 
 @export_group("Undercroft")
-## A walkway cut through each stair flight, so you can pass from the central floor to the arcade under the balcony.
+## Hollows out the space under each stair flight and its landing: a large open room you can walk
+## into from both sides, instead of solid stone.
 @export var undercroft_enabled := true: set = _set_undercroft_enabled
-## Clear height. At least 2x the player's height (3.6 m for the 1.8 m reference).
+## Minimum clear height under the flight. The flight is hollowed wherever it is at least this high
+## above the floor, so a larger value gives a shorter but taller undercroft. At least 2x the
+## player's height (3.6 m for the 1.8 m reference).
 @export_range(2.0, 6.0, 0.1, "suffix:m") var undercroft_height := 3.8: set = _set_undercroft_height
-## Width of the opening along the flight. At least 3x the player's width.
-@export_range(1.0, 8.0, 0.1, "suffix:m") var undercroft_width := 3.0: set = _set_undercroft_width
 
 @export_group("Kiosks")
 @export var kiosks_enabled := true: set = _set_kiosks_enabled
@@ -475,7 +476,6 @@ func _build_mezzanine(root: Node3D, dims: Dictionary) -> void:
 	mz.step_depth = step_depth
 	mz.undercroft_enabled = undercroft_enabled
 	mz.undercroft_height = undercroft_height
-	mz.undercroft_width = undercroft_width
 	mz.floor_color = mezzanine_floor_color
 	mz.stone_color = stone_color
 	root.add_child(mz)
@@ -561,7 +561,6 @@ func _set_mezzanine_floor_color(v: Color) -> void: mezzanine_floor_color = v; _q
 func _set_raise_window_sills(v: bool) -> void: raise_window_sills = v; _queue_rebuild()
 func _set_undercroft_enabled(v: bool) -> void: undercroft_enabled = v; _queue_rebuild()
 func _set_undercroft_height(v: float) -> void: undercroft_height = v; _queue_rebuild()
-func _set_undercroft_width(v: float) -> void: undercroft_width = v; _queue_rebuild()
 func _set_kiosks_enabled(v: bool) -> void: kiosks_enabled = v; _queue_rebuild()
 func _set_kiosk_bays(v: PackedInt32Array) -> void: kiosk_bays = v; _queue_rebuild()
 func _set_kiosk_properties(v: Dictionary) -> void: kiosk_properties = v; _queue_rebuild()

@@ -33,8 +33,7 @@ var stair_width := 4.0
 var step_height := 0.2      # target riser; adjusted so a whole number of risers reaches `height`
 var step_depth := 0.3       # tread
 var undercroft_enabled := true
-var undercroft_height := 3.8   # clear height of the walkway cut through each flight
-var undercroft_width := 3.0    # its width along the flight (the walkway is as long as the flight is wide)
+var undercroft_height := 3.8   # minimum clear height under a flight: the flight is hollowed out wherever it is tall enough
 var floor_color := Color(0.40, 0.28, 0.21)
 var stone_color := Color(0.55, 0.55, 0.57)
 
@@ -56,7 +55,8 @@ const POST_SPACING := 1.0
 const TOP_RAIL_SIZE := 0.14
 const LOWER_RAIL_HEIGHT := 0.35
 const LOWER_RAIL_SIZE := 0.08
-const SOFFIT_THICKNESS := 0.5           # solid stone left above the undercroft opening
+const SOFFIT_THICKNESS := 0.5           # thickness of the stair slab / landing deck above the undercroft
+const LANDING_COLUMN := 0.8             # side of the square columns that carry a hollowed landing
 const STAIR_POST_EVERY := 2             # a post on every Nth tread
 
 var _stone: Array[Transform3D] = []
@@ -89,15 +89,13 @@ func rebuild() -> void:
 	_commit("MezzanineDecks", _decks, _material(floor_color))
 
 
-## The undercroft should feel roomy: about twice the player's height and three times their width.
+## The undercroft should feel roomy: about twice the player's height, and the flight (so the
+## walkway) at least three times the player's width.
 func _check_undercroft() -> void:
 	if not undercroft_enabled:
 		return
-	if undercroft_height < PlayerScale.HEIGHT * 2.0 or undercroft_width < PlayerScale.WIDTH * 3.0:
-		push_warning("ConcourseMezzanine: undercroft is %.1f x %.1f m; want at least %.1f x %.1f m (2x the player's height, 3x their width)." % [undercroft_height, undercroft_width, PlayerScale.HEIGHT * 2.0, PlayerScale.WIDTH * 3.0])
-	var near: float = undercroft_run_range(height / maxi(2, ceili(height / step_height))).x
-	if near < step_depth:
-		push_warning("ConcourseMezzanine: the undercroft reaches the landing; lower undercroft_height or its width.")
+	if undercroft_height < PlayerScale.HEIGHT * 2.0 or stair_width < PlayerScale.WIDTH * 3.0:
+		push_warning("ConcourseMezzanine: undercroft is %.1f m high and %.1f m wide; want at least %.1f x %.1f m (2x the player's height, 3x their width)." % [undercroft_height, stair_width, PlayerScale.HEIGHT * 2.0, PlayerScale.WIDTH * 3.0])
 
 
 ## A flight rises toward its end wall at the same slope whatever the mezzanine height, so
@@ -227,23 +225,29 @@ func _build_flight(e: int, s: int, half_l: float, half_w: float, inner_z: float)
 	var land_cz := s * (land_z0 + land_z1) * 0.5
 	var land_cx := e * (half_l - depth * 0.5)
 	_add(_decks, Vector3(land_cx, height - thickness * 0.5, land_cz), Vector3(depth, thickness, land_z1 - land_z0))
-	_add(_stone, Vector3(land_cx, (height - thickness) * 0.5, land_cz), Vector3(depth, height - thickness, land_z1 - land_z0))
+	if undercroft_enabled:
+		# open underneath: two columns at the flight side carry the deck (the end wall carries the other edge)
+		var col_x := x_land + e * (LANDING_COLUMN * 0.5 + 0.1)
+		for col_z in [land_z0 + LANDING_COLUMN * 0.5 + 0.1, land_z1 - LANDING_COLUMN * 0.5 - 0.1]:
+			_add(_stone, Vector3(col_x, (height - thickness) * 0.5, s * col_z), Vector3(LANDING_COLUMN, height - thickness, LANDING_COLUMN))
+	else:
+		_add(_stone, Vector3(land_cx, (height - thickness) * 0.5, land_cz), Vector3(depth, height - thickness, land_z1 - land_z0))
 
 	# treads, numbered from the landing; the first riser up to the landing is the one at x_land
 	var n := maxi(2, ceili(height / step_height))
 	var riser := height / n
 	var tread_cx: Array[float] = []
 	var tread_top: Array[float] = []
-	var cut := undercroft_run_range(riser)  # distances from the landing edge covered by the opening
+	var open_far := undercroft_open_run(riser)  # the flight is hollowed out up to this far from the landing
 	for j in n - 1:
 		var top := height - (j + 1) * riser
 		var cx := x_land - e * (j + 0.5) * step_depth
 		tread_cx.append(cx)
 		tread_top.append(top)
-		var run := (j + 0.5) * step_depth
-		if undercroft_enabled and run > cut.x and run < cut.y:
-			# undercroft: leave only the stone above the opening, so a walkway passes under the flight
-			_add(_stone, Vector3(cx, (top + undercroft_height) * 0.5, zc), Vector3(step_depth, top - undercroft_height, width))
+		if undercroft_enabled and (j + 0.5) * step_depth < open_far:
+			# hollowed: each tread is just a slab (a riser's height plus SOFFIT_THICKNESS), so the underside steps up with the flight
+			var slab := riser + SOFFIT_THICKNESS
+			_add(_stone, Vector3(cx, top - slab * 0.5, zc), Vector3(step_depth, slab, width))
 		else:
 			_add(_stone, Vector3(cx, top * 0.5, zc), Vector3(step_depth, top, width))
 
@@ -265,20 +269,12 @@ func _build_flight(e: int, s: int, half_l: float, half_w: float, inner_z: float)
 		_balustrade(Vector3(edge_x, height, s * zb), Vector3(edge_x, height, s * inner_z))
 
 
-## Distances from the landing's inner edge between which each flight is hollowed: the opening ends
-## where the flight is just tall enough to leave SOFFIT_THICKNESS of stone above `undercroft_height`.
-## Returns Vector2(near, far).
-func undercroft_run_range(riser: float) -> Vector2:
+## How far from the landing's inner edge (along the flight) the flight is hollowed out: up to where
+## the stair slab's underside is still `undercroft_height` above the floor. Beyond that the flight is
+## solid, so there is no low crawl space. Under the landing itself the space is open.
+func undercroft_open_run(riser: float) -> float:
 	var slope := riser / step_depth
-	var far := (height - undercroft_height - SOFFIT_THICKNESS) / slope
-	return Vector2(far - undercroft_width, far)
-
-
-## World X (absolute value) of the middle of the undercroft opening.
-func undercroft_centre_x() -> float:
-	var n := maxi(2, ceili(height / step_height))
-	var r := undercroft_run_range(height / n)
-	return hall_length * 0.5 - depth - (r.x + r.y) * 0.5
+	return maxf(0.0, (height - undercroft_height - SOFFIT_THICKNESS) / slope)
 
 
 # ------------------------------------------------------------------ primitives

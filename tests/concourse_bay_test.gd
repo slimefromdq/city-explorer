@@ -102,12 +102,11 @@ func _shot(shot_name: String, pos: Vector3, target: Vector3, feet = null, jump :
 	return {"name": shot_name, "pos": pos, "target": target, "feet": feet, "jump": jump, "up": up, "fov": fov}
 
 
-## Distance from the landing edge to the middle of the undercroft opening (mirrors ConcourseMezzanine).
-func _undercroft_run_mid(hall: ConcourseHall) -> float:
+## How far along a flight, from the landing edge, the undercroft extends (mirrors ConcourseMezzanine).
+func _undercroft_open_run(hall: ConcourseHall) -> float:
 	var steps: int = maxi(2, ceili(hall.mezzanine_height / hall.step_height))
 	var slope: float = (hall.mezzanine_height / steps) / hall.step_depth
-	var far: float = (hall.mezzanine_height - hall.undercroft_height - 0.5) / slope
-	return far - hall.undercroft_width * 0.5
+	return (hall.mezzanine_height - hall.undercroft_height - 0.5) / slope
 
 
 ## Top of the tread at world X on the +X end's flights (the landing edge is `depth` in from the end wall).
@@ -140,7 +139,8 @@ func _hall_shots(hall: ConcourseHall) -> Array:
 	var underside: float = deck_y + hall.bridge_arch_rise * (1.0 - u * u) - hall.mezzanine_thickness - 0.6
 	print("headroom check: tread top %.2f m, bridge underside over the flight's outer edge %.2f m, clearance %.2f m (standing %.1f m, jumping %.1f m)" % [tight_top, underside, underside - tight_top, PlayerScale.HEIGHT, PlayerScale.HEIGHT + PlayerScale.JUMP_HEIGHT])
 	var foot_tread_x: float = foot_x + 1.2  # a few treads up from the bottom
-	var uc_x: float = half - hall.mezzanine_depth - _undercroft_run_mid(hall)
+	var x_land: float = half - hall.mezzanine_depth
+	var uc_far_x: float = x_land - _undercroft_open_run(hall)  # where the hollow part of the flight ends, nearest the hall centre
 	var kiosk_x: float = ((hall.kiosk_bays[0] if hall.kiosk_bays.size() > 0 else 2) - (hall.hall_bays - 1) * 0.5) * bay.bay_width  # first kiosk bay on the -Z wall
 	return [
 		# 1. at the near entrance, looking down the hall; the capsule stands a few metres ahead
@@ -161,8 +161,10 @@ func _hall_shots(hall: ConcourseHall) -> Array:
 			Vector3(tight_x, tight_top, outer_z - 0.5), true),
 		# extra: the far wall's round window, seen from between the bridges, off-axis so the clock is not in the way
 		_shot("far_wall_window", Vector3(-6.0, EYE_HEIGHT, -7.0), Vector3(half, hall.rose_height - 4.0, 0), Vector3(-1.0, 0, -4.5)),
-		# extra: walking through an undercroft (across the +X, +Z flight), the capsule inside it
-		_shot("undercroft_walkthrough", Vector3(uc_x, EYE_HEIGHT, za - 3.5), Vector3(uc_x, 2.4, inner_z), Vector3(uc_x, 0, (za + outer_z) * 0.5 + 0.5)),
+		# extra: the undercroft from the entrance corridor, looking into it across the flight; the capsule stands inside
+		_shot("undercroft_from_side", Vector3(x_land - 2.0, EYE_HEIGHT, 1.5), Vector3(x_land - 2.0, 3.0, inner_z), Vector3(x_land - 2.0, 0, (za + outer_z) * 0.5)),
+		# extra: just inside the undercroft's low end, looking in toward the landing; the capsule is further in
+		_shot("undercroft_looking_in", Vector3(uc_far_x + 0.8, EYE_HEIGHT, (za + outer_z) * 0.5), Vector3(x_land + 1.5, 3.5, (za + outer_z) * 0.5), Vector3(x_land - 1.5, 0, (za + outer_z) * 0.5)),
 		# extra: the -Z wall's kiosk: the capsule stands in front of the counter
 		_shot("kiosk_counter", Vector3(kiosk_x + 2.5, EYE_HEIGHT, -half_w + 7.5), Vector3(kiosk_x, 2.0, -half_w), Vector3(kiosk_x - 0.5, 0, -half_w + 2.6)),
 		# extra: the same kiosk's board from the opposite balcony (the booth blocks the floor-level line across), ~28 m away
