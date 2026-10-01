@@ -258,6 +258,7 @@ func _build_flight(e: int, s: int, half_l: float, half_w: float, inner_z: float)
 	var tread_cx: Array[float] = []
 	var tread_top: Array[float] = []
 	var open_far := undercroft_open_run(riser)  # the flight is hollowed out up to this far from the landing
+	var first_solid := n - 1   # the first tread (counted from the landing) that is a solid block, not a hollowed slab
 	for j in n - 1:
 		var top := height - (j + 1) * riser
 		var cx := x_land - e * (j + 0.5) * step_depth
@@ -267,10 +268,9 @@ func _build_flight(e: int, s: int, half_l: float, half_w: float, inner_z: float)
 			# hollowed: each tread is just a slab (a riser's height plus SOFFIT_THICKNESS), so the underside steps up with the flight
 			var slab := riser + SOFFIT_THICKNESS
 			_add(_stone, Vector3(cx, top - slab * 0.5, zc), Vector3(step_depth, slab, width))
-			_col(Vector3(cx, top - slab * 0.5, zc), Vector3(step_depth, slab, width))
 		else:
 			_add(_stone, Vector3(cx, top * 0.5, zc), Vector3(step_depth, top, width))
-			_col(Vector3(cx, top * 0.5, zc), Vector3(step_depth, top, width))
+			first_solid = mini(first_solid, j)
 
 	# a smooth ramp over the steps: what the player actually walks on (a capsule cannot climb 0.2 m risers)
 	var ramp_a := Vector3(x_land - e * n * step_depth, 0.0, zc)
@@ -279,6 +279,20 @@ func _build_flight(e: int, s: int, half_l: float, half_w: float, inner_z: float)
 	var ramp_rot := Basis(Vector3.BACK, atan2(ramp_dir.y, ramp_dir.x))
 	var ramp_up := ramp_rot * Vector3.UP
 	_col((ramp_a + ramp_b) * 0.5 - ramp_up * (RAMP_THICKNESS * 0.5 + RAMP_SINK), Vector3(ramp_dir.length(), RAMP_THICKNESS, width), ramp_rot)
+	# the solid lower part of the flight (no colliders per tread: their 0.2 m risers would block the capsule):
+	# one wedge under the ramp, from the foot to where the hollowed (undercroft) part begins
+	if first_solid < n - 1:
+		var x_a := x_land - e * first_solid * step_depth
+		var t_a := absf(x_a - ramp_a.x) / (n * step_depth)
+		var y_a := maxf(height * t_a - RAMP_SINK, 0.05)
+		var z0 := zc - width * 0.5
+		var z1 := zc + width * 0.5
+		var pts := PackedVector3Array()
+		for z in [z0, z1]:
+			pts.append(Vector3(ramp_a.x, 0.0, z))
+			pts.append(Vector3(x_a, 0.0, z))
+			pts.append(Vector3(x_a, y_a, z))
+		_col_hull(pts)
 
 	# side balustrades following the slope, plus a post on every Nth tread
 	var last := n - 2
@@ -359,6 +373,16 @@ func _col(center: Vector3, size: Vector3, rot := Basis.IDENTITY) -> void:
 
 
 ## A railing's collision: a thin wall hanging RAIL_HEIGHT below the line a -> b (the rail's top).
+func _col_hull(points: PackedVector3Array) -> void:
+	if _body == null:
+		return
+	var cs := CollisionShape3D.new()
+	var shape := ConvexPolygonShape3D.new()
+	shape.points = points
+	cs.shape = shape
+	_body.add_child(cs)
+
+
 func _col_rail(a: Vector3, b: Vector3) -> void:
 	if _body == null or a.is_equal_approx(b):
 		return

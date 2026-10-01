@@ -68,7 +68,6 @@ func setup(p_line: Dictionary, p_routes: RouteData, p_platform_dirs: Array[Vecto
 	train.rotation.y = PI * 0.5
 	follow.add_child(train)
 	add_child(train.body)
-	train.body.global_transform = train.global_transform
 	train.player_entered.connect(_on_player_entered)
 	train.player_left.connect(_on_player_left)
 	_run_vmax = float(line["cruise_speed"])

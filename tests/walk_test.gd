@@ -25,9 +25,75 @@ func _ready() -> void:
 	walker = sw.walker
 	transit = sw.city.transit
 	walker.scripted = true
-	await _journey()
+	if OS.get_environment("TOUR") != "":
+		await _tour()
+	else:
+		await _journey()
 	print("walk_test (%s): %s, %.0f s of simulated time" % [line_id, "OK" if fails == 0 else "%d FAILED" % fails, sim_time])
 	get_tree().quit(1 if fails > 0 else 0)
+
+
+## Everything else a visitor can walk to: the three wings, a balcony and a bridge, the west entrance and court.
+func _tour() -> void:
+	await _go("avenue crossing", Vector3(925.0, 0, 850.0))
+	await _go("top of the forecourt steps", F(111.0, 0.0))
+	await _go("ramp (south end), bottom", F(122.0, 26.0))
+	await _go("ramp, top", F(108.0, 26.0))
+	await _go("ticket hall", F(40.0, 0.0))
+	await _go("hall doorway", F(30.0, 0.0))
+	await _go("axis", F(20.0, 0.0))
+	# the three wings, in through their doors from the hall (the long-wall strip |z| ~ 12.5 is free under the balconies)
+	await _go("between the wells", F(12.0, 0.0))
+	await _go("beside the booth", F(8.0, -1.0))
+	await _go("north side of the hall", F(8.0, -8.5))
+	await _go("north wall strip", F(12.0, -12.5))
+	await _go("waiting room, along the wall", F(-20.0, -12.5))
+	await _go("waiting room door", F(-20.0, -14.8))
+	await _go("waiting room", F(-21.0, -26.0))
+	await _go("back out of the door", F(-20.0, -12.8), 0.4)
+	await _go("garden court, along the wall", F(20.0, -12.5))
+	await _go("garden court door", F(20.0, -14.8))
+	await _go("garden court", F(24.0, -27.0))
+	await _go("garden court, by the fountain", F(17.0, -22.0))
+	await _go("back out of the door", F(20.0, -12.8), 0.4)
+	await _go("north wall strip", F(12.0, -12.5))
+	await _go("north side of the hall", F(8.0, -8.5))
+	await _go("beside the booth", F(8.0, 1.0))
+	await _go("south side of the hall", F(8.0, 8.5))
+	await _go("south wall strip", F(12.0, 12.5))
+	await _go("shop arcade door", F(12.0, 14.8))
+	await _go("shop arcade", F(12.0, 24.0))
+	await _go("back out of the door", F(12.0, 12.8), 0.4)
+	await _go("south wall strip", F(12.0, 12.5))
+	# up the grand stairs at the east end (north flight), along the balcony, over a bridge, down the west stairs
+	await _go("south side of the hall", F(8.0, 8.5))
+	await _go("beside the booth", F(8.0, 0.0))
+	await _go("north side of the hall", F(8.0, -8.5))
+	await _go("foot of the north-east stairs", F(14.0, -8.0))
+	await _go("stairs, going up", F(23.0, -8.0))
+	await _go("east landing", F(30.5, -8.0))
+	_expect_y("on the mezzanine", HUB.y + 8.0, 1.0)
+	await _go("balcony, north side", F(30.5, -13.5))
+	await _go("balcony, to the bridge", F(-8.5, -13.5))
+	await _go("onto the bridge", F(-8.5, -8.0))
+	await _go("over the bridge", F(-8.5, 8.0))
+	await _go("balcony, south side", F(-8.5, 13.5))
+	await _go("balcony to the west end", F(-30.5, 13.5))
+	await _go("west landing", F(-30.5, 8.0))
+	await _go("west stairs, halfway", F(-24.0, 8.0))
+	await _go("foot of the west stairs", F(-14.0, 8.0))
+	_expect_y("back on the hall floor", HUB.y, 0.3)
+	# out of the west portal into the rear court, down its steps and across to the avenue
+	await _go("south of the west wells", F(-8.0, 8.5))
+	await _go("beside the booth", F(-8.0, 0.0))
+	await _go("west axis", F(-20.0, 0.0))
+	await _go("west ticket hall", F(-40.0, 0.0))
+	await _go("west court", F(-60.0, 0.0))
+	await _go("top of the west steps", F(-79.0, 0.0))
+	await _go("west apron", F(-86.0, 0.0))
+	var wp := walker.global_position
+	var street: float = sw.city.terrain.height_at(Vector2(wp.x, wp.z)) + TerrainApron.ROAD_LIFT
+	_expect(absf(wp.y - street) < 0.4, "west apron is at street level (y %.2f, street %.2f)" % [wp.y, street])
 
 
 func F(x: float, z: float) -> Vector3:
