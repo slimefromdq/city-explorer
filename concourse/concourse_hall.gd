@@ -41,6 +41,14 @@ extends Node3D
 ## Floor to the top of the arch.
 @export_range(2.0, 60.0, 0.1, "suffix:m") var entrance_height := 14.0: set = _set_entrance_height
 
+@export_group("End windows")
+## Round window above each entrance (0 = none). It is a real opening, so light comes through.
+@export_range(0.0, 12.0, 0.1, "suffix:m") var rose_radius := 3.8: set = _set_rose_radius
+## Height of the window's centre above the floor.
+@export_range(4.0, 40.0, 0.1, "suffix:m") var rose_height := 25.5: set = _set_rose_height
+## Number of radial spokes (even; spokes are built as full diameters).
+@export_range(2, 24, 2) var rose_spokes := 8: set = _set_rose_spokes
+
 @export_group("Floor")
 @export_range(0.1, 5.0, 0.05, "suffix:m") var floor_thickness := 0.5: set = _set_floor_thickness
 @export_range(0.25, 6.0, 0.05, "suffix:m") var tile_size := 2.0: set = _set_tile_size
@@ -53,10 +61,30 @@ extends Node3D
 @export_range(0.0, 15.0, 0.1, "suffix:m") var inlay_radius := 7.0: set = _set_inlay_radius
 @export var inlay_color := Color(0.40, 0.31, 0.22): set = _set_inlay_color
 
+@export_group("Mezzanine")
+@export var mezzanine_enabled := true: set = _set_mezzanine_enabled
+## Height of the walking surface above the main floor.
+@export_range(3.0, 20.0, 0.1, "suffix:m") var mezzanine_height := 8.0: set = _set_mezzanine_height
+## Depth of the balcony strips (and the stair landings).
+@export_range(1.5, 6.0, 0.1, "suffix:m") var mezzanine_depth := 3.0: set = _set_mezzanine_depth
+@export_range(0.2, 1.5, 0.05, "suffix:m") var mezzanine_thickness := 0.5: set = _set_mezzanine_thickness
+@export_range(1.0, 8.0, 0.1, "suffix:m") var bridge_width := 3.5: set = _set_bridge_width
+## Width of each of the four flights (two at each end).
+@export_range(1.0, 6.0, 0.1, "suffix:m") var stair_width := 4.0: set = _set_stair_width
+## Target riser height; the hall adjusts it slightly so a whole number of steps reaches the mezzanine.
+@export_range(0.1, 0.3, 0.005, "suffix:m") var step_height := 0.2: set = _set_step_height
+@export_range(0.2, 0.5, 0.01, "suffix:m") var step_depth := 0.3: set = _set_step_depth
+@export var mezzanine_floor_color := Color(0.40, 0.28, 0.21): set = _set_mezzanine_floor_color
+## Raise the windows' sills to sit above the balustrade, so the walkway never crosses a
+## window opening. The window tops stay where they are. Off = windows unchanged.
+@export var raise_window_sills := true: set = _set_raise_window_sills
+
 @export_group("Landmark")
 @export var landmark_enabled := true: set = _set_landmark_enabled
 ## Height of the clock tower's apex above the floor.
-@export_range(4.0, 20.0, 0.1, "suffix:m") var landmark_height := 8.0: set = _set_landmark_height
+@export_range(4.0, 30.0, 0.1, "suffix:m") var landmark_height := 11.0: set = _set_landmark_height
+## Scales the booth base and the clock box (not the height).
+@export_range(0.5, 3.0, 0.05) var landmark_booth_scale := 1.4: set = _set_landmark_booth_scale
 
 @export_group("Lighting")
 ## Adds the sun, two wall-washing fills, and a WorldEnvironment (ambient + sky) to the hall.
@@ -66,12 +94,15 @@ extends Node3D
 @export_range(0.0, 360.0, 1.0, "suffix:deg") var sun_yaw_degrees := 200.0: set = _set_sun_yaw
 ## Negative = shining downward. Steeper (more negative) lands the beams closer to the walls.
 @export_range(-85.0, -5.0, 1.0, "suffix:deg") var sun_pitch_degrees := -38.0: set = _set_sun_pitch
-@export_range(0.0, 8.0, 0.05) var sun_energy := 1.2: set = _set_sun_energy
+## The sun's light_energy. Too high and the beams clip to white and hide the floor pattern.
+@export_range(0.0, 8.0, 0.05) var sun_energy := 0.35: set = _set_sun_energy
+## The sun's light_color (pale warm gold by default).
+@export var sun_color := Color(1.0, 0.88, 0.62): set = _set_sun_color
 ## Soft light everywhere, so shadowed areas aren't black.
 @export var ambient_color := Color(0.62, 0.66, 0.78): set = _set_ambient_color
-@export_range(0.0, 4.0, 0.05) var ambient_energy := 0.6: set = _set_ambient_energy
+@export_range(0.0, 4.0, 0.05) var ambient_energy := 0.5: set = _set_ambient_energy
 ## Two shadowless fills, one washing each wall, so piers and cornices read on both sides.
-@export_range(0.0, 2.0, 0.05) var fill_energy := 0.3: set = _set_fill_energy
+@export_range(0.0, 2.0, 0.05) var fill_energy := 0.25: set = _set_fill_energy
 @export var sky_color := Color(0.55, 0.70, 0.90): set = _set_sky_color
 
 @export_group("Look")
@@ -80,6 +111,11 @@ extends Node3D
 const VAULT_STARS := preload("res://concourse/vault_stars.gdshader")
 const FLOOR_STONE := preload("res://concourse/floor_stone.gdshader")
 const GENERATED := "Generated"
+const ROSE_RING_RADIUS_RATIO := 0.62    # tracery ring radius as a fraction of the window radius
+const ROSE_BAR_RATIO := 0.09            # ring/spoke thickness as a fraction of the window radius
+const ROSE_HUB_RATIO := 0.16
+const ROSE_TRACERY_DEPTH_RATIO := 0.6   # tracery is thinner than the wall, so it reads as recessed
+const SILL_OVER_DECK := 1.4  # window sill above the mezzanine walking surface (m): clears the balustrade
 const SHADOW_DISTANCE := 200.0
 const FILL_PITCH_DEGREES := -30.0
 const FILL_YAW_TOWARD_NEG_Z := 10.0   # light travels toward -Z: washes the -Z wall
@@ -115,6 +151,7 @@ func rebuild() -> void:
 	_build_end_walls(root, length, dims, stone)
 	_build_vault(root, length, dims)
 	_build_landmark(root)
+	_build_mezzanine(root, dims)
 	_build_lighting(root)
 
 
@@ -132,6 +169,11 @@ func _build_bays(root: Node3D) -> Dictionary:
 			var bay: ConcourseBay = bay_scene.instantiate()
 			for k in bay_properties:
 				bay.set(k, bay_properties[k])
+			if mezzanine_enabled and raise_window_sills:
+				var sill: float = mezzanine_height + SILL_OVER_DECK
+				if bay.window_sill_height < sill:  # keep the window top where it was
+					bay.window_height = bay.window_sill_height + bay.window_height - sill
+					bay.window_sill_height = sill
 			if first == null:
 				first = bay
 			bay.name = "Bay%d" % i
@@ -140,6 +182,7 @@ func _build_bays(root: Node3D) -> Dictionary:
 	dims.length = first.bay_width * hall_bays
 	dims.wall_height = first.wall_height
 	dims.wall_thickness = first.wall_thickness
+	dims.bay_width = first.bay_width
 	return dims
 
 
@@ -232,6 +275,67 @@ func _build_one_end_wall(holder: Node3D, length: float, dims: Dictionary, stone:
 	arch.material = stone
 	comb.add_child(arch)
 
+	_build_rose_window(comb, t, stone)
+
+
+## Round window with tracery, cut through an end wall. `comb` is the wall's CSG
+## combiner (cylinders have their axis turned from Y to X). The tracery (ring,
+## spokes, hub) is a nested combiner added after the cut, so it fills part of the hole.
+func _build_rose_window(comb: CSGCombiner3D, t: float, stone: Material) -> void:
+	if rose_radius <= 0.0:
+		return
+	var r := rose_radius
+	var cut_t := t + CUT_OVERSHOOT * 2.0
+
+	var hole := CSGCylinder3D.new()
+	hole.name = "RoseHole"
+	hole.operation = CSGShape3D.OPERATION_SUBTRACTION
+	hole.radius = r
+	hole.height = cut_t
+	hole.sides = vault_segments
+	hole.rotation.z = PI * 0.5
+	hole.position.y = rose_height
+	hole.material = stone
+	comb.add_child(hole)
+
+	var tracery := CSGCombiner3D.new()
+	tracery.name = "RoseTracery"
+	tracery.position.y = rose_height
+	comb.add_child(tracery)
+
+	var ring_out := CSGCylinder3D.new()
+	ring_out.radius = r * ROSE_RING_RADIUS_RATIO + r * ROSE_BAR_RATIO * 0.5
+	ring_out.height = t * ROSE_TRACERY_DEPTH_RATIO
+	ring_out.sides = vault_segments
+	ring_out.rotation.z = PI * 0.5
+	ring_out.material = stone
+	tracery.add_child(ring_out)
+	var ring_in := CSGCylinder3D.new()
+	ring_in.operation = CSGShape3D.OPERATION_SUBTRACTION
+	ring_in.radius = r * ROSE_RING_RADIUS_RATIO - r * ROSE_BAR_RATIO * 0.5
+	ring_in.height = t
+	ring_in.sides = vault_segments
+	ring_in.rotation.z = PI * 0.5
+	ring_in.material = stone
+	tracery.add_child(ring_in)
+
+	var hub := CSGCylinder3D.new()
+	hub.radius = r * ROSE_HUB_RATIO
+	hub.height = t * ROSE_TRACERY_DEPTH_RATIO
+	hub.sides = vault_segments
+	hub.rotation.z = PI * 0.5
+	hub.material = stone
+	tracery.add_child(hub)
+
+	# Spokes are full diameters, so N spokes need N / 2 boxes.
+	for k in rose_spokes / 2:
+		var spoke := CSGBox3D.new()
+		spoke.name = "Spoke%d" % k
+		spoke.size = Vector3(t * ROSE_TRACERY_DEPTH_RATIO, r * 2.0, r * ROSE_BAR_RATIO)
+		spoke.rotation.x = k * TAU / rose_spokes
+		spoke.material = stone
+		tracery.add_child(spoke)
+
 
 # ---------------------------------------------------------------------- vault
 
@@ -313,7 +417,33 @@ func _build_landmark(root: Node3D) -> void:
 	var lm := ConcourseLandmark.new()
 	lm.name = "Landmark"
 	lm.tower_height = landmark_height
+	lm.booth_scale = landmark_booth_scale
 	root.add_child(lm)
+
+
+# ------------------------------------------------------------------ mezzanine
+
+func _build_mezzanine(root: Node3D, dims: Dictionary) -> void:
+	if not mezzanine_enabled:
+		return
+	var mz := ConcourseMezzanine.new()
+	mz.name = "Mezzanine"
+	mz.hall_length = dims.length
+	mz.hall_width = hall_width
+	mz.bay_width = dims.bay_width
+	mz.bay_count = hall_bays
+	mz.entrance_width = entrance_width
+	mz.height = mezzanine_height
+	mz.depth = mezzanine_depth
+	mz.thickness = mezzanine_thickness
+	mz.bridge_width = bridge_width
+	mz.stair_width = stair_width
+	mz.step_height = step_height
+	mz.step_depth = step_depth
+	mz.floor_color = mezzanine_floor_color
+	mz.stone_color = stone_color
+	root.add_child(mz)
+	mz.rebuild()
 
 
 # ------------------------------------------------------------------- lighting
@@ -325,6 +455,7 @@ func _build_lighting(root: Node3D) -> void:
 	sun.name = "Sun"
 	sun.rotation_degrees = Vector3(sun_pitch_degrees, sun_yaw_degrees, 0.0)
 	sun.light_energy = sun_energy
+	sun.light_color = sun_color
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = SHADOW_DISTANCE
 	root.add_child(sun)
@@ -380,9 +511,24 @@ func _set_inlay_color(v: Color) -> void: inlay_color = v; _queue_rebuild()
 func _set_landmark_enabled(v: bool) -> void: landmark_enabled = v; _queue_rebuild()
 func _set_landmark_height(v: float) -> void: landmark_height = v; _queue_rebuild()
 func _set_lighting_enabled(v: bool) -> void: lighting_enabled = v; _queue_rebuild()
+func _set_mezzanine_enabled(v: bool) -> void: mezzanine_enabled = v; _queue_rebuild()
+func _set_mezzanine_height(v: float) -> void: mezzanine_height = v; _queue_rebuild()
+func _set_mezzanine_depth(v: float) -> void: mezzanine_depth = v; _queue_rebuild()
+func _set_mezzanine_thickness(v: float) -> void: mezzanine_thickness = v; _queue_rebuild()
+func _set_bridge_width(v: float) -> void: bridge_width = v; _queue_rebuild()
+func _set_stair_width(v: float) -> void: stair_width = v; _queue_rebuild()
+func _set_step_height(v: float) -> void: step_height = v; _queue_rebuild()
+func _set_step_depth(v: float) -> void: step_depth = v; _queue_rebuild()
+func _set_mezzanine_floor_color(v: Color) -> void: mezzanine_floor_color = v; _queue_rebuild()
+func _set_raise_window_sills(v: bool) -> void: raise_window_sills = v; _queue_rebuild()
 func _set_sun_yaw(v: float) -> void: sun_yaw_degrees = v; _queue_rebuild()
 func _set_sun_pitch(v: float) -> void: sun_pitch_degrees = v; _queue_rebuild()
 func _set_sun_energy(v: float) -> void: sun_energy = v; _queue_rebuild()
+func _set_sun_color(v: Color) -> void: sun_color = v; _queue_rebuild()
+func _set_rose_radius(v: float) -> void: rose_radius = v; _queue_rebuild()
+func _set_rose_height(v: float) -> void: rose_height = v; _queue_rebuild()
+func _set_rose_spokes(v: int) -> void: rose_spokes = v; _queue_rebuild()
+func _set_landmark_booth_scale(v: float) -> void: landmark_booth_scale = v; _queue_rebuild()
 func _set_ambient_color(v: Color) -> void: ambient_color = v; _queue_rebuild()
 func _set_ambient_energy(v: float) -> void: ambient_energy = v; _queue_rebuild()
 func _set_fill_energy(v: float) -> void: fill_energy = v; _queue_rebuild()

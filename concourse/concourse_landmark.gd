@@ -10,6 +10,8 @@ extends Node3D
 ## of the cap's apex above the floor.
 
 @export_range(4.0, 20.0, 0.1, "suffix:m") var tower_height := 8.0: set = _set_tower_height
+## Scales the booth base and the clock box (and nothing else; tower_height is separate).
+@export_range(0.5, 3.0, 0.05) var booth_scale := 1.4: set = _set_booth_scale
 @export_group("Booth")
 @export_range(1.0, 6.0, 0.05, "suffix:m") var booth_radius := 2.5: set = _set_booth_radius
 @export_range(0.5, 2.0, 0.05, "suffix:m") var counter_height := 1.1: set = _set_counter_height
@@ -66,20 +68,24 @@ func rebuild() -> void:
 	root.name = GENERATED
 	add_child(root)
 
-	var cap_h := clock_size * CAP_HEIGHT_RATIO
-	var housing_bottom := tower_height - cap_h - clock_size
-	if housing_bottom <= booth_height + ROOF_THICKNESS:
+	var hs := clock_size * booth_scale
+	var b_radius := booth_radius * booth_scale
+	var b_counter_h := counter_height * booth_scale
+	var b_height := booth_height * booth_scale
+	var cap_h := hs * CAP_HEIGHT_RATIO
+	var housing_bottom := tower_height - cap_h - hs
+	if housing_bottom <= b_height + ROOF_THICKNESS:
 		push_warning("ConcourseLandmark: tower_height is too low for the booth and clock; raise it.")
-		housing_bottom = booth_height + ROOF_THICKNESS + 0.5
+		housing_bottom = b_height + ROOF_THICKNESS + 0.5
 
 	# --- booth
-	var r := booth_radius
+	var r := b_radius
 	_cyl(root, "Plinth", r + PLINTH_EXTRA, PLINTH_HEIGHT, 0.0, booth_color, OCTAGON)
-	_cyl(root, "Counter", r, counter_height, 0.0, booth_color, OCTAGON)
-	_cyl(root, "CounterTop", r + COUNTER_OVERHANG, COUNTER_TOP_THICKNESS, counter_height, counter_color, OCTAGON)
+	_cyl(root, "Counter", r, b_counter_h, 0.0, booth_color, OCTAGON)
+	_cyl(root, "CounterTop", r + COUNTER_OVERHANG, COUNTER_TOP_THICKNESS, b_counter_h, counter_color, OCTAGON)
 	var core_r := r * CORE_RATIO
-	var core_top := booth_height
-	_cyl(root, "Core", core_r, core_top - counter_height, counter_height, housing_color, OCTAGON)
+	var core_top := b_height
+	_cyl(root, "Core", core_r, core_top - b_counter_h, b_counter_h, housing_color, OCTAGON)
 	_cyl(root, "Roof", core_r + ROOF_OVERHANG, ROOF_THICKNESS, core_top, counter_color, OCTAGON)
 
 	# --- post
@@ -91,7 +97,6 @@ func rebuild() -> void:
 	clock.name = "Clock"
 	clock.position.y = housing_bottom
 	root.add_child(clock)
-	var hs := clock_size
 	_box(clock, "Housing", Vector3(hs, hs, hs), Vector3(0, hs * 0.5, 0), housing_color)
 	for k in 4:
 		_build_face(clock, k, hs)
@@ -192,6 +197,7 @@ func _queue_rebuild() -> void:
 
 
 func _set_tower_height(v: float) -> void: tower_height = v; _queue_rebuild()
+func _set_booth_scale(v: float) -> void: booth_scale = v; _queue_rebuild()
 func _set_booth_radius(v: float) -> void: booth_radius = v; _queue_rebuild()
 func _set_counter_height(v: float) -> void: counter_height = v; _queue_rebuild()
 func _set_booth_height(v: float) -> void: booth_height = v; _queue_rebuild()
