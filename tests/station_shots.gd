@@ -1,0 +1,202 @@
+extends Node3D
+## Screenshots of the station in the city. Env: OUT=dir, ONLY=shot_name,..., CITY=0 for the station alone.
+const CITY_GEN := preload("res://city/city_generator.gd")
+const FIGURE_H := PlayerScale.HEIGHT
+
+var cam: Camera3D
+var city: Node3D
+var station: StationComplex
+var transit: TransitSystem
+
+
+func _ready() -> void:
+	cam = Camera3D.new()
+	cam.far = 4000.0
+	cam.near = 0.1
+	add_child(cam)
+	cam.current = true
+	var env := Environment.new()
+	env.background_mode = Environment.BG_SKY
+	var sky := Sky.new()
+	sky.sky_material = ProceduralSkyMaterial.new()
+	env.sky = sky
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
+	env.ambient_light_energy = 0.8
+	var we := WorldEnvironment.new()
+	we.environment = env
+	add_child(we)
+	var sun := DirectionalLight3D.new()
+	sun.transform = Transform3D(Basis(Vector3(0.866, 0, -0.5), Vector3(-0.354, 0.707, -0.612), Vector3(0.354, 0.707, 0.612)), Vector3(0, 500, 0))
+	sun.shadow_enabled = true
+	sun.directional_shadow_max_distance = 600.0
+	sun.light_color = Color(1.0, 0.93, 0.8)
+	add_child(sun)
+	if OS.get_environment("CITY") != "0":
+		city = CITY_GEN.new()
+		add_child(city)
+		station = city.station
+		transit = city.transit
+	else:
+		station = StationComplex.new()
+		station.position = StationLayout.HUB
+		add_child(station)
+		transit = TransitSystem.new()
+		transit.station = station
+		add_child(transit)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await _shots()
+	get_tree().quit()
+
+
+func _look(pos: Vector3, target: Vector3, fov := 70.0, up := Vector3.UP) -> void:
+	cam.fov = fov
+	cam.global_position = pos
+	cam.look_at(target, up)
+
+
+func _figure(feet: Vector3) -> Node3D:
+	var person := MeshInstance3D.new()
+	var mesh := CapsuleMesh.new()
+	mesh.height = FIGURE_H
+	mesh.radius = PlayerScale.RADIUS
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color(0.9, 0.2, 0.15)
+	mesh.material = m
+	person.mesh = mesh
+	person.position = feet + Vector3(0, FIGURE_H * 0.5, 0)
+	add_child(person)
+	return person
+
+
+func _shots() -> void:
+	var out := OS.get_environment("OUT") if OS.get_environment("OUT") != "" else "res://tests/out"
+	var only := OS.get_environment("ONLY").split(",", false)
+	var h := StationLayout.HUB
+	var list: Array = _final_shots(h)
+	if OS.get_environment("EXTRA") != "":
+		list.append_array(_shot_list(h))
+	for s in list:
+		if only.size() > 0 and not only.has(s["name"]):
+			continue
+		if s.has("setup"):
+			await call(s["setup"])
+		var fig: Node3D = null
+		var spos: Vector3 = s["pos"]
+		var starget: Vector3 = s["target"]
+		var sfeet = s.get("feet")
+		if s.has("train"):
+			var tr: Train = (transit.services[s["train"]] as LineService).train
+			spos = tr.to_global(spos)
+			starget = tr.to_global(starget)
+			if sfeet != null:
+				sfeet = tr.to_global(sfeet)
+		if s.has("dest"):
+			var ds: DestinationStation = transit.destinations[s["dest"]]
+			spos = ds.to_global(spos)
+			starget = ds.to_global(starget)
+			if sfeet != null:
+				sfeet = ds.to_global(sfeet)
+		if sfeet != null:
+			fig = _figure(sfeet)
+		_look(spos, starget, s.get("fov", 70.0), s.get("up", Vector3.UP))
+		await get_tree().process_frame
+		await get_tree().process_frame
+		await get_tree().process_frame
+		var img := get_viewport().get_texture().get_image()
+		var path: String = "%s/station_%s.png" % [out, s["name"]]
+		img.save_png(path)
+		print("saved ", path)
+		if fig != null:
+			fig.queue_free()
+
+
+func _put_tower_in_river() -> void:
+	var svc: LineService = transit.services["tower"]
+	svc.frozen = true
+	svc.debug_place(RouteData.arc_of(svc.line["path"], Vector3(922.7, -12.0, 640.0)))
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+
+func _release_trains() -> void:
+	for id in transit.services:
+		(transit.services[id] as LineService).frozen = false
+
+
+## The ten verification shots (each has the reference capsule in it), then a few extras. Keys:
+## pos/target (world; or local to a destination station or a train when "dest" / "train" is set), feet, fov, setup.
+func _final_shots(h: Vector3) -> Array:
+	var east: LineService = transit.services["east"]
+	var tower: LineService = transit.services["tower"]
+	var ds: DestinationStation = transit.destinations["harbour_eye"]
+	var D: float = ds._D
+	var H: float = ds._H
+	var u0: float = ds._u0
+	return [
+		# 1. the south island from the air: the hall's roof and the forecourt
+		{"name": "01_aerial", "pos": h + Vector3(105, 85, 130), "target": h + Vector3(38, 4, 0), "feet": h + Vector3(84, 0, 16), "fov": 52.0},
+		# 2. from the end of the main street (the street's east end, beyond the avenue), toward the facade
+		{"name": "02_main_street", "pos": Vector3(1008.0, 3.15 + 1.7, 850.0), "target": h + Vector3(49, 8, 0), "feet": Vector3(975.0, 3.15, 851.5), "fov": 42.0},
+		# 3. in the plaza, looking at the entrance arch
+		{"name": "03_plaza_arch", "pos": h + Vector3(86, 1.7, 7), "target": h + Vector3(49, 6.5, 0), "feet": h + Vector3(71, 0, 3.0), "fov": 66.0},
+		# 4. in the entrance corridor, looking in toward the hall
+		{"name": "04_entrance_corridor", "pos": h + Vector3(47, 1.7, 0.4), "target": h + Vector3(0, 6.5, 0), "feet": h + Vector3(40, 0, 1.6), "fov": 66.0},
+		# 5. at the head of a platform stairwell (East line), looking down the flight; the capsule waits at the rail
+		{"name": "05_stairwell_head", "pos": h + Vector3(2.6, 2.4, 0.2), "target": h + Vector3(12.0, -2.2, 2.7), "feet": h + Vector3(8.0, 0, 2.7), "fov": 62.0},
+		# 6. on a platform with a train waiting (East, doors open)
+		{"name": "06_platform_train", "pos": h + Vector3(33.0, -8 + 1.7, 3.0), "target": h + Vector3(18.0, -8 + 1.4, 10.5), "feet": h + Vector3(27.5, -8, 8.3), "fov": 62.0},
+		# 7. inside the train, looking out of a window (at the platform)
+		{"name": "07_inside_train", "train": "east", "pos": Vector3(-5.6, 1.55, 0.75), "target": Vector3(-0.6, 1.4, -3.4), "feet": Vector3(-1.9, 0, 0.1), "fov": 70.0},
+		# 8. in the tunnel under the river: the Tower train at speed (held), seen from inside, out of a window
+		{"name": "08_tunnel_river", "train": "tower", "pos": Vector3(-5.2, 1.5, 0.55), "target": Vector3(2.0, 1.3, -0.9), "feet": Vector3(1.6, 0, 0.1), "fov": 76.0, "setup": "_put_tower_in_river"},
+		{"name": "08b_tunnel_ahead", "train": "tower", "pos": Vector3(36.0, 1.5, 0.3), "target": Vector3(8.0, 1.6, 0.0), "feet": Vector3(24.0, -0.8, 1.7), "fov": 62.0},
+		# 9. outside a destination station's entrance (Harbour & Eye)
+		{"name": "09_destination_entrance", "dest": "harbour_eye", "pos": Vector3(u0 + 10.0, H + 1.7, D + 17.0), "target": Vector3(u0, H + 2.5, D - 2.0), "feet": Vector3(u0 + 3.0, H, D + 8.0), "fov": 70.0},
+		# 10. the route map in the concourse (over the east entrance)
+		{"name": "10_route_map", "pos": h + Vector3(15.0, 1.7, 0.8), "target": h + Vector3(31.9, 7.2, 0.0), "feet": h + Vector3(20.5, 0, -1.2), "fov": 46.0},
+	]
+
+
+func _put_tower_in_tunnel() -> void:
+	var svc: LineService = transit.services["tower"]
+	svc.state = LineService.State.RUN
+	svc.debug_place(330.0)
+	await get_tree().process_frame
+
+
+func _shot_list(h: Vector3) -> Array:
+	var out: Array = []
+	for id in ["basilica_hill", "harbour_eye", "tower_south", "park_meadow"]:
+		if transit != null and transit.destinations.has(id):
+			var ds: DestinationStation = transit.destinations[id]
+			var D: float = ds._D
+			var H: float = ds._H
+			var u0: float = ds._u0
+			out.append({"name": "dest_out_" + id, "dest": id, "pos": Vector3(u0 + 9.0, H + 1.7, D + 17.0), "target": Vector3(u0, H + 2.0, D - 2.0), "feet": Vector3(u0 + 3.0, H, D + 8.0), "fov": 70.0})
+			out.append({"name": "dest_stairs_" + id, "dest": id, "pos": Vector3(u0, H + 1.7, D + 2.0), "target": Vector3(u0, H - 3.0, D - 8.0), "fov": 75.0})
+			out.append({"name": "dest_platform_" + id, "dest": id, "pos": Vector3(-14.0, 1.7, 6.0), "target": Vector3(4.0, 1.2, 3.0), "feet": Vector3(-6.0, 0, 4.0), "fov": 75.0})
+	return out + [
+		{"name": "map_east_wall", "pos": h + Vector3(14.0, 1.7, 0.5), "target": h + Vector3(31.9, 6.8, 0.0), "fov": 50.0},
+		{"name": "map_platform", "pos": h + Vector3(-18.0, -8 + 1.7, 5.5), "target": h + Vector3(-18.0, -8 + 1.9, 0.0), "fov": 60.0, "feet": h + Vector3(-15, -8, 3.5)},
+		{"name": "concourse_map", "pos": h + Vector3(-12.0, 1.7, 2.0), "target": h + Vector3(31.0, 6.5, 0.0), "feet": h + Vector3(-5, 0, -2), "fov": 60.0},
+		{"name": "bridge_sign", "pos": h + Vector3(28.0, 1.7, 0.0), "target": h + Vector3(8.5, 6.9, 0.0), "feet": h + Vector3(22, 0, -1.5), "fov": 62.0},
+		{"name": "boards", "pos": h + Vector3(2.0, 1.7, 8.0), "target": h + Vector3(-4.0, 5.0, -14.5), "fov": 60.0},
+		{"name": "tunnel_river", "pos": Vector3(922.7, -12.0 + 2.0, 640.0), "target": Vector3(922.7, -12.0 + 1.5, 600.0), "setup": "_put_tower_in_tunnel", "fov": 75.0},
+		{"name": "train_waiting", "pos": h + Vector3(-8.0, -8 + 1.7, 3.0), "target": h + Vector3(-22, -8 + 1.5, 11.0), "feet": h + Vector3(-12, -8, 6.0), "fov": 75.0},
+		{"name": "train_inside", "pos": h + Vector3(-10.0, -8 + 1.6, 11.45), "target": h + Vector3(-23, -8 + 1.4, 9.8), "fov": 75.0},
+		{"name": "wellhead_east", "pos": h + Vector3(0.5, 1.7, 0.8), "target": h + Vector3(12, 1.0, 5.0), "feet": h + Vector3(4.5, 0, 1.2), "fov": 75.0},
+		{"name": "well_down", "pos": h + Vector3(10.5, 5.0, 1.5), "target": h + Vector3(13, -4.0, 5.2), "fov": 70.0},
+		{"name": "platform_east", "pos": h + Vector3(2.0, -8 + 1.7, 0.0), "target": h + Vector3(24, -8 + 1.2, 6.0), "feet": h + Vector3(6, -8, 3.0), "fov": 75.0},
+		{"name": "platform_west", "pos": h + Vector3(-2.0, -8 + 1.7, 0.0), "target": h + Vector3(-24, -8 + 1.2, 6.0), "feet": h + Vector3(-6, -8, 3.0), "fov": 75.0},
+		{"name": "west_court", "pos": h + Vector3(-100, 6, 30), "target": h + Vector3(-49, 5, 0), "fov": 60.0},
+		{"name": "garden", "pos": h + Vector3(21, 1.7, -17), "target": h + Vector3(21, 1.5, -34), "feet": h + Vector3(22, 0, -22)},
+		{"name": "arcade", "pos": h + Vector3(12, 1.7, 17), "target": h + Vector3(10, 2.5, 34), "feet": h + Vector3(12, 0, 22)},
+		{"name": "waiting", "pos": h + Vector3(-21, 1.7, -17), "target": h + Vector3(-21, 1.5, -34), "feet": h + Vector3(-18, 0, -23)},
+		{"name": "aerial", "pos": h + Vector3(120, 150, 150), "target": h + Vector3(40, 0, 0), "fov": 60.0},
+		{"name": "facade", "pos": h + Vector3(215, 3.6 - 0.6, 0), "target": h + Vector3(49, 9, 0), "feet": h + Vector3(185, -0.6, 3), "fov": 45.0},
+		{"name": "plaza_aerial", "pos": h + Vector3(190, 70, 70), "target": h + Vector3(90, 0, 0), "fov": 55.0},
+		{"name": "plaza_entrance", "pos": h + Vector3(85, 1.7, 8), "target": h + Vector3(49, 6, 0), "feet": h + Vector3(75, 0, 2)},
+		{"name": "corridor", "pos": h + Vector3(46, 1.7, 0), "target": h + Vector3(0, 6, 0), "feet": h + Vector3(40, 0, 1.5)},
+	]

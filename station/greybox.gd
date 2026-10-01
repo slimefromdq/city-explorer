@@ -1,0 +1,278 @@
+class_name Greybox
+extends RefCounted
+## Small helpers for building greybox geometry from primitive meshes, with optional collision.
+## Everything takes/returns plain nodes; materials are cached by their parameters.
+
+static var _mats := {}
+
+
+static func mat(color: Color, rough := 1.0, emit := 0.0, alpha := 1.0) -> StandardMaterial3D:
+	var key := "%s|%s|%s|%s" % [color.to_html(true), rough, emit, alpha]
+	if _mats.has(key):
+		return _mats[key]
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color(color.r, color.g, color.b, alpha)
+	m.roughness = rough
+	if emit > 0.0:
+		m.emission_enabled = true
+		m.emission = color
+		m.emission_energy_multiplier = emit
+	if alpha < 1.0:
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_mats[key] = m
+	return m
+
+
+## A StaticBody3D under `parent` that gathers box/cylinder shapes (so one node holds many shapes).
+static func body(parent: Node, body_name := "Collision") -> StaticBody3D:
+	var b := StaticBody3D.new()
+	b.name = body_name
+	parent.add_child(b)
+	return b
+
+
+## A box centred on `pos` (parent space). `col` (optional) is a body in the SAME space that gets a matching shape.
+static func box(parent: Node3D, size: Vector3, pos: Vector3, m: Material, col: StaticBody3D = null, rot_y := 0.0) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	var mesh := BoxMesh.new()
+	mesh.size = size
+	mi.mesh = mesh
+	mi.material_override = m
+	mi.position = pos
+	mi.rotation.y = rot_y
+	parent.add_child(mi)
+	if col != null:
+		add_box_shape(col, size, pos, rot_y)
+	return mi
+
+
+## A box from corner `lo` to corner `hi` (any order).
+static func box_ab(parent: Node3D, a: Vector3, b: Vector3, m: Material, col: StaticBody3D = null) -> MeshInstance3D:
+	var lo := Vector3(minf(a.x, b.x), minf(a.y, b.y), minf(a.z, b.z))
+	var hi := Vector3(maxf(a.x, b.x), maxf(a.y, b.y), maxf(a.z, b.z))
+	return box(parent, hi - lo, (lo + hi) * 0.5, m, col)
+
+
+## A box with an arbitrary orientation (basis columns = local x, y, z).
+static func box_basis(parent: Node3D, size: Vector3, pos: Vector3, basis: Basis, m: Material, col: StaticBody3D = null) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	var mesh := BoxMesh.new()
+	mesh.size = size
+	mi.mesh = mesh
+	mi.material_override = m
+	mi.transform = Transform3D(basis, pos)
+	parent.add_child(mi)
+	if col != null:
+		var cs := CollisionShape3D.new()
+		var shape := BoxShape3D.new()
+		shape.size = size
+		cs.shape = shape
+		cs.transform = Transform3D(basis, pos)
+		col.add_child(cs)
+	return mi
+
+
+## A collision-only box (no mesh).
+static func col_box(col: StaticBody3D, size: Vector3, pos: Vector3, basis := Basis.IDENTITY) -> void:
+	var cs := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = size
+	cs.shape = shape
+	cs.transform = Transform3D(basis, pos)
+	col.add_child(cs)
+
+
+## A balustrade along a straight run a -> b (same height): posts every ~1.2 m, a top rail and a mid rail,
+## and (with `col`) a thin solid wall at chest height so nobody walks through. `top` is the walking
+## surface the rail stands on.
+static func railing(parent: Node3D, a: Vector3, b: Vector3, m: Material, col: StaticBody3D = null, height := PlayerScale.CHEST_HEIGHT) -> void:
+	var d := b - a
+	var length := d.length()
+	if length < 0.05:
+		return
+	var f := d / length
+	var posts := maxi(2, int(ceil(length / 1.2)) + 1)
+	for i in posts:
+		var p := a + f * (length * float(i) / (posts - 1))
+		box(parent, Vector3(0.07, height, 0.07), p + Vector3(0, height * 0.5, 0), m)
+	var yaw := atan2(-f.z, f.x)
+	box(parent, Vector3(length, 0.07, 0.07), (a + b) * 0.5 + Vector3(0, height, 0), m, null, yaw)
+	box(parent, Vector3(length, 0.05, 0.05), (a + b) * 0.5 + Vector3(0, height * 0.5, 0), m, null, yaw)
+	if col != null:
+		var cs := CollisionShape3D.new()
+		var shape := BoxShape3D.new()
+		shape.size = Vector3(length, height, 0.1)
+		cs.shape = shape
+		cs.position = (a + b) * 0.5 + Vector3(0, height * 0.5, 0)
+		cs.rotation.y = yaw
+		col.add_child(cs)
+
+
+## A slab with sloping bottom/top: the bottom edge runs a -> b (any slope), it stands `height` tall (vertical
+## sides), `thickness` thick across `lat` (a horizontal unit vector perpendicular to the run), centred on the line.
+static func prism(parent: Node3D, a: Vector3, b: Vector3, height: float, thickness: float, lat: Vector3, m: Material, col: StaticBody3D = null) -> MeshInstance3D:
+	var up := Vector3(0, height, 0)
+	var half := lat * (thickness * 0.5)
+	var A0 := a - half
+	var A1 := a + half
+	var B0 := b - half
+	var B1 := b + half
+	var r := (b - a).normalized()
+	var r_h := Vector3(r.x, 0, r.z).normalized()
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var top_n := lat.cross(r).normalized()
+	_emit_quad(st, A0 + up, B0 + up, B1 + up, A1 + up, top_n)           # top (slope)
+	_emit_quad(st, A0, A1, B1, B0, -top_n)                               # bottom
+	_emit_quad(st, A1, B1, B1 + up, A1 + up, lat)                        # +lat side
+	_emit_quad(st, A0, B0, B0 + up, A0 + up, -lat)                       # -lat side
+	_emit_quad(st, B0, B1, B1 + up, B0 + up, r_h)                        # far end
+	_emit_quad(st, A0, A1, A1 + up, A0 + up, -r_h)                       # near end
+	st.set_material(m)
+	var mi := MeshInstance3D.new()
+	mi.mesh = st.commit()
+	parent.add_child(mi)
+	if col != null:
+		var cs := CollisionShape3D.new()
+		var shape := ConvexPolygonShape3D.new()
+		shape.points = PackedVector3Array([A0, A1, B0, B1, A0 + up, A1 + up, B0 + up, B1 + up])
+		cs.shape = shape
+		col.add_child(cs)
+	return mi
+
+
+static func _emit_quad(st: SurfaceTool, p0: Vector3, p1: Vector3, p2: Vector3, p3: Vector3, n: Vector3) -> void:
+	for tri in [[p0, p1, p2], [p0, p2, p3]]:
+		var v0: Vector3 = tri[0]
+		var v1: Vector3 = tri[1]
+		var v2: Vector3 = tri[2]
+		if (v1 - v0).cross(v2 - v0).dot(n) > 0.0:   # Godot front faces are clockwise
+			var t := v1
+			v1 = v2
+			v2 = t
+		for v in [v0, v1, v2]:
+			st.set_normal(n)
+			st.add_vertex(v)
+
+
+static func add_box_shape(col: StaticBody3D, size: Vector3, pos: Vector3, rot_y := 0.0, rot_x := 0.0) -> void:
+	var cs := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = size
+	cs.shape = shape
+	cs.position = pos
+	cs.rotation = Vector3(rot_x, rot_y, 0.0)
+	col.add_child(cs)
+
+
+## A cylinder with its axis along Y (rot = Basis-free Euler to tip it over).
+static func cyl(parent: Node3D, radius: float, height: float, pos: Vector3, m: Material, col: StaticBody3D = null, rot := Vector3.ZERO, sides := 24, top_radius := -1.0) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	var mesh := CylinderMesh.new()
+	mesh.top_radius = radius if top_radius < 0.0 else top_radius
+	mesh.bottom_radius = radius
+	mesh.height = height
+	mesh.radial_segments = sides
+	mesh.rings = 1
+	mi.mesh = mesh
+	mi.material_override = m
+	mi.position = pos
+	mi.rotation = rot
+	parent.add_child(mi)
+	if col != null:
+		var cs := CollisionShape3D.new()
+		var shape := CylinderShape3D.new()
+		shape.radius = radius
+		shape.height = height
+		cs.shape = shape
+		cs.position = pos
+		cs.rotation = rot
+		col.add_child(cs)
+	return mi
+
+
+static func sphere(parent: Node3D, radius: float, pos: Vector3, m: Material, squash := 1.0) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	var mesh := SphereMesh.new()
+	mesh.radius = radius
+	mesh.height = radius * 2.0 * squash
+	mesh.radial_segments = 16
+	mesh.rings = 8
+	mi.mesh = mesh
+	mi.material_override = m
+	mi.position = pos
+	parent.add_child(mi)
+	return mi
+
+
+## A triangular prism (gable): base on y=0 spanning z in [-half_w, half_w], apex at height `rise`,
+## extruded along x from 0 to `depth`.
+static func gable(parent: Node3D, half_w: float, rise: float, depth: float, pos: Vector3, m: Material) -> MeshInstance3D:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var p := [Vector3(0, 0, -half_w), Vector3(0, 0, half_w), Vector3(0, rise, 0),
+		Vector3(depth, 0, -half_w), Vector3(depth, 0, half_w), Vector3(depth, rise, 0)]
+	# front (x=depth side faces +x), back, sloped sides, bottom; winding is clockwise seen from outside
+	var tris := [[3, 5, 4], [0, 1, 2], [0, 2, 5, 3], [1, 4, 5, 2], [0, 3, 4, 1]]
+	for t in tris:
+		if t.size() == 3:
+			st.add_vertex(p[t[0]]); st.add_vertex(p[t[1]]); st.add_vertex(p[t[2]])
+		else:
+			st.add_vertex(p[t[0]]); st.add_vertex(p[t[1]]); st.add_vertex(p[t[2]])
+			st.add_vertex(p[t[0]]); st.add_vertex(p[t[2]]); st.add_vertex(p[t[3]])
+	st.generate_normals()
+	var mi := MeshInstance3D.new()
+	mi.mesh = st.commit()
+	mi.material_override = m
+	mi.position = pos
+	parent.add_child(mi)
+	return mi
+
+
+## A four-sided pyramid roof: square-ish base centred on pos (y = base), apex `rise` above.
+static func pyramid(parent: Node3D, size_x: float, size_z: float, rise: float, pos: Vector3, m: Material) -> MeshInstance3D:
+	var hx := size_x * 0.5
+	var hz := size_z * 0.5
+	var c := [Vector3(-hx, 0, -hz), Vector3(hx, 0, -hz), Vector3(hx, 0, hz), Vector3(-hx, 0, hz)]
+	var apex := Vector3(0, rise, 0)
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for i in 4:
+		var a: Vector3 = c[i]
+		var b: Vector3 = c[(i + 1) % 4]
+		st.add_vertex(a); st.add_vertex(apex); st.add_vertex(b)
+	st.add_vertex(c[0]); st.add_vertex(c[1]); st.add_vertex(c[2])
+	st.add_vertex(c[0]); st.add_vertex(c[2]); st.add_vertex(c[3])
+	st.generate_normals()
+	var mi := MeshInstance3D.new()
+	mi.mesh = st.commit()
+	mi.material_override = m
+	mi.position = pos
+	parent.add_child(mi)
+	return mi
+
+
+static func label(parent: Node3D, text: String, pos: Vector3, rot_y: float, size: float, color := Color.WHITE, emit := true, bold := true) -> Label3D:
+	var l := Label3D.new()
+	l.text = text
+	l.font_size = 96
+	l.pixel_size = size / 96.0
+	l.modulate = color
+	l.outline_size = 0
+	l.shaded = not emit
+	l.double_sided = false
+	l.position = pos
+	l.rotation.y = rot_y
+	parent.add_child(l)
+	return l
+
+
+static func omni(parent: Node3D, pos: Vector3, energy: float, rng: float, color := Color(1.0, 0.92, 0.76)) -> OmniLight3D:
+	var l := OmniLight3D.new()
+	l.position = pos
+	l.light_energy = energy
+	l.omni_range = rng
+	l.light_color = color
+	l.shadow_enabled = false
+	parent.add_child(l)
+	return l
