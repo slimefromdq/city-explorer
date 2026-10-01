@@ -26,6 +26,7 @@ const WATER := Color("3f7fc4")
 const ROAD_STREET := Color("fdfdfd")
 const ROAD_AVENUE := Color("d7d7d7")
 const ROAD_DIAGONAL := Color("e8743b")
+const ROAD_RING := Color("b9b9a8")
 const BRIDGE := Color("7a4a24")
 const PIER := Color("5d4a3a")
 const SITE_COLORS := {
@@ -205,8 +206,8 @@ func _draw_terrain() -> void:
 # bridges). Streets first (thin), avenues over them (wide), diagonals on top, so the
 # hierarchy reads at a glance.
 func _draw_roads() -> void:
-	var colors := {"street": ROAD_STREET, "avenue": ROAD_AVENUE, "diagonal": ROAD_DIAGONAL}
-	for kind in ["street", "avenue", "diagonal"]:
+	var colors := {"street": ROAD_STREET, "avenue": ROAD_AVENUE, "diagonal": ROAD_DIAGONAL, "ring": ROAD_RING, "quay": ROAD_RING}
+	for kind in ["street", "avenue", "diagonal", "ring", "quay"]:
 		for seg in network.segments:
 			if seg["kind"] == kind:
 				draw_polyline(_to_screen(seg["points"]), colors[kind], float(seg["width"]) * map_scale, true)
@@ -276,6 +277,7 @@ func _draw_legend(view: Vector2) -> void:
 	y = _legend_line(x, y, ROAD_STREET, 3.0, "street (E-W)")
 	y = _legend_line(x, y, ROAD_AVENUE, 7.0, "avenue (N-S)")
 	y = _legend_line(x, y, ROAD_DIAGONAL, 6.0, "diagonal avenue")
+	y = _legend_line(x, y, ROAD_RING, 5.0, "coast road / embankment")
 	y = _legend_line(x, y, BRIDGE, 7.0, "bridge")
 	y = _legend_line(x, y, WATER, 10.0, "river")
 	y += 8

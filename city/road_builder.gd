@@ -9,14 +9,17 @@ const RibbonMesh := preload("res://city/ribbon_mesh.gd")
 
 # Lift above the ground per road kind (m). Different lifts mean a street and an avenue
 # crossing each other never occupy the same height, which would flicker.
-const LIFT := {"street": 0.15, "avenue": 0.25, "diagonal": 0.35}
-const BRIDGE_LIFT := 0.3
+const LIFT := {"street": 0.15, "avenue": 0.25, "diagonal": 0.35, "ring": 0.45, "quay": 0.5}
+const BRIDGE_LIFT := 0.5   # same as the embankment, so a bridge meets it flush (roads end under it)
+const KINDS := ["street", "avenue", "diagonal", "ring", "quay"]
 const BRIDGE_STEP := 4.0
 
 const COLORS := {
 	"street": Color(0.20, 0.20, 0.22),
 	"avenue": Color(0.29, 0.29, 0.31),
 	"diagonal": Color(0.33, 0.30, 0.28),
+	"ring": Color(0.25, 0.25, 0.27),
+	"quay": Color(0.26, 0.27, 0.30),
 }
 const DECK_COLOR := Color(0.62, 0.61, 0.57)
 
@@ -24,7 +27,7 @@ const DECK_COLOR := Color(0.62, 0.61, 0.57)
 # One MeshInstance3D "Roads" with one surface per road kind (so each kind has its own colour).
 static func build_roads(network, terrain) -> MeshInstance3D:
 	var mesh := ArrayMesh.new()
-	for kind in ["street", "avenue", "diagonal"]:
+	for kind in KINDS:
 		var combined := _empty_arrays()
 		for seg in network.segments:
 			if seg["kind"] != kind:

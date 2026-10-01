@@ -135,3 +135,42 @@ static func track_at(p: Vector2, path: Array) -> Dictionary:
 		if closer or tie_flatter:
 			best = {"dist": d, "height": lerpf(float(path[i][2]), float(path[i + 1][2]), t), "grade": grade}
 	return best
+
+
+# The river as a filled polygon (variable width): one quad per segment plus a disc at each
+# joint, merged into one shape. Matches river_clearance() to within a metre or two.
+static func river_polygon(path: Array) -> PackedVector2Array:
+	var shapes: Array = []
+	for i in range(path.size() - 1):
+		var a := Vector2(path[i][0], path[i][1])
+		var b := Vector2(path[i + 1][0], path[i + 1][1])
+		var n := (b - a).orthogonal().normalized()
+		var ha := float(path[i][2]) * 0.5
+		var hb := float(path[i + 1][2]) * 0.5
+		shapes.append(PackedVector2Array([a + n * ha, b + n * hb, b - n * hb, a - n * ha]))
+	for p in path:
+		var disc := PackedVector2Array()
+		for k in 24:
+			disc.append(Vector2(p[0], p[1]) + Vector2.from_angle(TAU * k / 24.0) * float(p[2]) * 0.5)
+		shapes.append(disc)
+	return _union_all(shapes)
+
+
+# River + harbour basin as one shape (they overlap where the river flows into the harbour).
+static func water_polygon(river_path: Array, basin: PackedVector2Array) -> PackedVector2Array:
+	return _union_all([river_polygon(river_path), basin])
+
+
+# Merge overlapping polygons into one (the largest piece if there is any leftover hole).
+static func _union_all(shapes: Array) -> PackedVector2Array:
+	var acc: PackedVector2Array = shapes[0]
+	for i in range(1, shapes.size()):
+		var best := PackedVector2Array()
+		var best_area := -1.0
+		for piece in Geometry2D.merge_polygons(acc, shapes[i]):
+			var area := polygon_area(piece)
+			if area > best_area:
+				best_area = area
+				best = piece
+		acc = best
+	return acc
