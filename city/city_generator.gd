@@ -45,6 +45,8 @@ var sightlines  # Sightlines: the lines of sight to the tower that buildings mus
 var greenery_plan  # GreeneryPlan: trees, roof gardens, sky gardens, paths
 var sign_plan  # SignPlan: the neon signs
 var terrain  # TerrainHeight: kept so later layers (roads, lots...) ask the same height function
+var station  # StationComplex: Central Station (hall, shell, plaza, platforms, trains); null when switched off
+var with_station := true
 
 
 func _ready() -> void:
@@ -64,6 +66,10 @@ func _ready() -> void:
 	building_plan = BuildingPlan.new(city, plan, terrain, sightlines)
 	add_child(BuildingBuilder.build(building_plan, terrain))
 	add_child(LandmarkBuilder.build_all(city, terrain))
+	if with_station:
+		station = StationComplex.new()
+		station.position = StationLayout.HUB
+		add_child(station)
 	add_child(PrecinctBuilder.build(city, terrain))
 	greenery_plan = GreeneryPlan.new(city, roads, plan, building_plan, sightlines, terrain)
 	add_child(GreeneryBuilder.build(greenery_plan, building_plan, terrain, city))

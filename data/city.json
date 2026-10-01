@@ -178,7 +178,7 @@
 			"lowrise": { "min_height": 12, "max_height": 20, "reach": 1100, "coverage": 0.78 },
 			"harbour": { "min_height": 8, "max_height": 22, "reach": 1100, "coverage": 0.92 }
 		},
-		"sites": { "station": 22, "library": 16, "museum": 20, "performance_hall": 30, "plaza": 0 }
+		"sites": { "station": 0, "library": 16, "museum": 20, "performance_hall": 30, "plaza": 0 }
 	},
 
 	"sightlines": {

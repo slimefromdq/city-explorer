@@ -19,7 +19,7 @@ const TYPE_COLORS := {
 }
 const PARK_COLOR := Color(0.38, 0.66, 0.32)  # park blocks (lawn) are drawn too, though they have no lots
 const SITE_COLORS := {
-	"station": Color(0.22, 0.22, 0.27),
+	"station": Color(0.50, 0.48, 0.45),  # paving: the station complex stands on this lot
 	"library": Color(0.50, 0.30, 0.15),
 	"museum": Color(0.12, 0.50, 0.50),
 	"performance_hall": Color(0.65, 0.15, 0.48),
