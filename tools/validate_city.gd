@@ -388,7 +388,6 @@ func _check_everything_on_land(city: Dictionary) -> void:
 		"chambers": [],
 		"entrances and outfalls": [],
 		"site corners": [],
-		"road diagonals": [],
 		"piers (land end)": [],
 	}
 	for lm in city["landmarks"]:
@@ -415,9 +414,6 @@ func _check_everything_on_land(city: Dictionary) -> void:
 	for site in city["sites"]:
 		for p in site["polygon"]:
 			groups["site corners"].append(p)
-	for d in city["roads"]["diagonals"]:
-		for p in d["path"]:
-			groups["road diagonals"].append(p)
 	for pier in city["harbour"]["piers"]:
 		groups["piers (land end)"].append(pier["from"])
 	for name in groups:
@@ -530,9 +526,11 @@ func _check_road_network(city: Dictionary) -> void:
 				zones.append_array(Geometry2D.offset_polygon(CityData.to_points(area["polygon"]), -RoadNetwork.ZONE_INSET))
 	var inside := 0
 	for seg in network.segments:
+		if seg["kind"] == "ring":
+			continue  # the coast road may run along a park's shore
 		for p in seg["points"]:
 			for zone in zones:
-				if Geometry2D.is_point_in_polygon(p, zone):
+				if Geo2D.polygon_signed_distance(p, zone) < -0.5:  # ends exactly on the edge are fine
 					inside += 1
 	_expect(inside == 0, "no road enters a 'roads: false' zone (park, station, plaza, library, museum, hall)")
 
@@ -546,7 +544,84 @@ func _check_road_network(city: Dictionary) -> void:
 			if not met:
 				unmet.append("%s" % b["id"])
 	_expect(unmet.is_empty(), "every bridge end meets a road%s" % ("" if unmet.is_empty() else " (not met: %s)" % ", ".join(unmet)))
+	_check_road_tidiness(city, network)
 	_expect(float(roads["bridge_arch_height"]) >= 0.0 and float(roads["bridge_deck_thickness"]) > 0.0, "bridge style values are valid")
+
+
+# The checks behind "roads should look planned, not random".
+func _check_road_tidiness(city: Dictionary, network) -> void:
+	var roads: Dictionary = city["roads"]
+	var kinds := {}
+	for seg in network.segments:
+		kinds[seg["kind"]] = true
+	_expect(kinds.has("ring") and kinds.has("quay"), "a coast road and a river embankment exist")
+
+	# Diagonals: straight, start/end on a grid junction or run out to the coast, never at a shallow angle.
+	var land := CityData.land_polygon(city)
+	for d in roads["diagonals"]:
+		_expect(d["path"].size() == 2, "diagonal '%s' is one straight line" % d["id"])
+		var a := Vector2(d["path"][0][0], d["path"][0][1])
+		var b := Vector2(d["path"][1][0], d["path"][1][1])
+		var ends_ok := true
+		for p in [a, b]:
+			var node: bool = p.x in roads["avenues"]["x"].map(func(v): return float(v)) and p.y in roads["streets"]["y"].map(func(v): return float(v))
+			var coast: bool = not Geometry2D.is_point_in_polygon(p, land)
+			ends_ok = ends_ok and (node or coast)
+		_expect(ends_ok, "diagonal '%s' starts and ends on a grid junction or at the coast" % d["id"])
+		var angle := rad_to_deg(atan2(absf(b.y - a.y), absf(b.x - a.x)))
+		var from_grid := minf(angle, 90.0 - angle)  # angle to the nearest street/avenue direction
+		_expect(from_grid >= 25.0, "diagonal '%s' cuts the grid at a clear angle (%.0f degrees)" % [d["id"], from_grid])
+
+	# Bridges: spaced out, so no two bridges crowd each other.
+	var xs := []
+	for b in network.bridges:
+		xs.append(((b["from"] as Vector2) + (b["to"] as Vector2)).x * 0.5)
+	xs.sort()
+	var gap := INF
+	for i in range(1, xs.size()):
+		gap = minf(gap, xs[i] - xs[i - 1])
+	_expect(gap >= 140.0, "bridges are at least 140 m apart (closest %.0f m)" % gap)
+
+	# Buildings and landmarks keep clear of the roads.
+	var crowded := []
+	for site in city["sites"]:
+		if site.get("roads", true) == false:
+			continue
+		var poly := CityData.to_points(site["polygon"])
+		for seg in network.segments:
+			for ribbon in Geometry2D.offset_polyline(seg["points"], float(seg["width"]) * 0.5, Geometry2D.JOIN_ROUND, Geometry2D.END_BUTT):
+				if Geo2D.overlap_area(poly, ribbon) > 1.0:
+					crowded.append("%s on %s" % [site["id"], seg["id"]])
+	_expect(crowded.is_empty(), "building sites do not sit on any road%s" % ("" if crowded.is_empty() else " (%s)" % ", ".join(crowded)))
+	var near := []
+	for lm in city["landmarks"]:
+		var p := Vector2(lm["position"][0], lm["position"][1])
+		for seg in network.segments:
+			if Geo2D.polyline_distance(p, seg["points"]) < float(seg["width"]) * 0.5 + 8.0:
+				near.append("%s near %s" % [lm["id"], seg["id"]])
+	_expect(near.is_empty(), "landmarks stand clear of roads%s" % ("" if near.is_empty() else " (%s)" % ", ".join(near)))
+
+	# No random dead ends: every road piece ends on another road, or at a no-road zone
+	# (park, plaza, station) it was deliberately stopped by.
+	var zones := []
+	for group in [city["districts"], city["sites"]]:
+		for area in group:
+			if area.get("roads", true) == false:
+				zones.append(CityData.to_points(area["polygon"]))
+	var dead := []
+	for seg in network.segments:
+		var pts: PackedVector2Array = seg["points"]
+		for end in [pts[0], pts[pts.size() - 1]]:
+			var met := false
+			for other in network.segments:
+				if other != seg and Geo2D.polyline_distance(end, other["points"]) <= 3.0:
+					met = true
+					break
+			for zone in zones:
+				met = met or absf(Geo2D.polygon_signed_distance(end, zone)) <= 8.0
+			if not met:
+				dead.append("%s (%d, %d)" % [seg["id"], end.x, end.y])
+	_expect(dead.is_empty(), "no random dead ends: every road ends on another road or a park/plaza/station%s" % ("" if dead.is_empty() else " - found %d: %s" % [dead.size(), ", ".join(dead.slice(0, 6))]))
 
 
 # ---- helpers ---------------------------------------------------------------

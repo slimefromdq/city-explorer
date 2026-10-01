@@ -38,7 +38,7 @@ func _init() -> void:
 	var bridges: MeshInstance3D = gen.get_node_or_null("Bridges")
 	_expect(roads != null and bridges != null, "generator built Roads and Bridges nodes")
 	if roads != null and bridges != null:
-		_expect((roads.mesh as ArrayMesh).get_surface_count() == 3, "roads have one surface per kind (street, avenue, diagonal)")
+		_expect((roads.mesh as ArrayMesh).get_surface_count() == 5, "roads have one surface per kind (street, avenue, diagonal, ring, quay)")
 		_expect((bridges.mesh as ArrayMesh).get_surface_count() == 1, "bridges mesh has a surface")
 		var deck_lo := INF
 		var deck_hi := -INF

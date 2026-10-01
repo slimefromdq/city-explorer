@@ -64,27 +64,28 @@
 	},
 
 	"roads": {
+		"note": "Streets run east-west, avenues north-south, diagonals are straight lines between grid junctions (or out to the coast). The ring road follows the coast `inset` metres inside it; the quay road follows both river banks and the harbour basin `inset` metres from the water. Every street, avenue and diagonal ends on one of them, and bridges run quay to quay.",
+		"ring": { "name": "Coast Road", "width": 18, "inset": 30 },
+		"quay": { "name": "River Embankment", "width": 16, "inset": 26 },
 		"max_grade": 0.22,
 		"bridge_arch_height": 2.5,
 		"bridge_deck_thickness": 1.0,
-		"streets": { "width": 14, "y": [80, 150, 220, 290, 360, 430, 500, 570, 640, 710, 780, 850, 920, 990, 1060, 1130] },
-		"avenues": { "width": 26, "x": [110, 320, 660, 920, 1180, 1400] },
+		"streets": { "width": 14, "y": [80, 150, 220, 290, 360, 430, 500, 570, 640, 710, 780, 850, 920, 990, 1060] },
+		"avenues": { "width": 26, "x": [320, 660, 920, 1180, 1330] },
 		"diagonals": [
-			{ "id": "west_diagonal", "name": "West Diagonal", "width": 22, "path": [[150, 413], [220, 530], [420, 1000]] },
-			{ "id": "broadway", "name": "Broadway", "width": 22, "path": [[1000, 150], [800, 760]] },
-			{ "id": "port", "name": "Port Boulevard", "width": 22, "path": [[920, 1020], [1180, 925], [1400, 835]] },
-			{ "id": "northeast", "name": "North-East Parkway", "width": 22, "path": [[1470, 278], [1180, 520]] }
+			{ "id": "broadway", "name": "Broadway", "width": 22, "path": [[660, 500], [1180, 150]] },
+			{ "id": "marina_parkway", "name": "Marina Parkway", "width": 22, "path": [[1180, 500], [1520, 222]] },
+			{ "id": "port_boulevard", "name": "Port Boulevard", "width": 22, "path": [[920, 1060], [1180, 920]] },
+			{ "id": "ridge_road", "name": "Ridge Road", "width": 22, "path": [[320, 920], [660, 710]] }
 		]
 	},
 
 	"bridges": [
-		{ "id": "b_320", "name": "Park Edge Bridge", "width": 26, "from": [320, 550], "to": [320, 665] },
-		{ "id": "b_660", "name": "Central Bridge", "width": 26, "from": [660, 518], "to": [660, 647] },
-		{ "id": "b_920", "name": "Core Bridge", "width": 26, "from": [920, 561], "to": [920, 711] },
-		{ "id": "b_1180", "name": "Harbour Bridge", "width": 26, "from": [1180, 604], "to": [1180, 789] },
-		{ "id": "b_1400", "name": "East Bridge", "width": 26, "from": [1400, 605], "to": [1400, 820] },
-		{ "id": "b_west_diagonal", "name": "West Diagonal Bridge", "width": 22, "from": [234, 564], "to": [280, 670] },
-		{ "id": "b_broadway", "name": "Broadway Bridge", "width": 22, "from": [868, 553], "to": [824, 685] }
+		{ "id": "b_320", "name": "Park Edge Bridge", "width": 26, "from": [320, 550.4], "to": [320, 664.0] },
+		{ "id": "b_660", "name": "Central Bridge", "width": 26, "from": [660, 518.2], "to": [660, 646.7] },
+		{ "id": "b_920", "name": "Core Bridge", "width": 26, "from": [920, 561.4], "to": [920, 710.1] },
+		{ "id": "b_1180", "name": "Harbour Bridge", "width": 26, "from": [1180, 604.6], "to": [1180, 788.6] },
+		{ "id": "b_1330", "name": "East Bridge", "width": 26, "from": [1330, 606.6], "to": [1330, 810.0] }
 	],
 
 	"districts": [
@@ -117,29 +118,29 @@
 	"sites": [
 		{
 			"id": "central_station", "name": "Central Station", "kind": "station", "roads": false,
-			"polygon": [[700, 760], [900, 760], [900, 900], [700, 900]]
+			"polygon": [[660, 780], [920, 780], [920, 920], [660, 920]]
 		},
 		{
-			"id": "library", "name": "Meridian Library", "kind": "library", "roads": false,
-			"polygon": [[225, 320], [310, 320], [310, 430], [225, 430]]
+			"id": "library", "name": "Meridian Library", "kind": "library",
+			"polygon": [[135, 445], [295, 445], [295, 487], [135, 487]]
 		},
 		{
-			"id": "museum", "name": "Museum of Meridia", "kind": "museum", "roads": false,
-			"polygon": [[560, 250], [650, 250], [650, 360], [560, 360]]
+			"id": "museum", "name": "Museum of Meridia", "kind": "museum",
+			"polygon": [[555, 250], [638, 250], [638, 360], [555, 360]]
 		},
 		{
 			"id": "meridian_plaza", "name": "Meridian Plaza", "kind": "plaza", "roads": false,
-			"polygon": [[870, 275], [970, 275], [970, 375], [870, 375]]
+			"polygon": [[860, 265], [980, 265], [980, 385], [860, 385]]
 		},
 		{
-			"id": "performance_hall", "name": "Opera & Concert Hall", "kind": "performance_hall", "roads": false,
-			"polygon": [[1440, 470], [1550, 470], [1550, 540], [1440, 540]]
+			"id": "performance_hall", "name": "Opera & Concert Hall", "kind": "performance_hall",
+			"polygon": [[1380, 443], [1520, 443], [1520, 487], [1380, 487]]
 		}
 	],
 
 	"landmarks": [
 		{ "id": "meridian_tower", "name": "Meridian Tower", "kind": "tower", "main": true, "district": "midtown_core", "position": [920, 325], "height": 320 },
-		{ "id": "meridia_eye", "name": "Meridia Eye", "kind": "observation_wheel", "district": "harbour", "position": [1300, 820], "height": 120 },
+		{ "id": "meridia_eye", "name": "Meridia Eye", "kind": "observation_wheel", "district": "harbour", "position": [1255, 885], "height": 120 },
 		{ "id": "hill_basilica", "name": "Basilica of Saint Meridia", "kind": "basilica", "district": "outer_quarters", "position": [200, 800], "height": 70 }
 	],
 
