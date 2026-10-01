@@ -50,6 +50,17 @@ func _init() -> void:
 	_expect(lots != null and (lots.mesh as ArrayMesh).get_surface_count() == 1, "generator built the Lots layer")
 	if lots != null:
 		_expect(gen.plan.lots.size() > 100, "plan has %d lots" % gen.plan.lots.size())
+	var buildings: Node3D = gen.get_node_or_null("Buildings")
+	_expect(buildings != null, "generator built the Buildings layer")
+	if buildings != null:
+		var instances := 0
+		var tallest := 0.0
+		for group in buildings.get_children():
+			instances += (group as MultiMeshInstance3D).multimesh.instance_count
+		for b in gen.building_plan.buildings:  # (a headless run keeps no instance transforms, so read the plan)
+			tallest = maxf(tallest, b["height"])
+		_expect(instances == gen.building_plan.buildings.size() and instances > 300, "MultiMeshes draw all %d planned buildings" % instances)
+		_expect(tallest > 100.0, "the skyline reaches %.0f m" % tallest)
 	var cam: Camera3D = view.get_node("FlyCamera")
 	_expect(cam.position.y > 100.0, "camera was framed above the city")
 	print("generated in %d ms" % (Time.get_ticks_msec() - started))

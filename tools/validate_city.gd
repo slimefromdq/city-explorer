@@ -14,6 +14,7 @@ const Geo2D := preload("res://city/geo2d.gd")
 const TerrainHeight := preload("res://city/terrain_height.gd")
 const RoadNetwork := preload("res://city/road_network.gd")
 const LotPlan := preload("res://city/lot_plan.gd")
+const BuildingPlan := preload("res://city/building_plan.gd")
 
 const DISTRICT_TYPES := ["core", "midrise", "lowrise", "harbour", "park", "financial"]
 const LANDMARK_RIVER_MARGIN := 25.0  # landmark must stand at least this far from the water (m)
@@ -52,6 +53,7 @@ func _init() -> void:
 	_check_terrain_heights(city)
 	_check_road_network(city)
 	_check_lots(city)
+	_check_buildings(city)
 	_finish()
 
 
@@ -753,6 +755,125 @@ func _cells(poly: PackedVector2Array) -> Array:
 		for cy in range(int(floor(box.position.y / 100.0)), int(floor(box.end.y / 100.0)) + 1):
 			cells.append("%d,%d" % [cx, cy])
 	return cells
+
+
+# Buildings: one per lot, inside its lot, and tall or short according to the RULE (district
+# type + distance from the core), never random alone, never taller than the main landmark allows.
+func _check_buildings(city: Dictionary) -> void:
+	var network := RoadNetwork.new(city)
+	var lot_plan := LotPlan.new(city, network)
+	var plan := BuildingPlan.new(city, lot_plan)
+	var rules: Dictionary = city["buildings"]
+	var items: Array = plan.buildings
+
+	# Every ordinary lot gets a building (a few tiny lots may be too small to build on).
+	var buildable := 0
+	for lot in lot_plan.lots:
+		if lot["landmark"] == "" and not (lot["kind"] == "site" and float(rules["sites"].get(lot["site_kind"], 0.0)) <= 0.0):
+			buildable += 1
+	var built := items.size()
+	_expect(float(built) >= 0.97 * buildable, "almost every lot has a building (%d of %d; %d too small)" % [built, buildable, plan.unbuilt.size()])
+	var landmark_lots_empty := true
+	for lot in lot_plan.lots:
+		if lot["landmark"] != "":
+			for b in items:
+				landmark_lots_empty = landmark_lots_empty and b["lot"] != lot["id"]
+	_expect(landmark_lots_empty, "lots reserved for landmarks stay empty")
+
+	# Footprints stay inside their lots, so they cannot touch a road or the water either.
+	var lots_by_id := {}
+	for lot in lot_plan.lots:
+		lots_by_id[lot["id"]] = lot
+	var outside := 0
+	var too_small := 0
+	var clear_of_roads := true
+	var road_boxes: Array = network.ribbons(0.0)
+	for b in items:
+		var corners := BuildingPlan.rect_corners(b["center"], b["u"], b["size"] * 0.5)
+		var lot_poly: PackedVector2Array = lots_by_id[b["lot"]]["polygon"]
+		if Geo2D.overlap_area(corners, lot_poly) < Geo2D.polygon_area(corners) * 0.995:
+			outside += 1
+		if minf(b["size"].x, b["size"].y) < 4.0:
+			too_small += 1
+	for b in items.slice(0, 80):  # spot-check against the real road polygons (the lot checks already cover the rest)
+		var corners := BuildingPlan.rect_corners(b["center"], b["u"], b["size"] * 0.5)
+		for r in road_boxes:
+			if _boxes_touch(corners, r) and Geo2D.overlap_area(corners, r) > 0.1:
+				clear_of_roads = false
+	_expect(outside == 0, "every building stands inside its lot (%d poke out)" % outside)
+	_expect(too_small == 0, "no building is narrower than 4 m (%d are)" % too_small)
+	_expect(clear_of_roads, "no sampled building touches a road")
+
+	# Heights follow the rule.
+	var main_height := 0.0
+	for lm in city["landmarks"]:
+		if lm.get("main", false):
+			main_height = float(lm["height"])
+	var tallest := 0.0
+	var by_group := {}
+	for b in items:
+		tallest = maxf(tallest, float(b["height"]))
+		if not by_group.has(b["group"]):
+			by_group[b["group"]] = []
+		by_group[b["group"]].append(b)
+	_expect(tallest <= main_height * float(rules["height_cap_fraction"]) + 0.01,
+		"no building rivals the main landmark (tallest %.0f m, cap %.0f m, tower %.0f m)" % [tallest, main_height * float(rules["height_cap_fraction"]), main_height])
+	_expect(float(rules["height_cap_fraction"]) <= 0.9 and tallest < main_height * 0.9,
+		"the main landmark stays clearly the tallest thing in the city (tallest building %.0f m vs tower %.0f m)" % [tallest, main_height])
+	var floor_height := float(rules["floor_height"])
+	var snapped := true
+	for b in items:
+		snapped = snapped and absf(float(b["height"]) - float(b["floors"]) * floor_height) < 0.01 and int(b["floors"]) >= int(rules["min_floors"]) - 1
+	_expect(snapped, "every height is a whole number of floors")
+
+	var spread := 1.0 + float(rules["variation"])
+	for group in rules["types"]:
+		var rule: Dictionary = rules["types"][group]
+		var list: Array = by_group.get(group, [])
+		_expect(list.size() > 0, "district type '%s' has buildings" % group)
+		var lo := INF
+		var hi := 0.0
+		for b in list:
+			lo = minf(lo, b["height"])
+			hi = maxf(hi, b["height"])
+		var floor_slack := floor_height
+		_expect(lo >= float(rule["min_height"]) * (1.0 - float(rules["variation"])) - floor_slack and hi <= float(rule["max_height"]) * spread + floor_slack,
+			"'%s' heights stay within the rule (%.0f-%.0f m; rule %d-%d m +/- variation)" % [group, lo, hi, int(rule["min_height"]), int(rule["max_height"])])
+		# Closer to the core must mean taller: compare the nearest third with the farthest third.
+		if list.size() >= 9 and float(rule["max_height"]) > 1.5 * float(rule["min_height"]):
+			var sorted := list.duplicate()
+			sorted.sort_custom(func(a, c): return a["distance"] < c["distance"])
+			var third := sorted.size() / 3
+			var near := 0.0
+			var far := 0.0
+			for i in third:
+				near += float(sorted[i]["height"])
+				far += float(sorted[sorted.size() - 1 - i]["height"])
+			_expect(near > far, "'%s': buildings near the core are taller than those far from it (%.0f m vs %.0f m)" % [group, near / third, far / third])
+
+	# Variety: not every building in a group is identical.
+	for group in by_group:
+		if group == "civic" or by_group[group].size() < 20:
+			continue
+		var distinct := {}
+		for b in by_group[group]:
+			distinct[b["floors"]] = true
+		_expect(distinct.size() >= 3, "'%s' has variety (%d different floor counts)" % [group, distinct.size()])
+
+	# The outer low-rise districts keep one consistent, low style (the Paris part of the brief).
+	var lowrise_tall := 0.0
+	for b in by_group.get("lowrise", []):
+		lowrise_tall = maxf(lowrise_tall, b["height"])
+	_expect(lowrise_tall <= 30.0, "the low-rise districts stay low (tallest %.0f m)" % lowrise_tall)
+
+	# Same JSON and seed -> exactly the same buildings.
+	var again := BuildingPlan.new(city, LotPlan.new(city, RoadNetwork.new(city)))
+	var same := again.buildings.size() == items.size()
+	if same:
+		for i in items.size():
+			same = same and again.buildings[i]["id"] == items[i]["id"] and is_equal_approx(float(again.buildings[i]["height"]), float(items[i]["height"])) \
+				and again.buildings[i]["center"].is_equal_approx(items[i]["center"])
+	_expect(same, "buildings are reproducible: a second run gives the same %d buildings and heights" % items.size())
 
 
 # ---- helpers ---------------------------------------------------------------

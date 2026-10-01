@@ -7,6 +7,7 @@
 # Phase 2 layers: ground (terrain mesh) and water (one flat sea-level plane).
 # Phase 3 layers: roads (draped over the terrain) and bridges.
 # Phase 4 layer: building lots (coloured parcels between the roads).
+# Phase 5 layer: buildings (one MultiMesh per district group).
 extends Node3D
 
 const CityData := preload("res://city/city_data.gd")
@@ -16,6 +17,8 @@ const RoadNetwork := preload("res://city/road_network.gd")
 const RoadBuilder := preload("res://city/road_builder.gd")
 const LotPlan := preload("res://city/lot_plan.gd")
 const LotBuilder := preload("res://city/lot_builder.gd")
+const BuildingPlan := preload("res://city/building_plan.gd")
+const BuildingBuilder := preload("res://city/building_builder.gd")
 
 # Extra sea around the map so the edge of the world is open water, not a cliff.
 # Pure presentation (the map itself is defined by the JSON), hence a constant here.
@@ -26,7 +29,8 @@ const WATER_REACH := 6000.0
 var city: Dictionary
 var map_size := Vector2.ZERO
 var roads  # RoadNetwork: the cut-down road pieces, shared with later layers (lots avoid them)
-var plan  # LotPlan: blocks and building lots, read by the building phase
+var plan  # LotPlan: blocks and building lots
+var building_plan  # BuildingPlan: what stands on each lot (footprint, height)
 var terrain  # TerrainHeight: kept so later layers (roads, lots...) ask the same height function
 
 
@@ -43,6 +47,8 @@ func _ready() -> void:
 	add_child(RoadBuilder.build_roads(roads, terrain))
 	plan = LotPlan.new(city, roads)
 	add_child(LotBuilder.build(plan, terrain))
+	building_plan = BuildingPlan.new(city, plan)
+	add_child(BuildingBuilder.build(building_plan, terrain))
 	add_child(RoadBuilder.build_bridges(roads, terrain, float(city["roads"]["bridge_arch_height"]), float(city["roads"]["bridge_deck_thickness"])))
 
 

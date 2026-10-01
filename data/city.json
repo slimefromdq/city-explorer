@@ -154,6 +154,24 @@
 		}
 	},
 
+	"buildings": {
+		"note": "Height rule: a lot's height comes from its district type and its distance from the core centre. Each type has a min_height (far from the core), a max_height (at the core centre) and a reach (the distance at which the height has fallen to min_height); falloff_power bends the curve (higher = the peak is more concentrated). A seeded variation of up to +/- `variation` is then applied, and the result snaps to whole floors of floor_height. coverage = share of the lot a building fills; setback = gap kept from the lot edge. No building may exceed height_cap_fraction of the main landmark. Special sites get the fixed heights in `sites` (0 = left open). Lots that hold a landmark stay empty for the landmark itself.",
+		"floor_height": 3.4,
+		"min_floors": 2,
+		"falloff_power": 1.5,
+		"variation": 0.3,
+		"setback": 1.5,
+		"height_cap_fraction": 0.65,
+		"types": {
+			"core": { "min_height": 50, "max_height": 200, "reach": 450, "coverage": 0.9 },
+			"financial": { "min_height": 70, "max_height": 160, "reach": 950, "coverage": 0.85 },
+			"midrise": { "min_height": 16, "max_height": 52, "reach": 800, "coverage": 0.88 },
+			"lowrise": { "min_height": 12, "max_height": 20, "reach": 1100, "coverage": 0.78 },
+			"harbour": { "min_height": 8, "max_height": 22, "reach": 1100, "coverage": 0.92 }
+		},
+		"sites": { "station": 22, "library": 16, "museum": 20, "performance_hall": 30, "plaza": 0 }
+	},
+
 	"landmarks": [
 		{ "id": "meridian_tower", "name": "Meridian Tower", "kind": "tower", "main": true, "district": "midtown_core", "position": [920, 325], "height": 320 },
 		{ "id": "meridia_eye", "name": "Meridia Eye", "kind": "observation_wheel", "district": "harbour", "position": [1255, 885], "height": 120 },
