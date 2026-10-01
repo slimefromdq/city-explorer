@@ -41,6 +41,7 @@ const CASES := [
 var _yaw := deg_to_rad(-28.0)
 var _pitch := deg_to_rad(-26.0)
 var _dist := 200.0
+var _dist0 := 200.0   # the framing distance chosen at start; wheel zoom is relative to it
 var _target := Vector3.ZERO
 var _top_down := false
 var _bounds := Rect2()
@@ -84,12 +85,17 @@ func _ready() -> void:
 		get_tree().quit()
 
 
+## The buildings to show. A subclass (district_lab.gd) overrides this.
+func _cases() -> Array:
+	return CASES
+
+
 func _build_buildings() -> void:
 	var entries: Array = []
 	var x := 0.0
 	var row_h := 0.0
 	var row_right := 0.0
-	for c: Dictionary in CASES:
+	for c: Dictionary in _cases():
 		var plan: BuildingPlan
 		if c.has("lot"):
 			plan = BuildingGenerator.plan_for_lot(c.lot, c.h, c.fh, c.seed, c.get("style", "auto"))
@@ -144,8 +150,11 @@ func _build_buildings() -> void:
 		label.no_depth_test = true
 		label.position = Vector3(at.x + w * 0.5, 4.0, at.z + d + 3.0)
 		add_child(label)
-	_target = Vector3(row_right * 0.5, row_h * 0.25, _bounds.get_center().y)
-	_dist = maxf(90.0, maxf(row_right * 0.55, _bounds.size.y * 1.6))
+	# a lab made only of explicitly placed buildings has no "row", so frame the bounds instead
+	var span := maxf(row_right, _bounds.size.x)
+	_target = Vector3(row_right * 0.5 if row_right > 0.0 else _bounds.get_center().x, row_h * 0.25, _bounds.get_center().y)
+	_dist = maxf(90.0, maxf(span * 0.55, _bounds.size.y * 1.6))
+	_dist0 = _dist
 
 
 ## The building's ground rectangle: a translucent fill plus a solid outline, drawn
@@ -221,7 +230,7 @@ func _update_camera() -> void:
 		var vp := get_viewport().get_visible_rect().size
 		if vp.y > 0.0:
 			aspect = vp.x / vp.y
-		_cam.size = maxf(_bounds.size.y, _bounds.size.x / aspect) * 1.25 * (_dist / maxf(90.0, _bounds.size.x * 0.5))
+		_cam.size = maxf(_bounds.size.y, _bounds.size.x / aspect) * 1.25 * (_dist / _dist0)
 		_cam.global_position = Vector3(centre.x, 600.0, centre.y)
 		_cam.look_at(Vector3(centre.x, 0.0, centre.y), Vector3(0.0, 0.0, -1.0))
 	else:

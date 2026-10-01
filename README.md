@@ -112,6 +112,11 @@ numbers the other features read). `BuildingGenerator.plan(w, d, floors, floor_h,
 catches overlap / floating / gaps / bad sizes / out-of-lot footprints, then validates a batch of random buildings;
 `BATCH=2000` for more). In the lab: `T` top-down view, `F` footprint overlay (red = problem or overlap).
 
+Phase 4 - `BuildingDistrict` (`building_district.gd`) reads `CityLayout` (read-only) and lists the 102 lots a generated
+building could fill, with the city's own heights and seeds. `godot --headless res://tests/district_plan_test.tscn` plans and
+validates all of them (and their footprints together); `godot res://tests/district_lab.tscn` shows a few real cells
+(`DISTRICT_CELLS=FIN_A,OLD_A`, or `DISTRICT_ALL=1`). The city scene itself is not modified.
+
 ### Walkability audit (`tests/audit.gd`, allowlist in `tests/audit_allow.json`)
 
 Drops a ray on every square metre of the map, keeps every surface where the player capsule fits,
