@@ -7,6 +7,18 @@
 		"map_size": [1600, 1200]
 	},
 
+	"land": {
+		"note": "Coastline of the city. Everything is clipped to this polygon; outside it is sea. The river starts on the west coast and the harbour basin opens to the sea in the east.",
+		"polygon": [
+			[400, 70], [520, 48], [610, 100], [720, 52], [880, 35], [1030, 80],
+			[1150, 42], [1330, 50], [1590, 350], [1585, 520], [1592, 760], [1590, 1010],
+			[1380, 1140], [1280, 1120], [1180, 1138], [1090, 1112], [1010, 1085], [955, 1048],
+			[895, 1052], [850, 1090], [790, 1140], [700, 1125], [610, 1152], [520, 1120],
+			[420, 1145], [330, 1130], [50, 800], [62, 760], [38, 690], [45, 650],
+			[64, 590], [48, 520], [60, 470]
+		]
+	},
+
 	"core": {
 		"center": [920, 325]
 	},
@@ -16,14 +28,14 @@
 		"hills": [
 			{ "name": "Southern Ridge", "center": [480, 920], "radius": 240, "height": 60 },
 			{ "name": "North-East Rise", "center": [1420, 320], "radius": 200, "height": 35 },
-			{ "name": "West Bluff", "center": [150, 250], "radius": 160, "height": 25 }
+			{ "name": "West Bluff", "center": [230, 420], "radius": 160, "height": 25 }
 		]
 	},
 
 	"river": {
 		"name": "Han-Seine",
 		"path": [
-			[0, 650, 50],
+			[45, 650, 50],
 			[300, 610, 60],
 			[600, 570, 70],
 			[900, 630, 90],
@@ -46,10 +58,10 @@
 		"streets": { "width": 14, "y": [80, 150, 220, 290, 360, 430, 500, 570, 640, 710, 780, 850, 920, 990, 1060, 1130] },
 		"avenues": { "width": 26, "x": [110, 320, 660, 920, 1180, 1400] },
 		"diagonals": [
-			{ "id": "monument", "name": "Avenue du Monument", "width": 22, "path": [[0, 300], [220, 530], [420, 1000]] },
+			{ "id": "monument", "name": "Avenue du Monument", "width": 22, "path": [[150, 413], [220, 530], [420, 1000]] },
 			{ "id": "broadway", "name": "Broadway", "width": 22, "path": [[1000, 150], [800, 760]] },
-			{ "id": "port", "name": "Port Boulevard", "width": 22, "path": [[920, 1100], [1180, 925], [1400, 835]] },
-			{ "id": "northeast", "name": "North-East Parkway", "width": 22, "path": [[1600, 170], [1180, 520]] }
+			{ "id": "port", "name": "Port Boulevard", "width": 22, "path": [[920, 1020], [1180, 925], [1400, 835]] },
+			{ "id": "northeast", "name": "North-East Parkway", "width": 22, "path": [[1470, 278], [1180, 520]] }
 		]
 	},
 
@@ -95,6 +107,18 @@
 		{
 			"id": "central_station", "name": "Central Station", "kind": "station", "roads": false,
 			"polygon": [[700, 760], [900, 760], [900, 900], [700, 900]]
+		},
+		{
+			"id": "library", "name": "Meridian Library", "kind": "library", "roads": false,
+			"polygon": [[225, 320], [310, 320], [310, 430], [225, 430]]
+		},
+		{
+			"id": "museum", "name": "Museum of Meridia", "kind": "museum", "roads": false,
+			"polygon": [[560, 250], [650, 250], [650, 360], [560, 360]]
+		},
+		{
+			"id": "performance_hall", "name": "Opera & Concert Hall", "kind": "performance_hall", "roads": false,
+			"polygon": [[1440, 470], [1550, 470], [1550, 540], [1440, 540]]
 		}
 	],
 
@@ -105,42 +129,43 @@
 	},
 
 	"metro": {
-		"depth": 22,
+		"note": "Path points are [x, y, h]: h = height above ground in metres (negative = tunnel, positive = sky rail). Ramps are the stretches between points of different h; their steepness is limited by max_grade.",
 		"hub": "central_station",
+		"max_grade": 0.08,
 		"lines": [
 			{
 				"id": "A", "name": "Meridian Line", "color": "#e63946",
-				"path": [[0, 880], [400, 860], [800, 830], [1200, 880], [1600, 1000]],
+				"path": [[150, 874, 18], [300, 865, 18], [730, 834, -14], [800, 830, -14], [1000, 850, -14], [1440, 925, 18], [1560, 975, 18]],
 				"stations": [
-					{ "name": "West Gate", "at": [60, 877] },
-					{ "name": "Southern Ridge", "at": [300, 865] },
+					{ "name": "West Gate", "at": [170, 873] },
+					{ "name": "Southern Ridge", "at": [240, 868] },
 					{ "name": "Central Station", "at": [800, 830], "site": "central_station" },
-					{ "name": "Harbour Market", "at": [1100, 868] },
-					{ "name": "East Quay", "at": [1500, 970] }
+					{ "name": "Harbour Market", "at": [950, 845] },
+					{ "name": "East Quay", "at": [1500, 950] }
 				]
 			},
 			{
 				"id": "B", "name": "North-South Line", "color": "#118ab2",
-				"path": [[960, 0], [920, 325], [860, 600], [800, 830], [740, 1200]],
+				"path": [[952, 75, -14], [920, 325, -14], [860, 600, -14], [800, 830, -14], [755, 1100, -14]],
 				"stations": [
-					{ "name": "Northgate", "at": [950, 80] },
+					{ "name": "Northgate", "at": [952, 75] },
 					{ "name": "Midtown Core", "at": [920, 325] },
 					{ "name": "Riverside", "at": [878, 520] },
 					{ "name": "Central Station", "at": [800, 830], "site": "central_station" },
 					{ "name": "Southgate", "at": [772, 1000] },
-					{ "name": "South Terminus", "at": [745, 1170] }
+					{ "name": "South Terminus", "at": [755, 1100] }
 				]
 			},
 			{
-				"id": "C", "name": "Marina Line", "color": "#06b58a",
-				"path": [[1500, 260], [800, 830], [360, 1190]],
+				"id": "C", "name": "Marina Sky Line", "color": "#06b58a",
+				"path": [[1460, 293, 18], [800, 830, 18], [490, 1085, 18]],
 				"stations": [
-					{ "name": "Marina", "at": [1500, 260] },
+					{ "name": "Marina", "at": [1460, 293] },
 					{ "name": "Financial Plaza", "at": [1350, 382] },
 					{ "name": "Courthouse", "at": [1180, 521] },
 					{ "name": "Central Station", "at": [800, 830], "site": "central_station" },
-					{ "name": "Old Town", "at": [560, 1026] },
-					{ "name": "Ridge End", "at": [360, 1190] }
+					{ "name": "Old Town", "at": [560, 1027] },
+					{ "name": "Ridge End", "at": [490, 1085] }
 				]
 			}
 		]
@@ -150,7 +175,7 @@
 		"name": "The Underguild",
 		"depth": 9,
 		"tunnels": [
-			{ "id": "main_drain", "name": "Main Drain", "width": 8, "path": [[0, 960], [480, 985], [1000, 1000], [1300, 1010]] },
+			{ "id": "main_drain", "name": "Main Drain", "width": 8, "path": [[250, 980], [480, 985], [1000, 1000], [1300, 1010]] },
 			{ "id": "old_town_outfall", "name": "Old Town Outfall", "width": 6, "path": [[500, 618], [500, 800], [480, 985]] },
 			{ "id": "harbour_outfall", "name": "Harbour Outfall", "width": 6, "path": [[1060, 723], [1060, 900], [1000, 1000]] },
 			{ "id": "core_siphon", "name": "Core Siphon", "width": 6, "path": [[480, 985], [640, 900], [760, 700], [880, 500], [1000, 340]] },

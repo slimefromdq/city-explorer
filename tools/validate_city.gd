@@ -19,6 +19,9 @@ const BRIDGE_REACH := 40.0           # a road crossing the river needs a bridge 
 const JOIN_REACH := 12.0             # tunnels/chambers closer than this count as connected (m)
 const STATION_ON_LINE := 6.0         # a station must sit this close to its metro line (m)
 const OUTFALL_REACH := 15.0          # an outfall must be this close to the waterline (m)
+const SITE_KINDS := ["station", "library", "museum", "performance_hall"]
+const LEVEL_TRACK_GRADE := 0.02      # a platform needs track flatter than this
+const MIN_LAND_FRACTION := 0.2       # a district must be at least this much on land
 
 var _fails := 0
 var _warns := 0
@@ -32,6 +35,7 @@ func _init() -> void:
 		_finish()
 		return
 	_check_meta(city)
+	_check_land(city)
 	_check_river(city)
 	_check_districts(city)
 	_check_harbour(city)
@@ -41,6 +45,7 @@ func _init() -> void:
 	_check_terrain(city)
 	_check_metro(city)
 	_check_underground(city)
+	_check_everything_on_land(city)
 	_finish()
 
 
@@ -53,14 +58,27 @@ func _check_meta(city: Dictionary) -> void:
 		"meta.map_size is [width, height] with positive numbers")
 
 
+# The coastline must be a real, simple shape inside the map, with a natural
+# (not rectangular) outline: it may not fill the whole map box.
+func _check_land(city: Dictionary) -> void:
+	var size := CityData.map_size(city)
+	var land := CityData.land_polygon(city)
+	_expect(land.size() >= 8 and not Geometry2D.triangulate_polygon(land).is_empty(), "land outline is a simple polygon with >= 8 points")
+	var inside := true
+	for p in land:
+		inside = inside and Rect2(Vector2.ZERO, size).has_point(p)
+	_expect(inside, "land outline lies within the map")
+	var fill := Geo2D.polygon_area(land) / (size.x * size.y)
+	_expect(fill < 0.85, "land is not close to a rectangle (fills %d%% of the map box, limit 85%%)" % int(fill * 100.0))
+
+
 func _check_river(city: Dictionary) -> void:
 	var path: Array = city["river"]["path"]
 	_expect(path.size() >= 2, "river has at least 2 path points")
-	var size := CityData.map_size(city)
+	var land := CityData.land_polygon(city)
 	var first := Vector2(path[0][0], path[0][1])
-	var last := Vector2(path[-1][0], path[-1][1])
-	_expect(_on_edge(first, size) and _on_edge(last, size) and not _on_same_edge(first, last, size),
-		"river enters and leaves the map on different edges (it really splits the city)")
+	_expect(absf(Geo2D.polygon_signed_distance(first, land)) <= 25.0,
+		"river starts on the coast (it enters the city from outside)")
 	var widths_ok := true
 	for p in path:
 		widths_ok = widths_ok and float(p[2]) > 0.0
@@ -91,6 +109,8 @@ func _check_districts(city: Dictionary) -> void:
 		_expect(inside, "district '%s' lies within the map" % id)
 		_expect(not Geometry2D.triangulate_polygon(poly).is_empty(),
 			"district '%s' polygon is simple (no self-crossing)" % id)
+		var on_land := Geo2D.overlap_area(poly, CityData.land_polygon(city)) / Geo2D.polygon_area(poly)
+		_expect(on_land >= MIN_LAND_FRACTION, "district '%s' is on land (%d%% of it; the rest is cut off at the coast)" % [id, int(on_land * 100.0)])
 
 	for need in ["core", "park", "midrise", "lowrise", "harbour", "financial"]:
 		_expect(types.has(need), "there is a '%s' district" % need)
@@ -104,12 +124,13 @@ func _check_districts(city: Dictionary) -> void:
 			var limit := MAX_OVERLAP_FRACTION * minf(Geo2D.polygon_area(a), Geo2D.polygon_area(b))
 			_expect(overlap <= limit, "districts '%s' and '%s' do not overlap badly (%.0f m2 shared)" % [keys[i], keys[j], overlap])
 
-	var total := 0.0
+	var land := CityData.land_polygon(city)
+	var covered := 0.0
 	for id in polys:
-		total += Geo2D.polygon_area(polys[id])
-	var coverage := total / (size.x * size.y)
+		covered += Geo2D.overlap_area(polys[id], land)
+	var coverage := covered / Geo2D.polygon_area(land)
 	if coverage < 0.95:
-		_report("WARN", "districts cover only %d%% of the map; the rest will stay empty" % int(coverage * 100.0))
+		_report("WARN", "districts cover only %d%% of the land; the rest will stay empty" % int(coverage * 100.0))
 
 
 func _check_core_and_landmark(city: Dictionary) -> void:
@@ -182,10 +203,11 @@ func _check_harbour(city: Dictionary) -> void:
 	var river: Array = city["river"]["path"]
 	var basin := CityData.to_points(city["harbour"]["basin"])
 	_expect(basin.size() >= 3 and not Geometry2D.triangulate_polygon(basin).is_empty(), "harbour basin is a simple polygon")
-	var on_edge := false
+	var land := CityData.land_polygon(city)
+	var open_sea := false
 	for p in basin:
-		on_edge = on_edge or _on_edge(p, size)
-	_expect(on_edge, "harbour basin touches the map edge")
+		open_sea = open_sea or not Geometry2D.is_point_in_polygon(p, land)
+	_expect(open_sea, "harbour basin reaches past the coastline (it opens to the sea)")
 	var end := Vector2(river[-1][0], river[-1][1])
 	_expect(Geometry2D.is_point_in_polygon(end, basin), "the river's far end flows into the harbour basin")
 	for pier in city["harbour"]["piers"]:
@@ -202,6 +224,8 @@ func _check_sites(city: Dictionary) -> void:
 	for site in city["sites"]:
 		var poly := CityData.to_points(site["polygon"])
 		polys[site["id"]] = poly
+		_expect(site["kind"] in SITE_KINDS, "site '%s' has a known kind (%s)" % [site["id"], site["kind"]])
+		_expect(_district_at(city, Geo2D.polygon_centroid(poly), ""), "site '%s' stands inside a district" % site["id"])
 		var dry := true
 		for p in poly:
 			dry = dry and Geo2D.water_clearance(p, river, basin) >= 10.0
@@ -224,24 +248,43 @@ func _check_metro(city: Dictionary) -> void:
 			hub_poly = CityData.to_points(site["polygon"])
 	_expect(not hub_poly.is_empty(), "metro hub '%s' is a defined site" % metro["hub"])
 
+	var land_box := Rect2(CityData.land_polygon(city)[0], Vector2.ZERO)
+	for p in CityData.land_polygon(city):
+		land_box = land_box.expand(p)
 	var spans_map := false
+	var has_sky := false
+	var has_tunnel := false
 	for line in metro["lines"]:
-		var path := CityData.to_points(line["path"])
-		var a := path[0]
-		var b := path[-1]
-		if (is_zero_approx(a.x) and is_equal_approx(b.x, size.x)) or (is_equal_approx(a.x, size.x) and is_zero_approx(b.x)) \
-				or (is_zero_approx(a.y) and is_equal_approx(b.y, size.y)) or (is_equal_approx(a.y, size.y) and is_zero_approx(b.y)):
+		var raw: Array = line["path"]
+		var path := CityData.to_points(raw)
+		var ext := Rect2(path[0], Vector2.ZERO)
+		for p in path:
+			ext = ext.expand(p)
+		if ext.size.x >= 0.85 * land_box.size.x or ext.size.y >= 0.85 * land_box.size.y:
 			spans_map = true
+		var worst_grade := 0.0
+		for i in range(raw.size() - 1):
+			var length := path[i].distance_to(path[i + 1])
+			worst_grade = maxf(worst_grade, absf(float(raw[i + 1][2]) - float(raw[i][2])) / length)
+			has_sky = has_sky or float(raw[i][2]) > 0.0
+			has_tunnel = has_tunnel or float(raw[i][2]) < 0.0
+		_expect(worst_grade <= float(metro["max_grade"]),
+			"metro line %s ramps are gentle enough (steepest %.1f%%, limit %.1f%%)" % [line["id"], worst_grade * 100.0, float(metro["max_grade"]) * 100.0])
 		var stations_ok := true
+		var level_ok := true
 		var hub_ok := false
 		for st in line["stations"]:
 			var at := Vector2(st["at"][0], st["at"][1])
-			stations_ok = stations_ok and Geo2D.polyline_distance(at, path) <= STATION_ON_LINE
+			var track := Geo2D.track_at(at, raw)
+			stations_ok = stations_ok and float(track["dist"]) <= STATION_ON_LINE
+			level_ok = level_ok and float(track["grade"]) <= LEVEL_TRACK_GRADE
 			if st.has("site") and st["site"] == metro["hub"]:
 				hub_ok = hub_ok or Geometry2D.is_point_in_polygon(at, hub_poly)
 		_expect(stations_ok, "metro line %s: every station lies on the line (within %d m)" % [line["id"], int(STATION_ON_LINE)])
+		_expect(level_ok, "metro line %s: every station platform is on level track" % line["id"])
 		_expect(hub_ok, "metro line %s stops inside the central station" % line["id"])
-	_expect(spans_map, "at least one metro line crosses the entire map edge to edge")
+	_expect(spans_map, "at least one metro line crosses the whole city (>= 85% of its width or height)")
+	_expect(has_sky and has_tunnel, "the metro has both sky-rail and tunnel sections")
 
 
 # Sewers: everything must be one connected network (otherwise part of the
@@ -295,6 +338,58 @@ func _tunnels_touch(a: PackedVector2Array, b: PackedVector2Array) -> bool:
 		if Geo2D.polyline_distance(p, a) <= JOIN_REACH:
 			return true
 	return false
+
+
+# Anything standing on the map must be on land (the coast cuts the old rectangle).
+func _check_everything_on_land(city: Dictionary) -> void:
+	var land := CityData.land_polygon(city)
+	var groups := {
+		"landmark": [city["landmark"]["position"]],
+		"core centre": [city["core"]["center"]],
+		"hill centres": [],
+		"bridge ends": [],
+		"metro stations": [],
+		"metro paths": [],
+		"tunnels": [],
+		"chambers": [],
+		"entrances and outfalls": [],
+		"site corners": [],
+		"road diagonals": [],
+		"piers (land end)": [],
+	}
+	for h in city["terrain"]["hills"]:
+		groups["hill centres"].append(h["center"])
+	for b in city["bridges"]:
+		groups["bridge ends"].append_array([b["from"], b["to"]])
+	for line in city["metro"]["lines"]:
+		for st in line["stations"]:
+			groups["metro stations"].append(st["at"])
+		for p in line["path"]:
+			groups["metro paths"].append(p)
+	var u: Dictionary = city["underground"]
+	for t in u["tunnels"]:
+		for p in t["path"]:
+			groups["tunnels"].append(p)
+	for c in u["chambers"]:
+		groups["chambers"].append(c["center"])
+	for e in u["entrances"]:
+		groups["entrances and outfalls"].append(e["at"])
+	for o in u["outfalls"]:
+		groups["entrances and outfalls"].append(o["at"])
+	for site in city["sites"]:
+		for p in site["polygon"]:
+			groups["site corners"].append(p)
+	for d in city["roads"]["diagonals"]:
+		for p in d["path"]:
+			groups["road diagonals"].append(p)
+	for pier in city["harbour"]["piers"]:
+		groups["piers (land end)"].append(pier["from"])
+	for name in groups:
+		var bad := 0
+		for p in groups[name]:
+			if not Geometry2D.is_point_in_polygon(Vector2(p[0], p[1]), land):
+				bad += 1
+		_expect(bad == 0, "%s: all on land%s" % [name, "" if bad == 0 else " (%d outside the coast)" % bad])
 
 
 # ---- helpers ---------------------------------------------------------------

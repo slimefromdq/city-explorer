@@ -32,3 +32,8 @@ static func to_points(raw: Array) -> PackedVector2Array:
 
 static func map_size(city: Dictionary) -> Vector2:
 	return Vector2(float(city["meta"]["map_size"][0]), float(city["meta"]["map_size"][1]))
+
+
+# The coastline: everything in the city is clipped to this polygon. Outside it is sea.
+static func land_polygon(city: Dictionary) -> PackedVector2Array:
+	return to_points(city["land"]["polygon"])

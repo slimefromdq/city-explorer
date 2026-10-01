@@ -115,3 +115,23 @@ static func polyline_distance(p: Vector2, line: PackedVector2Array) -> float:
 # Clearance to ANY water: the river or the harbour basin (negative = in the water).
 static func water_clearance(p: Vector2, river_path: Array, basin: PackedVector2Array) -> float:
 	return minf(river_clearance(p, river_path), polygon_signed_distance(p, basin))
+
+
+# Height and steepness of a metro path [[x, y, h], ...] at the point nearest to p.
+# If p touches two segments (a vertex), the flatter one wins: a platform sits on
+# level track, so that is the sensible reading.
+static func track_at(p: Vector2, path: Array) -> Dictionary:
+	var best := {"dist": INF, "height": 0.0, "grade": INF}
+	for i in range(path.size() - 1):
+		var a := Vector2(path[i][0], path[i][1])
+		var b := Vector2(path[i + 1][0], path[i + 1][1])
+		var q := Geometry2D.get_closest_point_to_segment(p, a, b)
+		var d := p.distance_to(q)
+		var length := a.distance_to(b)
+		var t := 0.0 if length == 0.0 else a.distance_to(q) / length
+		var grade := absf(float(path[i + 1][2]) - float(path[i][2])) / maxf(length, 0.001)
+		var closer: bool = d < float(best["dist"]) - 0.5
+		var tie_flatter: bool = absf(d - float(best["dist"])) <= 0.5 and grade < float(best["grade"])
+		if closer or tie_flatter:
+			best = {"dist": d, "height": lerpf(float(path[i][2]), float(path[i + 1][2]), t), "grade": grade}
+	return best

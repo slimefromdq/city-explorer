@@ -19,19 +19,27 @@ const DISTRICT_COLORS := {
 	"financial": Color("e58fb0"),
 }
 const BG := Color("2b2f36")
+const SEA := Color("27537f")
+const LAND := Color("d8cfae")
 const WATER := Color("3f7fc4")
 const ROAD_STREET := Color("fdfdfd")
 const ROAD_AVENUE := Color("d7d7d7")
 const ROAD_DIAGONAL := Color("e8743b")
 const BRIDGE := Color("7a4a24")
 const PIER := Color("5d4a3a")
-const STATION := Color("2e2e38")
+const SITE_COLORS := {
+	"station": Color(0.18, 0.18, 0.22, 0.88),
+	"library": Color(0.45, 0.28, 0.14, 0.92),
+	"museum": Color(0.12, 0.45, 0.45, 0.92),
+	"performance_hall": Color(0.62, 0.15, 0.45, 0.92),
+}
 const LANDMARK := Color("d6212b")
 const OUTLINE := Color(0, 0, 0, 0.55)
 const LEGEND_WIDTH := 250.0
 const MARGIN := 24.0
 
 var city: Dictionary
+var land := PackedVector2Array()  # coastline polygon, cached in _ready
 var map_scale := 1.0
 var _origin := Vector2.ZERO  # screen position of map (0, 0)
 # Which layers are visible. The underground layers overlap the surface, so each
@@ -43,6 +51,8 @@ var show_sewers := true
 
 func _ready() -> void:
 	city = CityData.load_city()
+	if not city.is_empty():
+		land = CityData.land_polygon(city)
 	get_viewport().size_changed.connect(queue_redraw)
 	queue_redraw()
 
@@ -68,7 +78,9 @@ func _draw() -> void:
 		return
 	_fit_map_to(view)
 	var map_px := CityData.map_size(city) * map_scale
-	draw_rect(Rect2(_origin, map_px), Color("1c1f24"))  # map bounds
+	draw_rect(Rect2(_origin, map_px), SEA)  # everything outside the coast is sea
+	if show_surface:
+		draw_colored_polygon(_to_screen(land), LAND)
 
 	# Painter's order: later layers sit on top of earlier ones.
 	if show_surface:
@@ -82,8 +94,8 @@ func _draw() -> void:
 		_draw_bridges()
 		_draw_core_center()
 		_draw_landmark()
-	_draw_outside_mask()
 	if show_surface:
+		_draw_coastline()
 		_draw_district_labels()  # last, so no road or river hides a name
 	_draw_legend(view)
 
@@ -100,6 +112,30 @@ func px(p: Vector2) -> Vector2:
 	return _origin + p * map_scale
 
 
+func _to_screen(pts: PackedVector2Array) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	for p in pts:
+		out.append(px(p))
+	return out
+
+
+# Layout polygons are drawn as zones; the part that falls in the sea is cut off here.
+func _clip_to_land(poly: PackedVector2Array) -> Array:
+	return Geometry2D.intersect_polygons(poly, land)
+
+
+# The biggest land piece of a polygon (for placing a label where it is visible).
+func _largest_land_piece(poly: PackedVector2Array) -> PackedVector2Array:
+	var best := PackedVector2Array()
+	var best_area := -1.0
+	for piece in _clip_to_land(poly):
+		var area := Geo2D.polygon_area(piece)
+		if area > best_area:
+			best_area = area
+			best = piece
+	return best
+
+
 # Two passes: normal districts first, then districts flagged "roads": false
 # (the park) on top of the roads. The roads still exist in the data under them;
 # the flag is the rule, Phase 3 will use it to clip them.
@@ -107,27 +143,26 @@ func _draw_districts(over_roads: bool) -> void:
 	for d in city["districts"]:
 		if (d.get("roads", true) == false) != over_roads:
 			continue
-		var screen := PackedVector2Array()
-		for p in CityData.to_points(d["polygon"]):
-			screen.append(px(p))
 		var color: Color = DISTRICT_COLORS.get(d["type"], Color.MAGENTA)
-		draw_colored_polygon(screen, Color(color, 0.88) if over_roads else color)
-		screen.append(screen[0])
-		draw_polyline(screen, OUTLINE, 2.0)
+		for piece in _clip_to_land(CityData.to_points(d["polygon"])):
+			var screen := _to_screen(piece)
+			draw_colored_polygon(screen, Color(color, 0.88) if over_roads else color)
+			screen.append(screen[0])
+			draw_polyline(screen, OUTLINE, 2.0)
 
 
-# Sites (e.g. Central Station) sit on top of the districts and roads, like a
-# plaza that roads stop at.
+# Sites (stations, library, museum, hall...) sit on top of the districts and
+# roads, like a plaza that roads stop at. Colour says what kind of building.
 func _draw_sites() -> void:
 	for site in city["sites"]:
-		var screen := PackedVector2Array()
-		for p in CityData.to_points(site["polygon"]):
-			screen.append(px(p))
-		draw_colored_polygon(screen, Color(STATION, 0.85))
+		var poly := CityData.to_points(site["polygon"])
+		var screen := _to_screen(poly)
+		draw_colored_polygon(screen, SITE_COLORS.get(site["kind"], Color.MAGENTA))
 		screen.append(screen[0])
 		draw_polyline(screen, Color.WHITE, 2.0)
-		var at := px(Geo2D.label_point(CityData.to_points(site["polygon"])))
-		_text(at + Vector2(-46, 4), String(site["name"]), 13, Color.WHITE, Color.BLACK)
+		var at := px(Geo2D.label_point(poly))
+		var label := String(site["name"])
+		_text(at + Vector2(-label.length() * 3.2, 4), label, 12, Color.WHITE, Color.BLACK)
 
 
 # The harbour basin is open water the river flows into, plus piers sticking into it.
@@ -144,33 +179,37 @@ func _draw_harbour() -> void:
 	_text(px(Geo2D.label_point(CityData.to_points(h["basin"]))) + Vector2(-70, -40), String(h["name"]), 13, Color.WHITE, Color(0, 0, 0, 0.6))
 
 
-# The river ends and hill rings can poke past the map edge; paint the margin over them.
-func _draw_outside_mask() -> void:
-	var view := get_viewport_rect().size
-	var map_px := CityData.map_size(city) * map_scale
-	var end := _origin + map_px
-	draw_rect(Rect2(0, 0, _origin.x, view.y), BG)
-	draw_rect(Rect2(end.x, 0, view.x - end.x, view.y), BG)
-	draw_rect(Rect2(0, 0, view.x, _origin.y), BG)
-	draw_rect(Rect2(0, end.y, view.x, view.y - end.y), BG)
+# A dark outline so the natural shape of the city reads clearly.
+func _draw_coastline() -> void:
+	var outline := _to_screen(land)
+	outline.append(outline[0])
+	draw_polyline(outline, Color(0.1, 0.18, 0.3), 2.5, true)
 
 
 func _draw_district_labels() -> void:
 	for d in city["districts"]:
 		var is_park: bool = d["type"] == "park"
 		var label: String = ("PARK: " if is_park else "") + String(d["name"])
-		var at := px(Geo2D.label_point(CityData.to_points(d["polygon"])))
+		var at := px(Geo2D.label_point(_largest_land_piece(CityData.to_points(d["polygon"]))))
 		_text(at + Vector2(-label.length() * 4.0, 0), label, 15, Color.BLACK, Color(1, 1, 1, 0.85))
 
 
-# Hills as faint dashed-looking rings: height is not visible top-down, so the
-# label carries it.
+# Hills as faint brown rings (foot and half-height), clipped to the coast.
+# Height is not visible top-down, so the label carries it.
 func _draw_terrain() -> void:
 	for h in city["terrain"]["hills"]:
-		var c := px(Vector2(h["center"][0], h["center"][1]))
+		var centre := Vector2(h["center"][0], h["center"][1])
+		for fraction in [1.0, 0.55]:
+			var ring := PackedVector2Array()
+			for i in 48:
+				ring.append(centre + Vector2.from_angle(TAU * i / 48.0) * float(h["radius"]) * fraction)
+			for piece in _clip_to_land(ring):
+				var screen := _to_screen(piece)
+				draw_colored_polygon(screen, Color(0.35, 0.22, 0.1, 0.08))
+				screen.append(screen[0])
+				draw_polyline(screen, Color(0.2, 0.15, 0.1, 0.5), 1.5, true)
+		var c := px(centre)
 		var r: float = float(h["radius"]) * map_scale
-		draw_arc(c, r, 0.0, TAU, 64, Color(0.2, 0.15, 0.1, 0.5), 1.5, true)
-		draw_arc(c, r * 0.55, 0.0, TAU, 48, Color(0.2, 0.15, 0.1, 0.5), 1.5, true)
 		_text(c + Vector2(-r * 0.45, -r * 0.6), "%s +%dm" % [h["name"], int(h["height"])], 11, Color(0.25, 0.12, 0.02), Color(1, 1, 1, 0.8))
 
 
@@ -181,15 +220,18 @@ func _draw_roads() -> void:
 	var roads: Dictionary = city["roads"]
 	var streets: Dictionary = roads["streets"]
 	for y in streets["y"]:
-		draw_line(px(Vector2(0, y)), px(Vector2(size.x, y)), ROAD_STREET, float(streets["width"]) * map_scale, true)
+		_draw_road([Vector2(0, y), Vector2(size.x, y)], ROAD_STREET, float(streets["width"]))
 	var avenues: Dictionary = roads["avenues"]
 	for x in avenues["x"]:
-		draw_line(px(Vector2(x, 0)), px(Vector2(x, size.y)), ROAD_AVENUE, float(avenues["width"]) * map_scale, true)
+		_draw_road([Vector2(x, 0), Vector2(x, size.y)], ROAD_AVENUE, float(avenues["width"]))
 	for diag in roads["diagonals"]:
-		var screen := PackedVector2Array()
-		for p in CityData.to_points(diag["path"]):
-			screen.append(px(p))
-		draw_polyline(screen, ROAD_DIAGONAL, float(diag["width"]) * map_scale, true)
+		_draw_road(CityData.to_points(diag["path"]), ROAD_DIAGONAL, float(diag["width"]))
+
+
+# Roads are stored as long lines; the sea part is cut off so none runs into the water.
+func _draw_road(line, color: Color, width: float) -> void:
+	for piece in Geometry2D.intersect_polyline_with_polygon(PackedVector2Array(line), land):
+		draw_polyline(_to_screen(piece), color, width * map_scale, true)
 
 
 # The river is a ribbon whose width changes along its length: one quad per
@@ -263,8 +305,15 @@ func _draw_legend(view: Vector2) -> void:
 	draw_arc(Vector2(x + 11, y + 10), 10.0, 0.0, TAU, 24, Color(0.9, 0.8, 0.6), 1.5, true)
 	_text(Vector2(x + 32, y + 14), "hill (ring = foot)", 13, Color.WHITE)
 	y += 32
-	_text(Vector2(x, y), "Underground (keys)", 13, Color("aab")); y += 8
-	y = _legend_line(x, y, Color("e63946"), 4.0, "metro line + stations [M]")
+	_text(Vector2(x, y), "Buildings", 13, Color("aab")); y += 8
+	for kind in SITE_COLORS:
+		draw_rect(Rect2(x, y, 22, 14), SITE_COLORS[kind])
+		_text(Vector2(x + 32, y + 12), String(kind).replace("_", " "), 13, Color.WHITE)
+		y += 20
+	y += 8
+	_text(Vector2(x, y), "Underground / rail (keys)", 13, Color("aab")); y += 8
+	y = _legend_line(x, y, Color("e63946"), 4.0, "metro: dashed=tunnel [M]")
+	y = _legend_line(x, y, Color("e63946"), 6.0, "metro: solid=sky rail")
 	y = _legend_line(x, y, Color("6b4f2a"), 4.0, "sewer tunnel / chamber [U]")
 	_text(Vector2(x, y + 14), "[S] surface on/off", 12, Color("aab"))
 	y += 30
