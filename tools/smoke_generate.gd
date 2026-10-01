@@ -30,10 +30,22 @@ func _init() -> void:
 			hi = maxf(hi, v.y)
 		_expect(verts.size() > 10000 and finite, "ground mesh has %d finite vertices" % verts.size())
 		_expect(lo < gen.terrain.sea_level - 5.0, "terrain has deep water (lowest %.1f m)" % lo)
-		_expect(hi > gen.terrain.sea_level + 40.0, "terrain has hills (highest %.1f m)" % hi)
+		_expect(hi > gen.terrain.sea_level + 15.0, "terrain has hills (highest %.1f m)" % hi)
 		var box := ground.get_aabb()
 		_expect(box.position.x < 0.0 and box.end.x > gen.map_size.x and box.position.z < 0.0 and box.end.z > gen.map_size.y,
 			"ground covers the whole map plus sea margin")
+	var roads: MeshInstance3D = gen.get_node_or_null("Roads")
+	var bridges: MeshInstance3D = gen.get_node_or_null("Bridges")
+	_expect(roads != null and bridges != null, "generator built Roads and Bridges nodes")
+	if roads != null and bridges != null:
+		_expect((roads.mesh as ArrayMesh).get_surface_count() == 3, "roads have one surface per kind (street, avenue, diagonal)")
+		_expect((bridges.mesh as ArrayMesh).get_surface_count() == 1, "bridges mesh has a surface")
+		var deck_lo := INF
+		var deck_hi := -INF
+		for v in (bridges.mesh as ArrayMesh).surface_get_arrays(0)[Mesh.ARRAY_VERTEX]:
+			deck_lo = minf(deck_lo, v.y)
+			deck_hi = maxf(deck_hi, v.y)
+		_expect(deck_hi > gen.terrain.sea_level + 3.0, "bridge decks rise clear of the water (top %.1f m)" % deck_hi)
 	var cam: Camera3D = view.get_node("FlyCamera")
 	_expect(cam.position.y > 100.0, "camera was framed above the city")
 	print("generated in %d ms" % (Time.get_ticks_msec() - started))

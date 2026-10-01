@@ -8,6 +8,7 @@ extends Node2D
 const CityData := preload("res://city/city_data.gd")
 const Geo2D := preload("res://city/geo2d.gd")
 const DebugDraw := preload("res://city/debug_draw.gd")
+const RoadNetwork := preload("res://city/road_network.gd")
 
 # Colours are presentation only (not layout), so they live here, not in the JSON.
 const DISTRICT_COLORS := {
@@ -42,6 +43,7 @@ const MARGIN := 24.0
 
 var city: Dictionary
 var land := PackedVector2Array()  # coastline polygon, cached in _ready
+var network  # RoadNetwork: the same cut-down roads the 3D city is built from
 var map_scale := 1.0
 var _origin := Vector2.ZERO  # screen position of map (0, 0)
 # Which layers are visible. The underground layers overlap the surface, so each
@@ -55,6 +57,7 @@ func _ready() -> void:
 	city = CityData.load_city()
 	if not city.is_empty():
 		land = CityData.land_polygon(city)
+		network = RoadNetwork.new(city)
 	get_viewport().size_changed.connect(queue_redraw)
 	queue_redraw()
 
@@ -86,9 +89,8 @@ func _draw() -> void:
 
 	# Painter's order: later layers sit on top of earlier ones.
 	if show_surface:
-		_draw_districts(false)
+		_draw_districts()
 		_draw_roads()
-		_draw_districts(true)  # districts with "roads": false cover the roads under them
 		_draw_sites()
 		_draw_terrain()
 		_draw_river()
@@ -128,16 +130,11 @@ func _clip_to_land(poly: PackedVector2Array) -> Array:
 
 # Districts are land-only polygons that tile the coast, so they are drawn as
 # stored (no clipping): if one pokes into the sea, the validator fails.
-# Two passes: normal districts first, then districts flagged "roads": false
-# (the park) on top of the roads. The roads still exist in the data under them;
-# the flag is the rule, Phase 3 will use it to clip them.
-func _draw_districts(over_roads: bool) -> void:
+func _draw_districts() -> void:
 	for d in city["districts"]:
-		if (d.get("roads", true) == false) != over_roads:
-			continue
 		var color: Color = DISTRICT_COLORS.get(d["type"], Color.MAGENTA)
-		var screen := _to_screen(CityData.to_points(d["polygon"]))  # drawn exactly as stored
-		draw_colored_polygon(screen, Color(color, 0.88) if over_roads else color)
+		var screen := _to_screen(CityData.to_points(d["polygon"]))
+		draw_colored_polygon(screen, color)
 		screen.append(screen[0])
 		draw_polyline(screen, OUTLINE, 2.0)
 
@@ -204,25 +201,15 @@ func _draw_terrain() -> void:
 		_text(c + Vector2(-r * 0.45, -r * 0.6), "%s +%dm" % [h["name"], int(h["height"])], 11, Color(0.25, 0.12, 0.02), Color(1, 1, 1, 0.8))
 
 
-# Streets first (thin), avenues over them (wide), diagonals on top, so the
+# Draws the RoadNetwork pieces (already cut at the coast, river, park, plazas and
+# bridges). Streets first (thin), avenues over them (wide), diagonals on top, so the
 # hierarchy reads at a glance.
 func _draw_roads() -> void:
-	var size := CityData.map_size(city)
-	var roads: Dictionary = city["roads"]
-	var streets: Dictionary = roads["streets"]
-	for y in streets["y"]:
-		_draw_road([Vector2(0, y), Vector2(size.x, y)], ROAD_STREET, float(streets["width"]))
-	var avenues: Dictionary = roads["avenues"]
-	for x in avenues["x"]:
-		_draw_road([Vector2(x, 0), Vector2(x, size.y)], ROAD_AVENUE, float(avenues["width"]))
-	for diag in roads["diagonals"]:
-		_draw_road(CityData.to_points(diag["path"]), ROAD_DIAGONAL, float(diag["width"]))
-
-
-# Roads are stored as long lines; the sea part is cut off so none runs into the water.
-func _draw_road(line, color: Color, width: float) -> void:
-	for piece in Geometry2D.intersect_polyline_with_polygon(PackedVector2Array(line), land):
-		draw_polyline(_to_screen(piece), color, width * map_scale, true)
+	var colors := {"street": ROAD_STREET, "avenue": ROAD_AVENUE, "diagonal": ROAD_DIAGONAL}
+	for kind in ["street", "avenue", "diagonal"]:
+		for seg in network.segments:
+			if seg["kind"] == kind:
+				draw_polyline(_to_screen(seg["points"]), colors[kind], float(seg["width"]) * map_scale, true)
 
 
 # The river is a ribbon whose width changes along its length: one quad per

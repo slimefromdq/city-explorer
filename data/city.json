@@ -24,20 +24,20 @@
 	},
 
 	"terrain": {
-		"note": "Heights in metres. Land sits at base_height above sea_level; hills add to it. The coast slopes down over coast_slope_width, the sea floor drops to sea_depth over shelf_width, and the river and harbour basin are carved river_depth below sea_level with banks that rise over river_bank_width. Water is one flat plane at sea_level: anything lower than that is river, harbour or sea.",
+		"note": "Heights in metres. Land sits at base_height above sea_level; hills add to it (a hill must fade out before the coast: it is not squeezed by it, so keep its radius inside the land). The coast slopes down over coast_slope_width, the sea floor drops to sea_depth over shelf_width, and the river and harbour basin are carved river_depth below sea_level with banks that rise over river_bank_width. Water is one flat plane at sea_level: anything lower than that is river, harbour or sea.",
 		"sea_level": 0,
 		"base_height": 3,
 		"sea_depth": 12,
 		"shelf_width": 120,
-		"coast_slope_width": 70,
+		"coast_slope_width": 60,
 		"river_depth": 6,
 		"river_bank_width": 18,
 		"mesh_cell_size": 8,
 		"hills": [
-			{ "name": "Southern Ridge", "center": [480, 920], "radius": 240, "height": 60 },
-			{ "name": "North-East Rise", "center": [1420, 320], "radius": 200, "height": 35 },
-			{ "name": "West Bluff", "center": [230, 420], "radius": 160, "height": 25 },
-			{ "name": "Old Quarter Hill", "center": [190, 810], "radius": 150, "height": 45 }
+			{ "name": "Southern Ridge", "center": [480, 920], "radius": 215, "height": 28 },
+			{ "name": "North-East Rise", "center": [1330, 330], "radius": 180, "height": 24 },
+			{ "name": "West Bluff", "center": [260, 440], "radius": 140, "height": 18 },
+			{ "name": "Old Quarter Hill", "center": [230, 800], "radius": 135, "height": 18 }
 		]
 	},
 
@@ -64,6 +64,9 @@
 	},
 
 	"roads": {
+		"max_grade": 0.22,
+		"bridge_arch_height": 2.5,
+		"bridge_deck_thickness": 1.0,
 		"streets": { "width": 14, "y": [80, 150, 220, 290, 360, 430, 500, 570, 640, 710, 780, 850, 920, 990, 1060, 1130] },
 		"avenues": { "width": 26, "x": [110, 320, 660, 920, 1180, 1400] },
 		"diagonals": [
