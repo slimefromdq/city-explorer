@@ -81,9 +81,18 @@ func _shots() -> void:
 		if s.has("setup"):
 			await call(s["setup"])
 		var fig: Node3D = null
-		if s.get("feet") != null:
-			fig = _figure(s["feet"])
-		_look(s["pos"], s["target"], s.get("fov", 70.0), s.get("up", Vector3.UP))
+		var spos: Vector3 = s["pos"]
+		var starget: Vector3 = s["target"]
+		var sfeet = s.get("feet")
+		if s.has("dest"):
+			var ds: DestinationStation = transit.destinations[s["dest"]]
+			spos = ds.to_global(spos)
+			starget = ds.to_global(starget)
+			if sfeet != null:
+				sfeet = ds.to_global(sfeet)
+		if sfeet != null:
+			fig = _figure(sfeet)
+		_look(spos, starget, s.get("fov", 70.0), s.get("up", Vector3.UP))
 		await get_tree().process_frame
 		await get_tree().process_frame
 		await get_tree().process_frame
@@ -103,7 +112,17 @@ func _put_tower_in_tunnel() -> void:
 
 
 func _shot_list(h: Vector3) -> Array:
-	return [
+	var out: Array = []
+	for id in ["basilica_hill", "harbour_eye", "tower_south", "park_meadow"]:
+		if transit != null and transit.destinations.has(id):
+			var ds: DestinationStation = transit.destinations[id]
+			var D: float = ds._D
+			var H: float = ds._H
+			var u0: float = ds._u0
+			out.append({"name": "dest_out_" + id, "dest": id, "pos": Vector3(u0 + 9.0, H + 1.7, D + 17.0), "target": Vector3(u0, H + 2.0, D - 2.0), "feet": Vector3(u0 + 3.0, H, D + 8.0), "fov": 70.0})
+			out.append({"name": "dest_stairs_" + id, "dest": id, "pos": Vector3(u0, H + 1.7, D + 2.0), "target": Vector3(u0, H - 3.0, D - 8.0), "fov": 75.0})
+			out.append({"name": "dest_platform_" + id, "dest": id, "pos": Vector3(-14.0, 1.7, 6.0), "target": Vector3(4.0, 1.2, 3.0), "feet": Vector3(-6.0, 0, 4.0), "fov": 75.0})
+	return out + [
 		{"name": "map_east_wall", "pos": h + Vector3(14.0, 1.7, 0.5), "target": h + Vector3(31.9, 6.8, 0.0), "fov": 50.0},
 		{"name": "map_platform", "pos": h + Vector3(-18.0, -8 + 1.7, 5.5), "target": h + Vector3(-18.0, -8 + 1.9, 0.0), "fov": 60.0, "feet": h + Vector3(-15, -8, 3.5)},
 		{"name": "concourse_map", "pos": h + Vector3(-12.0, 1.7, 2.0), "target": h + Vector3(31.0, 6.5, 0.0), "feet": h + Vector3(-5, 0, -2), "fov": 60.0},

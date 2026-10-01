@@ -36,9 +36,11 @@ func build(p_line_id: String, p_name: String, p_color: Color) -> void:
 	line_name = p_name
 	color = p_color
 	name = "Train_%s" % line_id
+	# The collision body is NOT a child of the train: an AnimatableBody3D only follows changes of its own
+	# transform, so its owner (LineService) copies the train's global transform onto it every physics step.
 	body = AnimatableBody3D.new()
-	body.name = "Body"
-	add_child(body)
+	body.name = "Body_%s" % line_id
+	body.sync_to_physics = true
 	var skin := Greybox.mat(color, 0.55)
 	var skin_light := Greybox.mat(color.lightened(0.35), 0.55)
 	var dark := Greybox.mat(Color(0.10, 0.10, 0.12))

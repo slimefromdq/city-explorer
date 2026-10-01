@@ -45,7 +45,7 @@ var _zones: Array = []   # {"id", "kind", "polygon"}: the named parts of the par
 var _creeks: Array = []  # {"path": Array, "polygon": PackedVector2Array (water), "bank": float}
 
 
-func _init(city: Dictionary, network, lot_plan, building_plan, sightlines, terrain) -> void:
+func _init(city: Dictionary, network, lot_plan, building_plan, sightlines, terrain, reserved: Array = []) -> void:
 	_city = city
 	_network = network
 	_sightlines = sightlines
@@ -57,6 +57,8 @@ func _init(city: Dictionary, network, lot_plan, building_plan, sightlines, terra
 	for site in city["sites"]:
 		if site["kind"] != "plaza":
 			_keep_clear.append_array(Geometry2D.offset_polygon(CityData.to_points(site["polygon"]), 3.0))
+	for r in reserved:   # station entrances: no trees
+		_keep_clear.append(PackedVector2Array([r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)]))
 	for zone in g["park_zones"]:
 		_zones.append({"id": zone["id"], "kind": zone["kind"], "polygon": CityData.to_points(zone["polygon"])})
 	for creek in city["terrain"].get("creeks", []):

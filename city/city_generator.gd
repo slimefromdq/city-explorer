@@ -64,7 +64,9 @@ func _ready() -> void:
 	plan = LotPlan.new(city, roads)
 	add_child(LotBuilder.build(plan, terrain))
 	sightlines = Sightlines.new(city, terrain)
-	building_plan = BuildingPlan.new(city, plan, terrain, sightlines)
+	var routes := RouteData.load_default()
+	var reserved: Array = TransitSystem.reserve_rects(routes) if with_station else []
+	building_plan = BuildingPlan.new(city, plan, terrain, sightlines, reserved)
 	add_child(BuildingBuilder.build(building_plan, terrain))
 	add_child(LandmarkBuilder.build_all(city, terrain))
 	if with_station:
@@ -72,7 +74,7 @@ func _ready() -> void:
 		station.position = StationLayout.HUB
 		add_child(station)
 	add_child(PrecinctBuilder.build(city, terrain))
-	greenery_plan = GreeneryPlan.new(city, roads, plan, building_plan, sightlines, terrain)
+	greenery_plan = GreeneryPlan.new(city, roads, plan, building_plan, sightlines, terrain, reserved)
 	add_child(GreeneryBuilder.build(greenery_plan, building_plan, terrain, city))
 	add_child(ParkBuilder.build(city, greenery_plan, terrain))
 	sign_plan = SignPlan.new(city, roads, building_plan)
@@ -82,7 +84,11 @@ func _ready() -> void:
 		transit.terrain = terrain
 		transit.station = station
 		add_child(transit)
-		SurfaceHoles.apply(self, station.hole_rects())
+		var ground_holes: Array[Rect2] = station.hole_rects()
+		ground_holes.append_array(transit.hole_rects_ground())
+		var water_holes: Array[Rect2] = station.hole_rects()
+		water_holes.append_array(transit.hole_rects_water())
+		SurfaceHoles.apply(self, ground_holes, water_holes)
 	add_child(RoadBuilder.build_bridges(roads, terrain, float(city["roads"]["bridge_arch_height"]), float(city["roads"]["bridge_deck_thickness"])))
 
 

@@ -67,6 +67,8 @@ func setup(p_line: Dictionary, p_routes: RouteData, p_platform_dirs: Array[Vecto
 	train.build(line["id"], line["name"], line["color"])
 	train.rotation.y = PI * 0.5
 	follow.add_child(train)
+	add_child(train.body)
+	train.body.global_transform = train.global_transform
 	train.player_entered.connect(_on_player_entered)
 	train.player_left.connect(_on_player_left)
 	_run_vmax = float(line["cruise_speed"])
@@ -77,6 +79,7 @@ func setup(p_line: Dictionary, p_routes: RouteData, p_platform_dirs: Array[Vecto
 
 
 func _physics_process(delta: float) -> void:
+	train.body.global_transform = train.global_transform
 	match state:
 		State.DWELL:
 			if train.player_inside:
@@ -224,6 +227,28 @@ func seconds_to_hub_departure() -> float:
 			return run_time_left() + OPEN_TIME + DWELL_TIME
 		_:
 			if stop_index == 0:
+				return maxf(timer, 0.0) + DWELL_TIME
+			return maxf(timer, 0.0) + DWELL_TIME + CLOSE_TIME + run_t + OPEN_TIME + DWELL_TIME
+
+
+## Seconds until the train next leaves the destination stop (0 while it stands there boarding).
+func seconds_to_dest_departure() -> float:
+	var run_t := _full_run_time()
+	match state:
+		State.DWELL:
+			if stop_index == 1:
+				return 0.0 if timer <= 0.0 else timer
+			return timer + CLOSE_TIME + run_t + OPEN_TIME + DWELL_TIME
+		State.CLOSING:
+			if stop_index == 1:
+				return maxf(timer, 0.0)
+			return maxf(timer, 0.0) + run_t + OPEN_TIME + DWELL_TIME
+		State.RUN:
+			if target_index == 1:
+				return run_time_left() + OPEN_TIME + DWELL_TIME
+			return run_time_left() + OPEN_TIME + DWELL_TIME + CLOSE_TIME + run_t + OPEN_TIME + DWELL_TIME
+		_:
+			if stop_index == 1:
 				return maxf(timer, 0.0) + DWELL_TIME
 			return maxf(timer, 0.0) + DWELL_TIME + CLOSE_TIME + run_t + OPEN_TIME + DWELL_TIME
 

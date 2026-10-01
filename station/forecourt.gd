@@ -83,14 +83,30 @@ static func _east_wall(node: Node3D, col: StaticBody3D, z0: float, z1: float) ->
 
 
 ## Three steps down across the middle of the east edge, a ramp at the south end (1:12), both to street level.
+## A collider ramp for a short stair: starts at `start` (x, y, z centre line), runs `run` along x (sign `dir`), drops `drop`, `width` wide.
+static func _stair_ramp(col: StaticBody3D, start: Vector3, dir: float, run: float, drop: float, width: float) -> void:
+	var ang := atan2(-drop, run) * dir * -1.0
+	var length := sqrt(run * run + drop * drop)
+	var mid := start + Vector3(dir * run * 0.5, -drop * 0.5, 0.0)
+	var cs := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(length + 0.2, 0.4, width)
+	cs.shape = shape
+	cs.position = mid + Vector3(0, -0.2 + 0.02, 0)
+	cs.rotation.z = -atan2(drop, run) * dir
+	col.add_child(cs)
+
+
 static func _steps_and_ramp(node: Node3D, col: StaticBody3D) -> void:
 	var warm := Greybox.mat(WARM)
 	var n := int(round(-STREET / STEP_RISE))  # 3
 	for i in n - 1:
 		var rise: float = -STREET / n
 		var x_lo: float = X1 + STEP_RUN * i
-		# each step is a block from the street up to its top, so the face is solid
-		Greybox.box_ab(node, Vector3(x_lo, STREET, -STEP_HALF), Vector3(x_lo + STEP_RUN, -rise * (i + 1) + 0.0, STEP_HALF), warm, col)
+		# each step is a block from the street up to its top, so the face is solid (no collision of its own)
+		Greybox.box_ab(node, Vector3(x_lo, STREET, -STEP_HALF), Vector3(x_lo + STEP_RUN, -rise * (i + 1), STEP_HALF), warm)
+	# one walkable ramp along the nosing line stands in for the treads (a 0.2 m riser would stop the capsule)
+	_stair_ramp(col, Vector3(X1, 0.0, 0.0), 1.0, n * STEP_RUN, -STREET, STEP_HALF * 2.0)
 	# ramp: slopes from the plaza edge (y 0) down to street level over 7.2 m; walls each side
 	var run := -STREET * 12.0
 	var ang := atan2(STREET, run)  # negative: descending toward +x
@@ -214,7 +230,8 @@ static func _rear_court(node: Node3D, col: StaticBody3D) -> void:
 	var rise := -STREET / 3.0
 	for i in 2:
 		var x_hi: float = REAR_X0 - STEP_RUN * i
-		Greybox.box_ab(node, Vector3(x_hi - STEP_RUN, STREET, -8.0), Vector3(x_hi, -rise * (i + 1), 8.0), warm, col)
+		Greybox.box_ab(node, Vector3(x_hi - STEP_RUN, STREET, -8.0), Vector3(x_hi, -rise * (i + 1), 8.0), warm)
+	_stair_ramp(col, Vector3(REAR_X0, 0.0, 0.0), -1.0, 3.0 * STEP_RUN, -STREET, 16.0)
 	for seg in [Vector2(-REAR_HALF, -8.5), Vector2(8.5, REAR_HALF)]:
 		Greybox.box(node, Vector3(0.4, PARAPET_H, seg.y - seg.x), Vector3(REAR_X0 + 0.2, PARAPET_H * 0.5, (seg.x + seg.y) * 0.5), stone, col)
 	for s in [-1, 1]:

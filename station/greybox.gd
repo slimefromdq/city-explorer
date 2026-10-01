@@ -108,6 +108,53 @@ static func railing(parent: Node3D, a: Vector3, b: Vector3, m: Material, col: St
 		col.add_child(cs)
 
 
+## A slab with sloping bottom/top: the bottom edge runs a -> b (any slope), it stands `height` tall (vertical
+## sides), `thickness` thick across `lat` (a horizontal unit vector perpendicular to the run), centred on the line.
+static func prism(parent: Node3D, a: Vector3, b: Vector3, height: float, thickness: float, lat: Vector3, m: Material, col: StaticBody3D = null) -> MeshInstance3D:
+	var up := Vector3(0, height, 0)
+	var half := lat * (thickness * 0.5)
+	var A0 := a - half
+	var A1 := a + half
+	var B0 := b - half
+	var B1 := b + half
+	var r := (b - a).normalized()
+	var r_h := Vector3(r.x, 0, r.z).normalized()
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var top_n := lat.cross(r).normalized()
+	_emit_quad(st, A0 + up, B0 + up, B1 + up, A1 + up, top_n)           # top (slope)
+	_emit_quad(st, A0, A1, B1, B0, -top_n)                               # bottom
+	_emit_quad(st, A1, B1, B1 + up, A1 + up, lat)                        # +lat side
+	_emit_quad(st, A0, B0, B0 + up, A0 + up, -lat)                       # -lat side
+	_emit_quad(st, B0, B1, B1 + up, B0 + up, r_h)                        # far end
+	_emit_quad(st, A0, A1, A1 + up, A0 + up, -r_h)                       # near end
+	st.set_material(m)
+	var mi := MeshInstance3D.new()
+	mi.mesh = st.commit()
+	parent.add_child(mi)
+	if col != null:
+		var cs := CollisionShape3D.new()
+		var shape := ConvexPolygonShape3D.new()
+		shape.points = PackedVector3Array([A0, A1, B0, B1, A0 + up, A1 + up, B0 + up, B1 + up])
+		cs.shape = shape
+		col.add_child(cs)
+	return mi
+
+
+static func _emit_quad(st: SurfaceTool, p0: Vector3, p1: Vector3, p2: Vector3, p3: Vector3, n: Vector3) -> void:
+	for tri in [[p0, p1, p2], [p0, p2, p3]]:
+		var v0: Vector3 = tri[0]
+		var v1: Vector3 = tri[1]
+		var v2: Vector3 = tri[2]
+		if (v1 - v0).cross(v2 - v0).dot(n) > 0.0:   # Godot front faces are clockwise
+			var t := v1
+			v1 = v2
+			v2 = t
+		for v in [v0, v1, v2]:
+			st.set_normal(n)
+			st.add_vertex(v)
+
+
 static func add_box_shape(col: StaticBody3D, size: Vector3, pos: Vector3, rot_y := 0.0, rot_x := 0.0) -> void:
 	var cs := CollisionShape3D.new()
 	var shape := BoxShape3D.new()

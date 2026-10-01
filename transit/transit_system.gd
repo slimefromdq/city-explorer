@@ -11,6 +11,7 @@ var routes: RouteData
 var terrain                        # TerrainHeight (optional; used to find where tunnels run under water)
 var services: Dictionary = {}      # line id -> LineService
 var tunnels: Node3D
+var destinations: Dictionary = {}   # stop id -> DestinationStation
 var station: StationComplex        # set before adding to the tree (the boards live in its hall)
 var _dep_kiosk: ConcourseKiosk
 var _arr_kiosk: ConcourseKiosk
@@ -36,8 +37,59 @@ func build() -> void:
 		add_child(service)
 		services[line["id"]] = service
 		_build_tunnel(line)
+		_build_destination(line, service)
 		order += 1
+	_build_aprons()
 	_hook_boards()
+
+
+func _build_destination(line: Dictionary, service: LineService) -> void:
+	var stop := routes.stop(line["stops"][1]["stop"])
+	if terrain == null:
+		return
+	var ds := DestinationStation.new()
+	ds.setup(stop, line, routes, terrain)
+	ds.service = service
+	add_child(ds)
+	ds.build()
+	destinations[stop["id"]] = ds
+
+
+## Walkable ground: round the hub (with holes at the stairwells) and round each destination entrance.
+func _build_aprons() -> void:
+	if terrain == null:
+		return
+	var holes: Array[Rect2] = []
+	if station != null:
+		holes.append_array(station.hole_rects())
+	TerrainApron.build(self, "HubApron", terrain, Rect2(630, 750, 390, 200), holes)
+	for id in destinations:
+		var ds: DestinationStation = destinations[id]
+		TerrainApron.build(self, "Apron_%s" % id, terrain, ds.apron_area, ds.hole_ground)
+
+
+## World (x, z) rectangles to cut out of the ground mesh / the water plane, from all stairwells and trenches.
+func hole_rects_ground() -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	for id in destinations:
+		out.append_array((destinations[id] as DestinationStation).hole_ground)
+	return out
+
+
+func hole_rects_water() -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	for id in destinations:
+		out.append_array((destinations[id] as DestinationStation).hole_water)
+	return out
+
+
+## The areas buildings and trees must stay out of (from data alone).
+static func reserve_rects(rd: RouteData) -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	for id in rd.stops:
+		if id != "central":
+			out.append(DestinationStation.reserve_rect(rd.stops[id]))
+	return out
 
 
 ## Hub berths: the south track (z > hub) has its platform on its north side, the north track on its south side.

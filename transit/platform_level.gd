@@ -18,11 +18,11 @@ const CEIL_UNDER := PL + HEAD    # -3.9
 const SLAB := 0.6
 const X_HALF := 34.0             # chamber end walls (inner face)
 const Z_HALF := 14.0             # chamber side walls (inner face)
-const ISLAND_HALF := 9.3
+const ISLAND_HALF := 9.88
 const TRACK_Z := 11.45
 const PORTAL_W := 4.8
 const WELL_X_IN := 9.0           # |x| where a well's flight 1 starts (at the hall floor)
-const WELL_Z_IN := 2.7           # |z| of the well's axis-side wall
+const WELL_Z_IN := 1.5           # |z| of the well's axis-side wall (leaves a 3 m walkway on the hall axis)
 const LANE_W := 2.4
 const DIVIDER := 0.4
 const FLIGHT_STEPS := 20
@@ -163,8 +163,8 @@ func _berth(zone: Node3D, col: StaticBody3D, line: Dictionary, q: Vector2i) -> v
 	Greybox.box_ab(zone, Vector3(x_lo, PL + 0.6, wz), Vector3(x_hi, PL + 3.4, wz - sz * 0.06), wall_m)
 	Greybox.box_ab(zone, Vector3(x_lo, PL + 1.7, wz - sz * 0.02), Vector3(x_hi, PL + 2.1, wz - sz * 0.1), colour_m)
 	# coloured pillars between the doors
-	for px in [centre_x, centre_x + sx * 12.0]:
-		var pz: float = sz * 8.3
+	for px in [centre_x + sx * 3.0, centre_x + sx * 12.0]:
+		var pz: float = sz * 8.0
 		Greybox.box(zone, Vector3(0.8, HEAD, 0.8), Vector3(px, PL + HEAD * 0.5, pz), Greybox.mat(color.darkened(0.15), 0.7), col)
 		Greybox.box(zone, Vector3(0.9, 0.5, 0.9), Vector3(px, PL + 0.25, pz), Greybox.mat(STONE))
 	# berth sign hanging from the roof: line colour board, line name + destination

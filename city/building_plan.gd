@@ -23,11 +23,12 @@ var buildings: Array = []
 var unbuilt: Array = []  # lot ids that could not fit any footprint
 var lowered: Array = []  # building ids cut down to keep a line of sight to the tower clear
 var cleared: Array = []  # lot ids left empty because even a 2-floor building would block a line of sight
+var cleared_for_transit: Array = []  # lot ids left empty because a transit entrance (station plaza) stands there
 
 
 # `terrain` and `sightlines` are optional only so a plan can be built WITHOUT the sightline rule
 # (the validator does that to prove the rule is doing real work).
-func _init(city: Dictionary, lot_plan, terrain = null, sightlines = null) -> void:
+func _init(city: Dictionary, lot_plan, terrain = null, sightlines = null, reserved: Array = []) -> void:
 	var rules: Dictionary = city["buildings"]
 	var core := Vector2(city["core"]["center"][0], city["core"]["center"][1])
 	var main_height := 0.0
@@ -65,6 +66,9 @@ func _init(city: Dictionary, lot_plan, terrain = null, sightlines = null) -> voi
 		if fit.is_empty():
 			unbuilt.append(lot["id"])
 			continue
+		if _hits_reserved(fit, reserved):
+			cleared_for_transit.append(lot["id"])   # a station entrance stands here
+			continue
 		var lowered_here := false
 		if sightlines != null and terrain != null:
 			# Keep the roof under the line of sight to the tower (measured from the lowest ground under it).
@@ -84,6 +88,22 @@ func _init(city: Dictionary, lot_plan, terrain = null, sightlines = null) -> voi
 			"site_kind": lot["site_kind"], "center": fit["center"], "u": fit["u"], "size": fit["size"],
 			"height": height, "floors": floors, "distance": lot["center"].distance_to(core),
 		})
+
+
+# Does the footprint overlap any reserved rectangle (Rect2 in map metres)?
+func _hits_reserved(fit: Dictionary, reserved: Array) -> bool:
+	if reserved.is_empty():
+		return false
+	var u: Vector2 = fit["u"]
+	var v := Vector2(-u.y, u.x)
+	var half: Vector2 = fit["size"] * 0.5
+	var c: Vector2 = fit["center"]
+	var poly := PackedVector2Array([c - u * half.x - v * half.y, c + u * half.x - v * half.y, c + u * half.x + v * half.y, c - u * half.x + v * half.y])
+	for r in reserved:
+		var rp := PackedVector2Array([r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)])
+		if not Geometry2D.intersect_polygons(poly, rp).is_empty():
+			return true
+	return false
 
 
 # A rectangle inside the lot (kept `setback` from its edge, filling about `coverage` of it).
