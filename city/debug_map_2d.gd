@@ -102,6 +102,7 @@ func _draw() -> void:
 		_draw_sites()
 		_draw_terrain()
 		_draw_river()
+		_draw_park_zones()
 		_draw_harbour()
 		_draw_bridges()
 		_draw_core_center()
@@ -235,6 +236,29 @@ func _draw_roads() -> void:
 # segment plus a disc at each joint so bends have no gaps.
 func _draw_river() -> void:
 	var path: Array = city["river"]["path"]
+	_draw_water_ribbon(path, false)  # the far end opens into the harbour: no round cap
+	var mid := Vector2(path[1][0], path[1][1])
+	_text(px(mid) + Vector2(-30, 5), "River " + String(city["river"]["name"]), 13, Color.WHITE)
+	# the park's creek and lake are the same kind of water, only smaller
+	for creek in city["terrain"].get("creeks", []):
+		_draw_water_ribbon(creek["path"], true)
+	for pond in city["terrain"].get("ponds", []):
+		draw_circle(px(Vector2(pond["center"][0], pond["center"][1])), float(pond["radius"]) * map_scale, WATER)
+
+
+# Park zones: a tinted outline and a name, so the parts of the park can be told apart.
+func _draw_park_zones() -> void:
+	for zone in city["greenery"]["park_zones"]:
+		var outline := _to_screen(CityData.to_points(zone["polygon"]))
+		draw_colored_polygon(outline, Color(1, 1, 1, 0.18))
+		outline.append(outline[0])
+		draw_polyline(outline, Color(0.1, 0.3, 0.1, 0.9), 1.5)
+		var at := px(Geo2D.label_point(CityData.to_points(zone["polygon"])))
+		_text(at + Vector2(-String(zone["name"]).length() * 2.6, 4), String(zone["name"]), 10, Color.BLACK, Color(1, 1, 1, 0.85))
+
+
+# A ribbon of water whose width changes along its length.
+func _draw_water_ribbon(path: Array, cap_last_end: bool) -> void:
 	for i in range(path.size() - 1):
 		var a := Vector2(path[i][0], path[i][1])
 		var b := Vector2(path[i + 1][0], path[i + 1][1])
@@ -243,10 +267,8 @@ func _draw_river() -> void:
 		var hb: float = float(path[i + 1][2]) * 0.5
 		draw_colored_polygon(PackedVector2Array([
 			px(a + n * ha), px(b + n * hb), px(b - n * hb), px(a - n * ha)]), WATER)
-	for i in range(0, path.size() - 1):  # a disc at the spring and each bend; the far end opens into the harbour
+	for i in range(0, path.size() if cap_last_end else path.size() - 1):  # a disc at the spring and each bend
 		draw_circle(px(Vector2(path[i][0], path[i][1])), float(path[i][2]) * 0.5 * map_scale, WATER)
-	var mid := Vector2(path[1][0], path[1][1])
-	_text(px(mid) + Vector2(-30, 5), "River " + String(city["river"]["name"]), 13, Color.WHITE)
 
 
 func _draw_bridges() -> void:

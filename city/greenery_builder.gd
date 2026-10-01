@@ -86,6 +86,8 @@ static func _tree_group(label: String, mesh: Mesh, items: Array, terrain, lift: 
 
 static func _crown_color(t: Dictionary) -> Color:
 	var tint := float(t["tint"])
+	if t["zone"] == "cherry":
+		return Color(0.98, 0.76, 0.84).lerp(Color(0.93, 0.58, 0.74), tint)  # the cherry blossom garden: brighter pinks
 	if t["zone"] == "garden" and t["kind"] == "round":
 		return Color(0.95, 0.66, 0.74).lerp(Color(0.88, 0.50, 0.66), tint)  # blossom trees in the square
 	if t["kind"] == "cone":
@@ -135,7 +137,7 @@ static func _paths(paths: Array, terrain) -> MeshInstance3D:
 	for path in paths:
 		var pts := PackedVector3Array()
 		for p in path["points"]:
-			pts.append(Vector3(p.x, terrain.height_at(p) + PATH_LIFT, p.y))
+			pts.append(Vector3(p.x, terrain.height_at(p, false) + PATH_LIFT, p.y))  # level over creeks (a footbridge carries it)
 		var part := RibbonMesh.build(pts, float(path["width"]))
 		var offset := verts.size()
 		verts.append_array(part[Mesh.ARRAY_VERTEX])

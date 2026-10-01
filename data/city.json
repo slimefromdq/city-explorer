@@ -33,6 +33,12 @@
 		"river_depth": 6,
 		"river_bank_width": 18,
 		"mesh_cell_size": 8,
+		"creeks": [
+			{
+				"name": "Park Creek", "depth": 2.0, "bank_width": 6,
+				"path": [[505, 110, 8], [500, 150, 10], [472, 185, 9], [448, 230, 9], [450, 285, 9], [456, 338, 9], [474, 388, 9], [470, 436, 8], [462, 476, 7]]
+			}
+		],
 		"ponds": [
 			{ "name": "Park Lake", "center": [450, 285], "radius": 38, "depth": 2.5 }
 		],
@@ -211,10 +217,11 @@
 	},
 
 	"greenery": {
-		"note": "Plants and signs. Trees: park_tree_spacing = grid spacing of park trees (m, jittered); street_tree_spacing = gap between trees along the roads listed in street_tree_roads (one row each side of an avenue; one row on the land side of the coast road and embankment). Trees stay off roads, lots, water and the lines of sight to the tower. green_roof_fraction = share of buildings of each district type with a roof garden of roof_garden_height; sky_gardens = number of planted bands on each tower of that type. signs = how many neon signs each building of that type carries, mounted between sign_min_height and sign_max_height on the facade that faces the nearest road. paths = footpaths in the park.",
+		"note": "Plants and signs. Trees: park_tree_spacing = grid spacing of park trees (m, jittered); street_tree_spacing = gap between trees along the roads listed in street_tree_roads (one row each side of an avenue; one row on the land side of the coast road and embankment). Trees stay off roads, lots, water and the lines of sight to the tower. green_roof_fraction = share of buildings of each district type with a roof garden of roof_garden_height; sky_gardens = number of planted bands on each tower of that type. signs = how many neon signs each building of that type carries, mounted between sign_min_height and sign_max_height on the facade that faces the nearest road. paths = footpaths in the park (a footbridge is added wherever one crosses the creek). park_zones = named parts of the park: a cherry_garden (dense blossom trees, pink ground), a basketball_court (paved apron with courts of 28 x 15 m and two hoops each) and an open_field (treeless striped lawn); the ordinary park trees keep out of every zone.",
 		"park_tree_spacing": 15,
 		"street_tree_spacing": 28,
 		"street_tree_roads": ["avenue", "ring", "quay"],
+		"cherry_tree_spacing": 7,
 		"tree_max_height": 11,
 		"roof_garden_height": 1.2,
 		"green_roof_fraction": { "core": 0.35, "financial": 0.85, "midrise": 0.5, "lowrise": 0.25, "harbour": 0.0 },
@@ -222,12 +229,19 @@
 		"signs": { "core": 2, "financial": 1, "midrise": 3, "lowrise": 1, "harbour": 1 },
 		"sign_min_height": 4,
 		"sign_max_height": 14,
+		"park_zones": [
+			{ "id": "cherry_garden", "name": "Cherry Blossom Garden", "kind": "cherry_garden", "polygon": [[512, 168], [600, 168], [600, 222], [512, 222]] },
+			{ "id": "basketball", "name": "Basketball Courts", "kind": "basketball_court", "polygon": [[498, 400], [570, 400], [570, 478], [498, 478]],
+				"courts": [ { "center": [519, 439], "yaw": 90 }, { "center": [549, 439], "yaw": 90 } ] },
+			{ "id": "open_field", "name": "Open Field", "kind": "open_field", "polygon": [[336, 392], [426, 392], [426, 486], [336, 486]] }
+		],
 		"paths": [
 			{ "name": "Pond Loop", "width": 4, "points": [[520, 285], [513, 315], [494, 340], [466, 353], [434, 353], [406, 340], [387, 315], [380, 285], [387, 255], [406, 230], [434, 217], [466, 217], [494, 230], [513, 255], [520, 285]] },
-			{ "name": "North Walk", "width": 5, "points": [[450, 158], [450, 216]] },
-			{ "name": "South Walk", "width": 5, "points": [[450, 354], [452, 420], [456, 490]] },
+			{ "name": "North Walk", "width": 5, "points": [[400, 152], [410, 226]] },
+			{ "name": "South Walk", "width": 5, "points": [[438, 354], [434, 420], [437, 490]] },
 			{ "name": "West Walk", "width": 5, "points": [[334, 285], [380, 285]] },
-			{ "name": "Museum Walk", "width": 5, "points": [[520, 285], [549, 285]] }
+			{ "name": "Museum Walk", "width": 5, "points": [[520, 285], [549, 285]] },
+			{ "name": "Blossom Walk", "width": 4, "points": [[535, 262], [545, 235], [556, 196]] }
 		]
 	},
 
