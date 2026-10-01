@@ -9,6 +9,7 @@ const CityData := preload("res://city/city_data.gd")
 const Geo2D := preload("res://city/geo2d.gd")
 const DebugDraw := preload("res://city/debug_draw.gd")
 const RoadNetwork := preload("res://city/road_network.gd")
+const LotPlan := preload("res://city/lot_plan.gd")
 
 # Colours are presentation only (not layout), so they live here, not in the JSON.
 const DISTRICT_COLORS := {
@@ -44,6 +45,7 @@ const MARGIN := 24.0
 
 var city: Dictionary
 var land := PackedVector2Array()  # coastline polygon, cached in _ready
+var plan  # LotPlan: blocks and lots, drawn as a layer
 var network  # RoadNetwork: the same cut-down roads the 3D city is built from
 var map_scale := 1.0
 var _origin := Vector2.ZERO  # screen position of map (0, 0)
@@ -52,6 +54,7 @@ var _origin := Vector2.ZERO  # screen position of map (0, 0)
 var show_surface := true
 var show_metro := true
 var show_sewers := true
+var show_lots := true
 
 
 func _ready() -> void:
@@ -59,6 +62,7 @@ func _ready() -> void:
 	if not city.is_empty():
 		land = CityData.land_polygon(city)
 		network = RoadNetwork.new(city)
+		plan = LotPlan.new(city, network)
 	get_viewport().size_changed.connect(queue_redraw)
 	queue_redraw()
 
@@ -70,6 +74,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		KEY_S: show_surface = not show_surface
 		KEY_M: show_metro = not show_metro
 		KEY_U: show_sewers = not show_sewers
+		KEY_L: show_lots = not show_lots
 		_: return
 	queue_redraw()
 	for child in get_children():
@@ -92,6 +97,8 @@ func _draw() -> void:
 	if show_surface:
 		_draw_districts()
 		_draw_roads()
+		if show_lots:
+			_draw_lots()
 		_draw_sites()
 		_draw_terrain()
 		_draw_river()
@@ -202,6 +209,17 @@ func _draw_terrain() -> void:
 		_text(c + Vector2(-r * 0.45, -r * 0.6), "%s +%dm" % [h["name"], int(h["height"])], 11, Color(0.25, 0.12, 0.02), Color(1, 1, 1, 0.8))
 
 
+# Lot outlines, so the parcels between the roads are visible (key L).
+func _draw_lots() -> void:
+	for lot in plan.lots:
+		if lot["kind"] != "lot":
+			continue
+		var outline := _to_screen(lot["polygon"])
+		draw_colored_polygon(outline, Color(1, 1, 1, 0.22))
+		outline.append(outline[0])
+		draw_polyline(outline, Color(0.15, 0.1, 0.05, 0.7), 1.0)
+
+
 # Draws the RoadNetwork pieces (already cut at the coast, river, park, plazas and
 # bridges). Streets first (thin), avenues over them (wide), diagonals on top, so the
 # hierarchy reads at a glance.
@@ -302,7 +320,7 @@ func _draw_legend(view: Vector2) -> void:
 	_text(Vector2(x, y + 29), "solid = above ground, dotted = ramp", 12, Color.WHITE)
 	y += 40
 	y = _legend_line(x, y, Color("6b4f2a"), 4.0, "sewer tunnel / chamber [U]")
-	_text(Vector2(x, y + 14), "[S] surface on/off", 12, Color("aab"))
+	_text(Vector2(x, y + 14), "[S] surface  [L] lots (%d)" % plan.lots.size(), 12, Color("aab"))
 	y += 30
 	_text(Vector2(x, y + 8), "Scale: map %d x %d m" % [int(CityData.map_size(city).x), int(CityData.map_size(city).y)], 12, Color("aab"))
 

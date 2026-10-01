@@ -174,3 +174,34 @@ static func _union_all(shapes: Array) -> PackedVector2Array:
 				best = piece
 		acc = best
 	return acc
+
+
+# Smallest rectangle (any rotation) that contains the polygon. Returns
+# {"center": Vector2, "u": Vector2 (unit vector along the LONG side), "half": Vector2(half long, half short)}.
+# Used to decide which way to cut a block into lots: always across its long side.
+static func min_area_rect(poly: PackedVector2Array) -> Dictionary:
+	var best := {}
+	var best_area := INF
+	for i in poly.size():
+		var d := (poly[(i + 1) % poly.size()] - poly[i]).normalized()
+		if d == Vector2.ZERO:
+			continue
+		var n := d.orthogonal()
+		var lo_d := INF
+		var hi_d := -INF
+		var lo_n := INF
+		var hi_n := -INF
+		for p in poly:
+			lo_d = minf(lo_d, p.dot(d))
+			hi_d = maxf(hi_d, p.dot(d))
+			lo_n = minf(lo_n, p.dot(n))
+			hi_n = maxf(hi_n, p.dot(n))
+		var area := (hi_d - lo_d) * (hi_n - lo_n)
+		if area < best_area:
+			best_area = area
+			var center := d * (lo_d + hi_d) * 0.5 + n * (lo_n + hi_n) * 0.5
+			var half_d := (hi_d - lo_d) * 0.5
+			var half_n := (hi_n - lo_n) * 0.5
+			best = {"center": center, "u": d, "half": Vector2(half_d, half_n)} if half_d >= half_n \
+				else {"center": center, "u": n, "half": Vector2(half_n, half_d)}
+	return best
