@@ -27,14 +27,14 @@ var height := 8.0           # top of the walking surface
 var depth := 3.0            # balcony and landing depth
 var thickness := 0.5        # deck slab thickness
 var bridge_width := 3.5
-var bridge_distance := 10.0  # each bridge's centre, measured from the hall centre along X
+var bridge_distance := 8.5   # each bridge's centre, measured from the hall centre along X
 var stair_width := 4.0
 var step_height := 0.2      # target riser; adjusted so a whole number of risers reaches `height`
 var step_depth := 0.3       # tread
 var floor_color := Color(0.40, 0.28, 0.21)
 var stone_color := Color(0.55, 0.55, 0.57)
 
-const MIN_STAIR_HEADROOM := 2.2         # clear height wanted where a flight passes under a bridge
+const MIN_STAIR_HEADROOM := 3.0         # clear height wanted above the treads where a flight passes under a bridge (head 1.8 + margin)
 const STAIR_GAP := 1.0                  # between the entrance edge and the flights
 const FASCIA_HEIGHT := 0.8
 const FASCIA_THICKNESS := 0.3

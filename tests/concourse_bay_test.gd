@@ -36,7 +36,7 @@ func _ready() -> void:
 	if stage == "" or stage == "hall":
 		var hall := _build_hall()
 		await _settle()
-		await _take_shots("concourse_hall", _hall_shots(hall), 75.0)
+		await _take_shots("concourse_hall", _hall_shots(hall), 75.0, _headroom_figure(hall))
 	if OS.get_environment("KEEP_OPEN") == "":
 		get_tree().quit()
 
@@ -122,14 +122,39 @@ func _hall_shots(hall: ConcourseHall) -> Array:
 		["floor_up_to_bridge", Vector3(bridge_x - 6.0, EYE_HEIGHT, -4.0), Vector3(bridge_x, deck_y + 9.0, 2.0)],
 		# 6. at the foot of a grand staircase (+X end, +Z flight), looking up it
 		["stair_foot_looking_up", Vector3(foot_x - 2.0, EYE_HEIGHT, stair_z), Vector3(half - hall.mezzanine_depth, deck_y + 2.5, stair_z)],
-		# extra: the headroom where a flight passes under a bridge, seen from the side
-		["stair_under_bridge", Vector3(-bridge_x - 1.0, EYE_HEIGHT, 0.0), Vector3(-bridge_x + 2.0, 5.0, stair_z)],
+		# extra: headroom where a flight passes under a bridge, with a 1.8 m figure standing on the tread at the
+		# bridge's landing-side edge (the tightest point). The figure is only shown for this shot.
+		["stair_headroom_check", Vector3(-bridge_x - 0.5, EYE_HEIGHT, 0.0), Vector3(-bridge_x + 1.5, 5.0, stair_z), Vector3.UP, 75.0, true],
 		# extra: the far wall's round window. From the entrance the near bridge hides it, so look from between the bridges, off-axis so the clock is not in the way.
 		["far_wall_window", Vector3(-6.0, EYE_HEIGHT, -7.0), Vector3(half, hall.rose_height - 4.0, 0)],
 		# extras kept from earlier passes: the clock up close, and the view back from the far end
 		["landmark_clock", Vector3(-8.0, EYE_HEIGHT, 6.0), Vector3(0, clock_y, 0)],
 		["far_end_looking_back", Vector3(half - 2.0, EYE_HEIGHT, 0), Vector3(-half, wall_h * 0.4, 0)],
 	]
+
+
+## A 1.8 m capsule standing on the +X, +Z flight's tread at the bridge's landing-side edge.
+func _headroom_figure(hall: ConcourseHall) -> Node3D:
+	var bay: ConcourseBay = hall.get_node("Generated/WallNegZ/Bay0")
+	var half: float = hall.hall_bays * bay.bay_width * 0.5
+	var steps: int = maxi(2, ceili(hall.mezzanine_height / hall.step_height))
+	var riser: float = hall.mezzanine_height / steps
+	var x: float = hall.bridge_distance + hall.bridge_width * 0.5
+	var run_from_landing: float = (half - hall.mezzanine_depth) - x
+	var tread_top: float = hall.mezzanine_height - (floorf(run_from_landing / hall.step_depth) + 1.0) * riser
+	var person := MeshInstance3D.new()
+	var mesh := CapsuleMesh.new()
+	mesh.height = 1.8
+	mesh.radius = 0.25
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.9, 0.2, 0.15)
+	mesh.material = mat
+	person.mesh = mesh
+	person.position = Vector3(x, tread_top + 0.9, hall.entrance_width * 0.5 + 1.0 + hall.stair_width * 0.5)
+	hall.add_child(person)
+	person.visible = false
+	print("headroom check: tread top %.2f m at x=%.2f, bridge underside %.2f m, clearance %.2f m" % [tread_top, x, hall.mezzanine_height - hall.mezzanine_thickness - 0.6, hall.mezzanine_height - hall.mezzanine_thickness - 0.6 - tread_top])
+	return person
 
 
 # -------------------------------------------------------------------- shared
@@ -173,10 +198,12 @@ func _add_environment(parent: Node) -> void:
 	parent.add_child(we)
 
 
-func _take_shots(prefix: String, shots: Array, fov: float) -> void:
+func _take_shots(prefix: String, shots: Array, fov: float, figure: Node3D = null) -> void:
 	var out := OS.get_environment("OUT") if OS.get_environment("OUT") != "" else "res://tests/out"
 	DirAccess.make_dir_recursive_absolute(out)
 	for s in shots:
+		if figure != null:
+			figure.visible = s.size() > 5 and s[5]
 		cam.fov = s[4] if s.size() > 4 else fov
 		cam.position = s[1]
 		cam.look_at(s[2], s[3] if s.size() > 3 else Vector3.UP)

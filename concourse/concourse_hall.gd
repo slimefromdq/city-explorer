@@ -69,9 +69,10 @@ extends Node3D
 @export_range(1.5, 6.0, 0.1, "suffix:m") var mezzanine_depth := 3.0: set = _set_mezzanine_depth
 @export_range(0.2, 1.5, 0.05, "suffix:m") var mezzanine_thickness := 0.5: set = _set_mezzanine_thickness
 @export_range(1.0, 8.0, 0.1, "suffix:m") var bridge_width := 3.5: set = _set_bridge_width
-## Distance of each bridge from the hall centre (10 = at 1/4 and 3/4 of a 40 m hall). The stair
-## flights pass under the bridges; the hall warns if that leaves too little headroom.
-@export_range(2.0, 18.0, 0.1, "suffix:m") var bridge_distance := 10.0: set = _set_bridge_distance
+## Distance of each bridge from the hall centre. The stair flights pass under the bridges, and the
+## closer a bridge is to the hall centre, the more headroom it leaves (the hall warns below 3 m).
+## Too close and the near bridge starts to hide the clock from the entrances.
+@export_range(2.0, 18.0, 0.1, "suffix:m") var bridge_distance := 8.5: set = _set_bridge_distance
 ## Width of each of the four flights (two at each end).
 @export_range(1.0, 6.0, 0.1, "suffix:m") var stair_width := 4.0: set = _set_stair_width
 ## Target riser height; the hall adjusts it slightly so a whole number of steps reaches the mezzanine.
