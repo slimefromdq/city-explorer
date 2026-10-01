@@ -85,7 +85,6 @@ static func _east_wall(node: Node3D, col: StaticBody3D, z0: float, z1: float) ->
 ## Three steps down across the middle of the east edge, a ramp at the south end (1:12), both to street level.
 ## A collider ramp for a short stair: starts at `start` (x, y, z centre line), runs `run` along x (sign `dir`), drops `drop`, `width` wide.
 static func _stair_ramp(col: StaticBody3D, start: Vector3, dir: float, run: float, drop: float, width: float) -> void:
-	var ang := atan2(-drop, run) * dir * -1.0
 	var length := sqrt(run * run + drop * drop)
 	var mid := start + Vector3(dir * run * 0.5, -drop * 0.5, 0.0)
 	var cs := CollisionShape3D.new()

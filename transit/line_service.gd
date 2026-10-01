@@ -41,6 +41,7 @@ var _run_sign := 1.0
 var _run_vmax := 26.0
 var _facing := 1               # +1: the train's +x end leads while running away from the hub
 var _carrying := false
+var frozen := false           # tests/screenshots: hold the train where debug_place put it
 
 
 func setup(p_line: Dictionary, p_routes: RouteData, p_platform_dirs: Array[Vector3], dwell_offset := 0.0) -> void:
@@ -79,6 +80,8 @@ func setup(p_line: Dictionary, p_routes: RouteData, p_platform_dirs: Array[Vecto
 
 func _physics_process(delta: float) -> void:
 	train.body.global_transform = train.global_transform
+	if frozen:
+		return
 	match state:
 		State.DWELL:
 			if train.player_inside:

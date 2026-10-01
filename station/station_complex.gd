@@ -52,4 +52,6 @@ func _make_hall() -> ConcourseHall:
 	h.side_doors = PackedVector2Array([Vector2(-1, -20), Vector2(-1, 20), Vector2(1, 12)])
 	h.floor_holes = platform_level.holes
 	h.lighting_enabled = false  # the city's sun lights the hall through its windows
+	h.interior_fill_only = true # ...and two fill lights, culled to the hall's own meshes, stand in for bounced light
+	h.fill_energy = 0.5
 	return h

@@ -74,7 +74,9 @@ func _shots() -> void:
 	var out := OS.get_environment("OUT") if OS.get_environment("OUT") != "" else "res://tests/out"
 	var only := OS.get_environment("ONLY").split(",", false)
 	var h := StationLayout.HUB
-	var list: Array = _shot_list(h)
+	var list: Array = _final_shots(h)
+	if OS.get_environment("EXTRA") != "":
+		list.append_array(_shot_list(h))
 	for s in list:
 		if only.size() > 0 and not only.has(s["name"]):
 			continue
@@ -84,6 +86,12 @@ func _shots() -> void:
 		var spos: Vector3 = s["pos"]
 		var starget: Vector3 = s["target"]
 		var sfeet = s.get("feet")
+		if s.has("train"):
+			var tr: Train = (transit.services[s["train"]] as LineService).train
+			spos = tr.to_global(spos)
+			starget = tr.to_global(starget)
+			if sfeet != null:
+				sfeet = tr.to_global(sfeet)
 		if s.has("dest"):
 			var ds: DestinationStation = transit.destinations[s["dest"]]
 			spos = ds.to_global(spos)
@@ -102,6 +110,53 @@ func _shots() -> void:
 		print("saved ", path)
 		if fig != null:
 			fig.queue_free()
+
+
+func _put_tower_in_river() -> void:
+	var svc: LineService = transit.services["tower"]
+	svc.frozen = true
+	svc.debug_place(RouteData.arc_of(svc.line["path"], Vector3(922.7, -12.0, 640.0)))
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+
+func _release_trains() -> void:
+	for id in transit.services:
+		(transit.services[id] as LineService).frozen = false
+
+
+## The ten verification shots (each has the reference capsule in it), then a few extras. Keys:
+## pos/target (world; or local to a destination station or a train when "dest" / "train" is set), feet, fov, setup.
+func _final_shots(h: Vector3) -> Array:
+	var east: LineService = transit.services["east"]
+	var tower: LineService = transit.services["tower"]
+	var ds: DestinationStation = transit.destinations["harbour_eye"]
+	var D: float = ds._D
+	var H: float = ds._H
+	var u0: float = ds._u0
+	return [
+		# 1. the south island from the air: the hall's roof and the forecourt
+		{"name": "01_aerial", "pos": h + Vector3(105, 85, 130), "target": h + Vector3(38, 4, 0), "feet": h + Vector3(84, 0, 16), "fov": 52.0},
+		# 2. from the end of the main street (the street's east end, beyond the avenue), toward the facade
+		{"name": "02_main_street", "pos": Vector3(1008.0, 3.15 + 1.7, 850.0), "target": h + Vector3(49, 8, 0), "feet": Vector3(975.0, 3.15, 851.5), "fov": 42.0},
+		# 3. in the plaza, looking at the entrance arch
+		{"name": "03_plaza_arch", "pos": h + Vector3(86, 1.7, 7), "target": h + Vector3(49, 6.5, 0), "feet": h + Vector3(71, 0, 3.0), "fov": 66.0},
+		# 4. in the entrance corridor, looking in toward the hall
+		{"name": "04_entrance_corridor", "pos": h + Vector3(47, 1.7, 0.4), "target": h + Vector3(0, 6.5, 0), "feet": h + Vector3(40, 0, 1.6), "fov": 66.0},
+		# 5. at the head of a platform stairwell (East line), looking down the flight; the capsule waits at the rail
+		{"name": "05_stairwell_head", "pos": h + Vector3(2.6, 2.4, 0.2), "target": h + Vector3(12.0, -2.2, 2.7), "feet": h + Vector3(8.0, 0, 2.7), "fov": 62.0},
+		# 6. on a platform with a train waiting (East, doors open)
+		{"name": "06_platform_train", "pos": h + Vector3(33.0, -8 + 1.7, 3.0), "target": h + Vector3(18.0, -8 + 1.4, 10.5), "feet": h + Vector3(27.5, -8, 8.3), "fov": 62.0},
+		# 7. inside the train, looking out of a window (at the platform)
+		{"name": "07_inside_train", "train": "east", "pos": Vector3(-5.6, 1.55, 0.75), "target": Vector3(-0.6, 1.4, -3.4), "feet": Vector3(-1.9, 0, 0.1), "fov": 70.0},
+		# 8. in the tunnel under the river: the Tower train at speed (held), seen from inside, out of a window
+		{"name": "08_tunnel_river", "train": "tower", "pos": Vector3(-5.2, 1.5, 0.55), "target": Vector3(2.0, 1.3, -0.9), "feet": Vector3(1.6, 0, 0.1), "fov": 76.0, "setup": "_put_tower_in_river"},
+		{"name": "08b_tunnel_ahead", "train": "tower", "pos": Vector3(36.0, 1.5, 0.3), "target": Vector3(8.0, 1.6, 0.0), "feet": Vector3(24.0, -0.8, 1.7), "fov": 62.0},
+		# 9. outside a destination station's entrance (Harbour & Eye)
+		{"name": "09_destination_entrance", "dest": "harbour_eye", "pos": Vector3(u0 + 10.0, H + 1.7, D + 17.0), "target": Vector3(u0, H + 2.5, D - 2.0), "feet": Vector3(u0 + 3.0, H, D + 8.0), "fov": 70.0},
+		# 10. the route map in the concourse (over the east entrance)
+		{"name": "10_route_map", "pos": h + Vector3(15.0, 1.7, 0.8), "target": h + Vector3(31.9, 7.2, 0.0), "feet": h + Vector3(20.5, 0, -1.2), "fov": 46.0},
+	]
 
 
 func _put_tower_in_tunnel() -> void:

@@ -26,7 +26,7 @@ static func build(parent: Node3D, panel_name: String, routes: RouteData, pos: Ve
 	# map area: keep the world aspect, leave a margin and a legend strip at the bottom
 	var margin := 0.07 * size.y
 	var legend_h := 0.18 * size.y
-	var area := Rect2(Vector2(margin, margin * 1.7), Vector2(size.x - margin * 2.0, size.y - margin * 2.7 - legend_h))
+	var area := Rect2(Vector2(margin, margin * 3.2), Vector2(size.x - margin * 2.0, size.y - margin * 4.2 - legend_h))
 	var world := WORLD_MAX - WORLD_MIN
 	var scale := Vector2(area.size.x / world.x, area.size.y / world.y)   # a diagram, not a survey: stretched to fill
 	var origin := area.position
@@ -92,7 +92,7 @@ static func build(parent: Node3D, panel_name: String, routes: RouteData, pos: Ve
 		_disc(img, to_px.call(hpp), int(0.075 * PPM), Color(0.9, 0.2, 0.2))
 	# legend: four chips with line names along the bottom
 	var lx := margin
-	var ly := size.y - legend_h * 0.5
+	var ly := size.y - legend_h * 0.32
 	var legend: Array = []
 	for line in routes.lines:
 		var chip := Rect2i(to_px.call(Vector2(lx, ly - 0.05 * size.y)), Vector2i(int(0.14 * PPM), int(0.1 * size.y * PPM)))
@@ -113,11 +113,11 @@ static func build(parent: Node3D, panel_name: String, routes: RouteData, pos: Ve
 	quad.material_override = mat
 	root.add_child(quad)
 	# text
-	var text_h := 0.062 * size.y
-	Greybox.label(root, "SHUTTLE NETWORK", Vector3(-size.x * 0.5 + margin, size.y * 0.5 - margin * 0.9, 0.01), 0.0, text_h * 1.5, Color(0.95, 0.95, 0.95)).horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	var text_h := 0.075 * size.y
+	Greybox.label(root, "SHUTTLE NETWORK", Vector3(-size.x * 0.5 + margin, size.y * 0.5 - margin * 0.65, 0.01), 0.0, text_h * 1.25, Color(0.95, 0.95, 0.95)).horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	for l in labels:
 		var p: Vector2 = l["pos"]
-		var dy: float = -0.085 * size.y if l["hub"] else 0.085 * size.y
+		var dy: float = -0.075 * size.y if l["hub"] else 0.085 * size.y
 		var local := Vector3(p.x - size.x * 0.5, size.y * 0.5 - p.y + dy, 0.012)
 		var lab := Greybox.label(root, String(l["text"]), local, 0.0, text_h * (1.2 if l["hub"] else 0.95), Color(1, 1, 1))
 		lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -131,7 +131,7 @@ static func build(parent: Node3D, panel_name: String, routes: RouteData, pos: Ve
 		var hp: Vector2 = to_panel.call(Vector2(here["platform"].x, here["platform"].z))
 		var ring := Image.create(2, 2, false, Image.FORMAT_RGBA8)
 		ring = ring
-		var you := Greybox.label(root, "YOU ARE HERE", Vector3(hp.x - size.x * 0.5, size.y * 0.5 - hp.y - 0.17 * size.y, 0.02), 0.0, text_h * 1.15, Color(1.0, 0.35, 0.3))
+		var you := Greybox.label(root, "YOU ARE HERE", Vector3(hp.x - size.x * 0.5, size.y * 0.5 - hp.y - 0.19 * size.y, 0.02), 0.0, text_h * 1.15, Color(1.0, 0.35, 0.3))
 		you.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	return root
 

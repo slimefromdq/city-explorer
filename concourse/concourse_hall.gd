@@ -143,6 +143,9 @@ extends Node3D
 @export_group("Lighting")
 ## Adds the sun, two wall-washing fills, and a WorldEnvironment (ambient + sky) to the hall.
 @export var lighting_enabled := true: set = _set_lighting_enabled
+## With the lighting off (the city's own sun lights the hall), still add the two soft fill lights, but
+## restricted (light cull mask) to the hall's own meshes, so they brighten the interior without lighting the city.
+@export var interior_fill_only := false: set = _set_interior_fill_only
 ## Compass direction the sun's light travels. 180 = straight from the -Z wall to the +Z wall;
 ## away from 180 makes the beams drift along the hall.
 @export_range(0.0, 360.0, 1.0, "suffix:deg") var sun_yaw_degrees := 200.0: set = _set_sun_yaw
@@ -643,8 +646,12 @@ func _build_mezzanine(root: Node3D, dims: Dictionary) -> void:
 
 # ------------------------------------------------------------------- lighting
 
+const FILL_LAYER := 2   # visual layer bit (2 = layer 2) the hall's meshes join when their fills are restricted to them
+
 func _build_lighting(root: Node3D) -> void:
 	if not lighting_enabled:
+		if interior_fill_only:
+			_build_restricted_fills(root)
 		return
 	var sun := DirectionalLight3D.new()
 	sun.name = "Sun"
@@ -673,6 +680,24 @@ func _build_lighting(root: Node3D) -> void:
 	we.name = "Environment"
 	we.environment = env
 	root.add_child(we)
+
+
+func _build_restricted_fills(root: Node3D) -> void:
+	for fill_yaw in [FILL_YAW_TOWARD_NEG_Z, FILL_YAW_TOWARD_POS_Z]:
+		var fill := DirectionalLight3D.new()
+		fill.name = "FillNegZ" if fill_yaw == FILL_YAW_TOWARD_NEG_Z else "FillPosZ"
+		fill.rotation_degrees = Vector3(FILL_PITCH_DEGREES, fill_yaw, 0.0)
+		fill.light_energy = fill_energy
+		fill.light_cull_mask = FILL_LAYER
+		root.add_child(fill)
+	_join_fill_layer(root)
+
+
+func _join_fill_layer(n: Node) -> void:
+	if n is VisualInstance3D:
+		(n as VisualInstance3D).layers |= FILL_LAYER
+	for c in n.get_children():
+		_join_fill_layer(c)
 
 
 # ---------------------------------------------------------------------- setters
@@ -706,6 +731,7 @@ func _set_inlay_color(v: Color) -> void: inlay_color = v; _queue_rebuild()
 func _set_landmark_enabled(v: bool) -> void: landmark_enabled = v; _queue_rebuild()
 func _set_landmark_height(v: float) -> void: landmark_height = v; _queue_rebuild()
 func _set_lighting_enabled(v: bool) -> void: lighting_enabled = v; _queue_rebuild()
+func _set_interior_fill_only(v: bool) -> void: interior_fill_only = v; _queue_rebuild()
 func _set_mezzanine_enabled(v: bool) -> void: mezzanine_enabled = v; _queue_rebuild()
 func _set_mezzanine_height(v: float) -> void: mezzanine_height = v; _queue_rebuild()
 func _set_mezzanine_depth(v: float) -> void: mezzanine_depth = v; _queue_rebuild()

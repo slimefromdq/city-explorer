@@ -131,6 +131,7 @@ static func _furniture(root: Node3D, rings: Array) -> void:
 	var rails: Array[Transform3D] = []
 	var sleepers: Array[Transform3D] = []
 	var lamps: Array[Transform3D] = []
+	var wall_lamps: Array[Transform3D] = []
 	var streaks: Array[Transform3D] = []
 	var next_lamp := 0.0
 	for i in range(rings.size() - 1):
@@ -149,12 +150,16 @@ static func _furniture(root: Node3D, rings: Array) -> void:
 		for side in [-1.0, 1.0]:
 			streaks.append(Transform3D(basis, mid + rt * (side * (HALF_WIDTH - 0.03)) + up * 2.45))
 		var s: float = a["s"]
+		if fmod(s - float(rings[0]["s"]), 6.0) < STEP:   # a wall lamp every 6 m, alternating sides: they flash past the windows
+			var side := 1.0 if int((s - float(rings[0]["s"])) / 6.0) % 2 == 0 else -1.0
+			wall_lamps.append(Transform3D(basis, mid + rt * (side * (HALF_WIDTH - 0.06)) + up * 1.5))
 		if s >= next_lamp:
 			lamps.append(Transform3D(basis, mid + up * (HEAD_Y - 0.06)))
 			next_lamp = s + LAMP_SPACING
 	_multi(root, "Rails", rails, Vector3(STEP + 0.05, 0.16, 0.1), Color(0.55, 0.55, 0.58), 0.0)
 	_multi(root, "Sleepers", sleepers, Vector3(0.35, 0.06, 2.3), Color(0.20, 0.15, 0.12), 0.0)
 	_multi(root, "WallGlow", streaks, Vector3(STEP + 0.05, 0.07, 0.05), Color(1.0, 0.72, 0.30), 1.6)
+	_multi(root, "WallLamps", wall_lamps, Vector3(0.5, 0.4, 0.1), Color(1.0, 0.95, 0.8), 3.0)
 	_multi(root, "Lamps", lamps, Vector3(1.6, 0.1, 0.4), Color(1.0, 0.93, 0.75), 2.5)
 
 
