@@ -40,6 +40,8 @@ extends Node3D
 @export_range(1.0, 60.0, 0.1, "suffix:m") var entrance_width := 10.0: set = _set_entrance_width
 ## Floor to the top of the arch.
 @export_range(2.0, 60.0, 0.1, "suffix:m") var entrance_height := 14.0: set = _set_entrance_height
+## false = a plain rectangular opening of entrance_height (a low passage), true = an arch.
+@export var entrance_arched := true: set = _set_entrance_arched
 
 @export_group("End windows")
 ## Round window above each entrance (0 = none). It is a real opening, so light comes through.
@@ -48,6 +50,21 @@ extends Node3D
 @export_range(4.0, 40.0, 0.1, "suffix:m") var rose_height := 25.5: set = _set_rose_height
 ## Number of radial spokes (even; spokes are built as full diameters).
 @export_range(2, 24, 2) var rose_spokes := 8: set = _set_rose_spokes
+
+@export_group("Station integration")
+## The outside of the long walls gets piers and a cornice too (for a hall that is a building's outer wall).
+@export var dress_exterior := false: set = _set_dress_exterior
+## Collision for everything you can stand on or bump into (floor, piers, booth, kiosks, props, stairs, decks, rails).
+@export var build_collision := false: set = _set_build_collision
+## Doorways through the long walls, as (wall, world x) pairs: wall -1 = the -Z wall, +1 = the +Z wall.
+@export var side_doors: PackedVector2Array = PackedVector2Array(): set = _set_side_doors
+@export_range(1.0, 8.0, 0.1, "suffix:m") var side_door_width := 3.6: set = _set_side_door_width
+@export_range(2.0, 8.0, 0.1, "suffix:m") var side_door_height := 4.4: set = _set_side_door_height
+## Outer roof colour. Alpha 0 = derive it from the ceiling colour.
+@export var vault_outer_color := Color(0, 0, 0, 0): set = _set_vault_outer_color
+## Width of a glass strip along the crown of the vault (0 = solid roof). A glass ridge lantern sits over it.
+@export_range(0.0, 12.0, 0.1, "suffix:m") var skylight_width := 0.0: set = _set_skylight_width
+@export_range(0.0, 6.0, 0.1, "suffix:m") var ridge_lantern_height := 1.8: set = _set_ridge_lantern_height
 
 @export_group("Floor")
 @export_range(0.1, 5.0, 0.05, "suffix:m") var floor_thickness := 0.5: set = _set_floor_thickness
@@ -159,6 +176,8 @@ const FILL_YAW_TOWARD_NEG_Z := 10.0   # light travels toward -Z: washes the -Z w
 const FILL_YAW_TOWARD_POS_Z := 190.0  # light travels toward +Z: washes the +Z wall
 const CUT_OVERSHOOT := 0.05  # entrance cutters poke past the wall so no skin remains
 
+## Rect2 holes in the floor (hall-local x, z, width, depth): stairwells down to the platforms. Set before the hall enters the tree.
+var floor_holes: Array[Rect2] = []
 var _rebuild_queued := false
 
 
@@ -215,6 +234,13 @@ func _build_bays(root: Node3D) -> Dictionary:
 				first = bay
 			bay.name = "Bay%d" % i
 			bay.position.x = (i - (hall_bays - 1) * 0.5) * first.bay_width
+			bay.dress_back = dress_exterior
+			bay.pier_collision = build_collision
+			var world_x: float = bay.position.x if side < 0 else -bay.position.x  # the +Z row is turned round
+			for d in side_doors:
+				if int(d.x) == side and absf(world_x - d.y) < first.bay_width * 0.5:
+					bay.door_width = side_door_width
+					bay.door_height = side_door_height
 			row.add_child(bay)
 			if kiosks_enabled and kiosk_bays.has(i):
 				var kiosk := ConcourseKiosk.new()  # origin on the wall face, +Z into the hall (the row is turned for the +Z wall)
@@ -222,6 +248,7 @@ func _build_bays(root: Node3D) -> Dictionary:
 				kiosk.pier_spacing = first.bay_width
 				kiosk.pier_depth = first.pier_depth
 				kiosk.board_light_energy = board_light_energy
+				kiosk.build_collision = build_collision
 				for k in kiosk_properties:
 					kiosk.set(k, kiosk_properties[k])
 				kiosk.name = "Kiosk%d" % i
@@ -236,11 +263,36 @@ func _build_bays(root: Node3D) -> Dictionary:
 
 func _build_floor(root: Node3D, length: float, wall_t: float) -> void:
 	var t: float = floor_thickness
-	var mi := MeshInstance3D.new()
-	mi.name = "Floor"
-	var mesh := BoxMesh.new()
-	# Under the end walls and the long walls too, so there is no seam at the edges.
-	mesh.size = Vector3(length + 2.0 * wall_t, t, hall_width + 2.0 * wall_t)
+	var x0 := -(length * 0.5 + wall_t)
+	var x1 := length * 0.5 + wall_t
+	var z0 := -(hall_width * 0.5 + wall_t)
+	var z1 := hall_width * 0.5 + wall_t
+	# Cut the floor into rectangles at every hole edge, keep the ones outside the holes.
+	var xs: Array[float] = [x0, x1]
+	var zs: Array[float] = [z0, z1]
+	for hole in floor_holes:
+		xs.append_array([hole.position.x, hole.end.x])
+		zs.append_array([hole.position.y, hole.end.y])
+	xs.sort()
+	zs.sort()
+	var cells: Array[Rect2] = []
+	for i in xs.size() - 1:
+		for j in zs.size() - 1:
+			var cell := Rect2(xs[i], zs[j], xs[i + 1] - xs[i], zs[j + 1] - zs[j])
+			if cell.size.x < 0.001 or cell.size.y < 0.001:
+				continue
+			var inside := false
+			for hole in floor_holes:
+				if hole.has_point(cell.get_center()):
+					inside = true
+			if not inside:
+				cells.append(cell)
+	# One mesh in hall-local coordinates (the tile shader reads them, so the pattern is continuous
+	# across the cells and with anything else built in the same frame).
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for cell in cells:
+		_box_faces(st, Vector3(cell.position.x, -t, cell.position.y), Vector3(cell.end.x, 0.0, cell.end.y))
 	var mat := ShaderMaterial.new()
 	mat.shader = FLOOR_STONE
 	mat.set_shader_parameter("half_size", Vector2(length, hall_width) * 0.5)
@@ -251,10 +303,42 @@ func _build_floor(root: Node3D, length: float, wall_t: float) -> void:
 	mat.set_shader_parameter("border_color", border_color)
 	mat.set_shader_parameter("inlay_radius", inlay_radius)
 	mat.set_shader_parameter("inlay_color", inlay_color)
-	mesh.material = mat
-	mi.mesh = mesh
-	mi.position.y = -t * 0.5
+	st.set_material(mat)
+	var mi := MeshInstance3D.new()
+	mi.name = "Floor"
+	mi.mesh = st.commit()
 	root.add_child(mi)
+	if build_collision:
+		var body := StaticBody3D.new()
+		body.name = "FloorBody"
+		root.add_child(body)
+		for cell in cells:
+			var cs := CollisionShape3D.new()
+			var box := BoxShape3D.new()
+			box.size = Vector3(cell.size.x, t, cell.size.y)
+			cs.shape = box
+			cs.position = Vector3(cell.get_center().x, -t * 0.5, cell.get_center().y)
+			body.add_child(cs)
+
+
+## Axis-aligned box faces (outward normals, Godot's clockwise front faces) into `st`.
+func _box_faces(st: SurfaceTool, lo: Vector3, hi: Vector3) -> void:
+	var a := lo
+	var b := Vector3(hi.x, lo.y, lo.z)
+	var c := Vector3(hi.x, hi.y, lo.z)
+	var d := Vector3(lo.x, hi.y, lo.z)
+	var e := Vector3(lo.x, lo.y, hi.z)
+	var f := Vector3(hi.x, lo.y, hi.z)
+	var g := hi
+	var hh := Vector3(lo.x, hi.y, hi.z)
+	var faces := [
+		[Vector3.BACK, [e, f, g, hh]], [Vector3.FORWARD, [b, a, d, c]], [Vector3.UP, [hh, g, c, d]],
+		[Vector3.DOWN, [a, b, f, e]], [Vector3.RIGHT, [f, b, c, g]], [Vector3.LEFT, [a, e, hh, d]],
+	]
+	for face in faces:
+		st.set_normal(face[0])
+		for i in [0, 2, 1, 0, 3, 2]:
+			st.add_vertex(face[1][i])
 
 
 # ------------------------------------------------------------------ end walls
@@ -301,7 +385,7 @@ func _build_one_end_wall(holder: Node3D, length: float, dims: Dictionary, stone:
 
 	var ew := entrance_width
 	var arch_r := ew * 0.5
-	var spring_y := entrance_height - arch_r
+	var spring_y := entrance_height - arch_r if entrance_arched else entrance_height
 	var cut_t := t + CUT_OVERSHOOT * 2.0
 
 	var rect := CSGBox3D.new()
@@ -321,7 +405,10 @@ func _build_one_end_wall(holder: Node3D, length: float, dims: Dictionary, stone:
 	arch.rotation.z = PI * 0.5
 	arch.position.y = spring_y
 	arch.material = stone
-	comb.add_child(arch)
+	if entrance_arched:
+		comb.add_child(arch)
+	else:
+		arch.free()
 
 	_build_rose_window(comb, t, stone)
 
@@ -402,22 +489,71 @@ func _build_vault(root: Node3D, length: float, dims: Dictionary) -> void:
 	inner_mat.set_shader_parameter("density", star_density)
 	inner_mat.set_shader_parameter("star_energy", star_energy)
 	var outer_mat := StandardMaterial3D.new()
-	outer_mat.albedo_color = ceiling_color.darkened(0.3)
-	outer_mat.roughness = 1.0
+	outer_mat.albedo_color = vault_outer_color if vault_outer_color.a > 0.0 else ceiling_color.darkened(0.3)
+	outer_mat.roughness = 0.8
 
+	var skip := skylight_width * 0.5
 	var mesh := ArrayMesh.new()
-	_add_vault_surface(mesh, inner_mat, a_in, b_in, spring_y, x0, x1, true)
-	_add_vault_surface(mesh, outer_mat, a_out, b_out, spring_y, x0, x1, false)
+	_add_vault_surface(mesh, inner_mat, a_in, b_in, spring_y, x0, x1, true, skip)
+	_add_vault_surface(mesh, outer_mat, a_out, b_out, spring_y, x0, x1, false, skip)
 	var mi := MeshInstance3D.new()
 	mi.name = "Vault"
 	mi.mesh = mesh
 	root.add_child(mi)
+	if skip > 0.0:
+		_build_skylight(root, spring_y, a_in, b_in, a_out, b_out, x0, x1, skip, outer_mat)
+
+
+## Glass ridge over the opening along the crown: two sloped panes, a ridge beam, ribs, and the
+## cheeks that close the gap between the inner and outer shell.
+func _build_skylight(root: Node3D, spring_y: float, a_in: float, b_in: float, a_out: float, b_out: float,
+		x0: float, x1: float, hw: float, shell_mat: Material) -> void:
+	var length := x1 - x0
+	var y_in := spring_y + b_in * sqrt(maxf(1.0 - (hw / a_in) * (hw / a_in), 0.0))
+	var y_out := spring_y + b_out * sqrt(maxf(1.0 - (hw / a_out) * (hw / a_out), 0.0))
+	var glass := StandardMaterial3D.new()
+	glass.albedo_color = Color(0.55, 0.78, 0.95, 0.32)
+	glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	glass.roughness = 0.1
+	var steel := StandardMaterial3D.new()
+	steel.albedo_color = Color(0.2, 0.24, 0.28)
+	var kit := Node3D.new()
+	kit.name = "Skylight"
+	root.add_child(kit)
+	for sz in [-1, 1]:
+		# cheek: closes the cut edge of the shell
+		_mesh_box(kit, Vector3(length, y_out - y_in + 0.05, 0.12), Vector3((x0 + x1) * 0.5, (y_in + y_out) * 0.5, sz * hw), shell_mat)
+		# pane: from the cheek's top edge up to the ridge
+		var rise := ridge_lantern_height
+		var run := hw
+		var len := sqrt(run * run + rise * rise)
+		var pane := _mesh_box(kit, Vector3(length, 0.08, len), Vector3((x0 + x1) * 0.5, y_out + rise * 0.5, sz * hw * 0.5), glass)
+		pane.rotation.x = -sz * atan2(rise, run)
+		pane.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		# ribs
+		var ribs := int(length / 4.0)
+		for k in ribs + 1:
+			var rx := x0 + length * k / ribs
+			var rib := _mesh_box(kit, Vector3(0.18, 0.12, len), Vector3(rx, y_out + rise * 0.5 + 0.05, sz * hw * 0.5), steel)
+			rib.rotation.x = -sz * atan2(rise, run)
+	_mesh_box(kit, Vector3(length, 0.3, 0.3), Vector3((x0 + x1) * 0.5, y_out + ridge_lantern_height, 0), steel)
+
+
+func _mesh_box(parent: Node3D, size: Vector3, pos: Vector3, mat: Material) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = size
+	bm.material = mat
+	mi.mesh = bm
+	mi.position = pos
+	parent.add_child(mi)
+	return mi
 
 
 ## One elliptical surface swept along X. facing_in = the visible side points at
 ## the hall (inner shell); otherwise it points away from it (outer shell).
 func _add_vault_surface(mesh: ArrayMesh, mat: Material, a: float, b: float, spring_y: float,
-		x0: float, x1: float, facing_in: bool) -> void:
+		x0: float, x1: float, facing_in: bool, skip_half := 0.0) -> void:
 	var n := vault_segments
 	var pts: Array[Vector2] = []  # (z, y) around the half ellipse, +Z side to -Z side
 	var nrm: Array[Vector2] = []
@@ -434,6 +570,8 @@ func _add_vault_surface(mesh: ArrayMesh, mat: Material, a: float, b: float, spri
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	st.set_material(mat)
 	for i in n:
+		if skip_half > 0.0 and absf((pts[i].x + pts[i + 1].x) * 0.5) < skip_half:
+			continue  # the skylight opening
 		var corners := [
 			[Vector3(x0, pts[i].y, pts[i].x), Vector2(x0, arc[i]), nrm[i]],
 			[Vector3(x1, pts[i].y, pts[i].x), Vector2(x1, arc[i]), nrm[i]],
@@ -466,6 +604,7 @@ func _build_landmark(root: Node3D) -> void:
 	lm.name = "Landmark"
 	lm.tower_height = landmark_height
 	lm.booth_scale = landmark_booth_scale
+	lm.build_collision = build_collision
 	root.add_child(lm)
 
 
@@ -496,6 +635,7 @@ func _build_mezzanine(root: Node3D, dims: Dictionary) -> void:
 	mz.underside_color = mezzanine_underside_color
 	mz.bridge_thickness = bridge_thickness
 	mz.undercroft_props = undercroft_props
+	mz.build_collision = build_collision
 	mz.stone_color = stone_color
 	root.add_child(mz)
 	mz.rebuild()
@@ -587,6 +727,15 @@ func _set_board_light_energy(v: float) -> void: board_light_energy = v; _queue_r
 func _set_bridge_thickness(v: float) -> void: bridge_thickness = v; _queue_rebuild()
 func _set_mezzanine_underside_color(v: Color) -> void: mezzanine_underside_color = v; _queue_rebuild()
 func _set_undercroft_props(v: PackedStringArray) -> void: undercroft_props = v; _queue_rebuild()
+func _set_dress_exterior(v: bool) -> void: dress_exterior = v; _queue_rebuild()
+func _set_build_collision(v: bool) -> void: build_collision = v; _queue_rebuild()
+func _set_side_doors(v: PackedVector2Array) -> void: side_doors = v; _queue_rebuild()
+func _set_side_door_width(v: float) -> void: side_door_width = v; _queue_rebuild()
+func _set_side_door_height(v: float) -> void: side_door_height = v; _queue_rebuild()
+func _set_vault_outer_color(v: Color) -> void: vault_outer_color = v; _queue_rebuild()
+func _set_skylight_width(v: float) -> void: skylight_width = v; _queue_rebuild()
+func _set_ridge_lantern_height(v: float) -> void: ridge_lantern_height = v; _queue_rebuild()
+func _set_entrance_arched(v: bool) -> void: entrance_arched = v; _queue_rebuild()
 func _set_sun_yaw(v: float) -> void: sun_yaw_degrees = v; _queue_rebuild()
 func _set_sun_pitch(v: float) -> void: sun_pitch_degrees = v; _queue_rebuild()
 func _set_sun_energy(v: float) -> void: sun_energy = v; _queue_rebuild()

@@ -30,6 +30,8 @@ const LAMP_BASE_HEIGHT := 0.35
 const LAMP_GLOBE_RADIUS := 0.26
 const LAMP_GLOW := 3.0
 
+## Adds a StaticBody3D so the player cannot walk through the prop.
+var build_collision := false
 var _rebuild_queued := false
 
 
@@ -52,6 +54,14 @@ func rebuild() -> void:
 		"bench": _build_bench(root)
 		"planter": _build_planter(root)
 		"lamp": _build_lamp(root)
+	if build_collision:
+		var body := StaticBody3D.new()
+		body.name = "Body"
+		root.add_child(body)
+		match kind:
+			"bench": _shape(body, Vector3(0, BENCH_SEAT_HEIGHT * 0.5 + BENCH_BACK_HEIGHT * 0.5, 0), Vector3(BENCH_LENGTH, BENCH_SEAT_HEIGHT + BENCH_BACK_HEIGHT, BENCH_DEPTH))
+			"planter": _shape(body, Vector3(0, PLANTER_HEIGHT * 0.5, 0), Vector3(PLANTER_SIZE, PLANTER_HEIGHT, PLANTER_SIZE))
+			"lamp": _shape(body, Vector3(0, LAMP_HEIGHT * 0.5, 0), Vector3(LAMP_BASE_RADIUS * 2.0, LAMP_HEIGHT, LAMP_BASE_RADIUS * 2.0))
 
 
 func _build_bench(root: Node3D) -> void:
@@ -124,6 +134,15 @@ func _build_lamp(root: Node3D) -> void:
 	light.omni_range = lamp_light_range
 	light.shadow_enabled = false
 	root.add_child(light)
+
+
+func _shape(body: StaticBody3D, pos: Vector3, size: Vector3) -> void:
+	var cs := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = size
+	cs.shape = box
+	cs.position = pos
+	body.add_child(cs)
 
 
 func _mat(c: Color) -> StandardMaterial3D:

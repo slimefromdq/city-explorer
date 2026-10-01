@@ -61,8 +61,12 @@ const LOWER_RAIL_HEIGHT := 0.35
 const LOWER_RAIL_SIZE := 0.05
 const SOFFIT_THICKNESS := 0.5           # thickness of the stair slab / landing deck above the undercroft
 const LANDING_COLUMN := 0.8             # side of the square columns that carry a hollowed landing
+const RAMP_THICKNESS := 0.5
+const RAMP_SINK := 0.08                 # the walking ramp sits a little below the nosing line
 const STAIR_POST_EVERY := 2             # a post on every Nth tread
 
+var build_collision := false
+var _body: StaticBody3D
 var _stone: Array[Transform3D] = []
 var _decks: Array[Transform3D] = []   # walking surfaces (brown)
 var _under: Array[Transform3D] = []   # slabs and structure under them (warm stone)
@@ -75,6 +79,11 @@ func rebuild() -> void:
 	_stone.clear()
 	_decks.clear()
 	_under.clear()
+	_body = null
+	if build_collision:
+		_body = StaticBody3D.new()
+		_body.name = "MezzanineBody"
+		add_child(_body)
 
 	var half_l := hall_length * 0.5
 	var half_w := hall_width * 0.5
@@ -207,6 +216,7 @@ func _arched_balustrade(x: float, zs: Array[float], inner_z: float) -> void:
 		var base := Vector3(x, _bridge_top(zs[i], inner_z), zs[i])
 		_add(_stone, base + Vector3(0, RAIL_HEIGHT * 0.5, 0), Vector3(POST_SIZE, RAIL_HEIGHT, POST_SIZE))
 		if i > 0:
+			_col_rail(prev + Vector3(0, RAIL_HEIGHT, 0), base + Vector3(0, RAIL_HEIGHT, 0))
 			_rail(prev + Vector3(0, RAIL_HEIGHT, 0), base + Vector3(0, RAIL_HEIGHT, 0), TOP_RAIL_SIZE)
 			_rail(prev + Vector3(0, LOWER_RAIL_HEIGHT, 0), base + Vector3(0, LOWER_RAIL_HEIGHT, 0), LOWER_RAIL_SIZE)
 		prev = base
@@ -237,8 +247,10 @@ func _build_flight(e: int, s: int, half_l: float, half_w: float, inner_z: float)
 		var col_x := x_land + e * (LANDING_COLUMN * 0.5 + 0.1)
 		for col_z in [land_z0 + LANDING_COLUMN * 0.5 + 0.1, land_z1 - LANDING_COLUMN * 0.5 - 0.1]:
 			_add(_stone, Vector3(col_x, (height - thickness) * 0.5, s * col_z), Vector3(LANDING_COLUMN, height - thickness, LANDING_COLUMN))
+			_col(Vector3(col_x, (height - thickness) * 0.5, s * col_z), Vector3(LANDING_COLUMN, height - thickness, LANDING_COLUMN))
 	else:
 		_add(_stone, Vector3(land_cx, (height - thickness) * 0.5, land_cz), Vector3(depth, height - thickness, land_z1 - land_z0))
+		_col(Vector3(land_cx, (height - thickness) * 0.5, land_cz), Vector3(depth, height - thickness, land_z1 - land_z0))
 
 	# treads, numbered from the landing; the first riser up to the landing is the one at x_land
 	var n := maxi(2, ceili(height / step_height))
@@ -255,14 +267,25 @@ func _build_flight(e: int, s: int, half_l: float, half_w: float, inner_z: float)
 			# hollowed: each tread is just a slab (a riser's height plus SOFFIT_THICKNESS), so the underside steps up with the flight
 			var slab := riser + SOFFIT_THICKNESS
 			_add(_stone, Vector3(cx, top - slab * 0.5, zc), Vector3(step_depth, slab, width))
+			_col(Vector3(cx, top - slab * 0.5, zc), Vector3(step_depth, slab, width))
 		else:
 			_add(_stone, Vector3(cx, top * 0.5, zc), Vector3(step_depth, top, width))
+			_col(Vector3(cx, top * 0.5, zc), Vector3(step_depth, top, width))
+
+	# a smooth ramp over the steps: what the player actually walks on (a capsule cannot climb 0.2 m risers)
+	var ramp_a := Vector3(x_land - e * n * step_depth, 0.0, zc)
+	var ramp_b := Vector3(x_land, height, zc)
+	var ramp_dir := ramp_b - ramp_a
+	var ramp_rot := Basis(Vector3.BACK, atan2(ramp_dir.y, ramp_dir.x))
+	var ramp_up := ramp_rot * Vector3.UP
+	_col((ramp_a + ramp_b) * 0.5 - ramp_up * (RAMP_THICKNESS * 0.5 + RAMP_SINK), Vector3(ramp_dir.length(), RAMP_THICKNESS, width), ramp_rot)
 
 	# side balustrades following the slope, plus a post on every Nth tread
 	var last := n - 2
 	for z_edge in [s * (za + POST_SIZE * 0.5), s * (zb - POST_SIZE * 0.5)]:
 		var a := Vector3(tread_cx[last], tread_top[last] + RAIL_HEIGHT, z_edge)
 		var b := Vector3(x_land, height + RAIL_HEIGHT, z_edge)
+		_col_rail(a, b)
 		_rail(a, b, TOP_RAIL_SIZE)
 		_rail(a - Vector3(0, RAIL_HEIGHT - LOWER_RAIL_HEIGHT, 0), b - Vector3(0, RAIL_HEIGHT - LOWER_RAIL_HEIGHT, 0), LOWER_RAIL_SIZE)
 		for j in range(0, n - 1, STAIR_POST_EVERY):
@@ -286,6 +309,7 @@ func _place_undercroft_prop(e: int, s: int, half_l: float, x_land: float, zc: fl
 	if idx >= undercroft_props.size() or undercroft_props[idx] == "":
 		return
 	var prop := ConcourseProp.new()
+	prop.build_collision = build_collision
 	prop.kind = undercroft_props[idx]
 	prop.name = "Undercroft%s%d" % [prop.kind.capitalize(), idx]
 	match prop.kind:
@@ -322,6 +346,27 @@ func _balustrade(a: Vector3, b: Vector3) -> void:
 	_rail(a + Vector3(0, LOWER_RAIL_HEIGHT, 0), b + Vector3(0, LOWER_RAIL_HEIGHT, 0), LOWER_RAIL_SIZE)
 
 
+## Adds one box collision shape to the body (if there is one).
+func _col(center: Vector3, size: Vector3, rot := Basis.IDENTITY) -> void:
+	if _body == null:
+		return
+	var cs := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = size
+	cs.shape = box
+	cs.transform = Transform3D(rot, center)
+	_body.add_child(cs)
+
+
+## A railing's collision: a thin wall hanging RAIL_HEIGHT below the line a -> b (the rail's top).
+func _col_rail(a: Vector3, b: Vector3) -> void:
+	if _body == null or a.is_equal_approx(b):
+		return
+	var dir := b - a
+	var rot := Basis(Quaternion(Vector3.RIGHT, dir.normalized()))
+	_col((a + b) * 0.5 - Vector3(0, RAIL_HEIGHT * 0.5, 0), Vector3(dir.length(), RAIL_HEIGHT, 0.12), rot)
+
+
 ## A square-section bar from a to b (rotated from the box's X axis).
 func _rail(a: Vector3, b: Vector3, section: float) -> void:
 	if a.x > b.x or (is_equal_approx(a.x, b.x) and a.z > b.z):
@@ -337,6 +382,7 @@ func _rail(a: Vector3, b: Vector3, section: float) -> void:
 ## A deck slab: warm stone below, a thin walking surface on top. `center` is the middle of the slab's
 ## thickness (size.y); `rot` tilts it (arched bridge pieces).
 func _add_deck(center: Vector3, size: Vector3, rot := Basis.IDENTITY) -> void:
+	_col(center, size, rot)
 	var up := rot * Vector3.UP
 	var slab := maxf(size.y - DECK_SURFACE, 0.01)
 	_add(_under, center - up * (DECK_SURFACE * 0.5), Vector3(size.x, slab, size.z), rot)

@@ -34,6 +34,7 @@ const PLINTH_EXTRA := 0.3      # plinth sticks out past the booth (m)
 const PLINTH_HEIGHT := 0.25
 const COUNTER_OVERHANG := 0.2  # counter top sticks out past the counter body (m)
 const COUNTER_TOP_THICKNESS := 0.12
+const OCTAGON_CIRCUMRADIUS := 1.08   # a cylinder with 8 sides: corners are 1/cos(22.5 deg) further out than the flats
 const CORE_RATIO := 0.55       # booth core radius as a fraction of booth_radius
 const ROOF_OVERHANG := 0.3
 const ROOF_THICKNESS := 0.2
@@ -49,6 +50,8 @@ const TICK_WIDTH_RATIO := 0.06
 const HANDS_HOUR := 10.0
 const HANDS_MINUTE := 10.0
 
+## Adds a StaticBody3D (a cylinder round the booth).
+var build_collision := false
 var _rebuild_queued := false
 
 
@@ -87,6 +90,18 @@ func rebuild() -> void:
 	var core_top := b_height
 	_cyl(root, "Core", core_r, core_top - b_counter_h, b_counter_h, housing_color, OCTAGON)
 	_cyl(root, "Roof", core_r + ROOF_OVERHANG, ROOF_THICKNESS, core_top, counter_color, OCTAGON)
+
+	if build_collision:
+		var body := StaticBody3D.new()
+		body.name = "Body"
+		root.add_child(body)
+		var cs := CollisionShape3D.new()
+		var cyl := CylinderShape3D.new()
+		cyl.radius = (r + COUNTER_OVERHANG) * OCTAGON_CIRCUMRADIUS
+		cyl.height = b_height
+		cs.shape = cyl
+		cs.position.y = b_height * 0.5
+		body.add_child(cs)
 
 	# --- post
 	var post_bottom := core_top + ROOF_THICKNESS

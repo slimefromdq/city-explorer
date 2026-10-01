@@ -74,6 +74,8 @@ const COLUMN_PLATFORM := Vector2(0.62, 0.05)
 const COLUMN_STATUS := Vector2(0.70, 0.20)
 const DEST_BAR_RATIOS := [0.95, 0.62, 0.8, 0.5, 0.7, 0.58]  # destination bar lengths (fraction of its column)
 
+## Adds a StaticBody3D for the service room and counter.
+var build_collision := false
 var _rebuild_queued := false
 
 
@@ -103,7 +105,23 @@ func rebuild() -> void:
 	_box(root, "CounterTop", Vector3(width + TOP_OVERHANG, TOP_THICKNESS, counter_depth + TOP_OVERHANG),
 		Vector3(0, counter_height - TOP_THICKNESS * 0.5, room_depth + (counter_depth + TOP_OVERHANG) * 0.5), _solid(top_color))
 
+	if build_collision:
+		var body := StaticBody3D.new()
+		body.name = "Body"
+		root.add_child(body)
+		_shape(body, Vector3(0, room_height * 0.5, room_depth * 0.5), Vector3(width, room_height, room_depth))
+		_shape(body, Vector3(0, counter_height * 0.5, room_depth + counter_depth * 0.5), Vector3(width + TOP_OVERHANG, counter_height, counter_depth + TOP_OVERHANG))
+
 	_build_board(root)
+
+
+func _shape(body: StaticBody3D, pos: Vector3, size: Vector3) -> void:
+	var cs := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = size
+	cs.shape = box
+	cs.position = pos
+	body.add_child(cs)
 
 
 func _kind_color() -> Color:
