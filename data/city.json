@@ -58,7 +58,7 @@
 		"streets": { "width": 14, "y": [80, 150, 220, 290, 360, 430, 500, 570, 640, 710, 780, 850, 920, 990, 1060, 1130] },
 		"avenues": { "width": 26, "x": [110, 320, 660, 920, 1180, 1400] },
 		"diagonals": [
-			{ "id": "monument", "name": "Avenue du Monument", "width": 22, "path": [[150, 413], [220, 530], [420, 1000]] },
+			{ "id": "west_diagonal", "name": "West Diagonal", "width": 22, "path": [[150, 413], [220, 530], [420, 1000]] },
 			{ "id": "broadway", "name": "Broadway", "width": 22, "path": [[1000, 150], [800, 760]] },
 			{ "id": "port", "name": "Port Boulevard", "width": 22, "path": [[920, 1020], [1180, 925], [1400, 835]] },
 			{ "id": "northeast", "name": "North-East Parkway", "width": 22, "path": [[1470, 278], [1180, 520]] }
@@ -72,34 +72,34 @@
 		{ "id": "b_920", "name": "Core Bridge", "width": 26, "from": [920, 574], "to": [920, 695] },
 		{ "id": "b_1180", "name": "Harbour Bridge", "width": 26, "from": [1180, 618], "to": [1180, 773] },
 		{ "id": "b_1400", "name": "East Bridge", "width": 26, "from": [1400, 618], "to": [1400, 812] },
-		{ "id": "b_monument", "name": "Monument Bridge", "width": 22, "from": [238, 573], "to": [275, 659] },
+		{ "id": "b_west_diagonal", "name": "West Diagonal Bridge", "width": 22, "from": [238, 573], "to": [275, 659] },
 		{ "id": "b_broadway", "name": "Broadway Bridge", "width": 22, "from": [865, 562], "to": [827, 676] }
 	],
 
 	"districts": [
 		{
 			"id": "outer_quarters", "name": "Outer Quarters", "type": "lowrise",
-			"polygon": [[0, 0], [1600, 0], [1600, 150], [320, 150], [320, 1200], [0, 1200]]
+			"polygon": [[320, 1020], [850, 1020], [850, 1090], [790, 1140], [700, 1125], [610, 1152], [520, 1120], [420, 1145], [330, 1130], [50, 800], [62, 760], [38, 690], [45, 650], [64, 590], [48, 520], [60, 470], [320, 164]]
 		},
 		{
 			"id": "central_park", "name": "Central Park", "type": "park", "roads": false,
-			"polygon": [[320, 150], [660, 150], [660, 500], [320, 500]]
+			"polygon": [[610, 100], [660, 78], [660, 500], [320, 500], [320, 164], [400, 70], [520, 48]]
 		},
 		{
 			"id": "midtown_core", "name": "Midtown Core", "type": "core",
-			"polygon": [[660, 150], [1180, 150], [1180, 500], [660, 500]]
+			"polygon": [[1030, 80], [1150, 42], [1180, 43], [1180, 500], [660, 500], [660, 78], [720, 52], [880, 35]]
 		},
 		{
 			"id": "marina_financial", "name": "Marina Financial District", "type": "financial",
-			"polygon": [[1180, 150], [1600, 150], [1600, 560], [1180, 560]]
+			"polygon": [[1330, 50], [1590, 350], [1585, 520], [1586, 570], [1180, 570], [1180, 43]]
 		},
 		{
 			"id": "riverside_midrise", "name": "Riverside Midrise", "type": "midrise",
-			"polygon": [[320, 500], [1180, 500], [1180, 560], [1600, 560], [1600, 830], [1200, 765], [1000, 705], [1000, 1200], [320, 1200]]
+			"polygon": [[1180, 570], [1586, 570], [1592, 760], [1591, 829], [1200, 765], [1000, 705], [1000, 1078], [955, 1048], [895, 1052], [850, 1090], [850, 1020], [320, 1020], [320, 500], [1180, 500]]
 		},
 		{
 			"id": "harbour", "name": "Harbour District", "type": "harbour",
-			"polygon": [[1000, 705], [1200, 765], [1600, 830], [1600, 1200], [1000, 1200]]
+			"polygon": [[1200, 765], [1591, 829], [1590, 1010], [1380, 1140], [1280, 1120], [1180, 1138], [1090, 1112], [1010, 1085], [1000, 1078], [1000, 705]]
 		}
 	],
 
@@ -124,12 +124,12 @@
 
 	"landmark": {
 		"name": "Meridian Tower",
-		"position": [220, 530],
+		"position": [775, 440],
 		"height": 320
 	},
 
 	"metro": {
-		"note": "Path points are [x, y, h]: h = height above ground in metres (negative = tunnel, positive = sky rail). Ramps are the stretches between points of different h; their steepness is limited by max_grade.",
+		"note": "One metro system. Path points are [x, y, h]: h = height above ground in metres (negative = underground, positive = above ground on a viaduct). The stretch between points of different h is a ramp; its steepness is limited by max_grade.",
 		"hub": "central_station",
 		"max_grade": 0.08,
 		"lines": [
@@ -157,7 +157,7 @@
 				]
 			},
 			{
-				"id": "C", "name": "Marina Sky Line", "color": "#06b58a",
+				"id": "C", "name": "Marina Line", "color": "#06b58a",
 				"path": [[1460, 293, 18], [800, 830, 18], [490, 1085, 18]],
 				"stations": [
 					{ "name": "Marina", "at": [1460, 293] },

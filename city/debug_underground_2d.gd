@@ -7,7 +7,6 @@ extends Node2D
 
 const DebugDraw := preload("res://city/debug_draw.gd")
 const CityData := preload("res://city/city_data.gd")
-const Geo2D := preload("res://city/geo2d.gd")
 
 const SEWER := Color("6b4f2a")
 const SEWER_DARK := Color("2c1d0c")
@@ -46,7 +45,7 @@ func _draw_sewers() -> void:
 		draw_rect(Rect2(q - Vector2(4.5, 4.5), Vector2(9, 9)), Color.BLACK, false, 1.5)
 
 
-# Tunnel = dashed, sky rail = solid and fatter, ramp between them = dotted.
+# Underground = dashed, above ground = solid, ramp between them = dotted.
 # The third number of each path point is the height (see city.json "metro.note").
 func _draw_metro() -> void:
 	for line in map.city["metro"]["lines"]:
@@ -58,8 +57,8 @@ func _draw_metro() -> void:
 			var ha := float(path[i][2])
 			var hb := float(path[i + 1][2])
 			if ha > 0.0 and hb > 0.0:
-				draw_line(a, b, Color.WHITE, 9.0, true)
-				draw_line(a, b, color, 6.0, true)
+				draw_line(a, b, Color.WHITE, 8.0, true)
+				draw_line(a, b, color, 5.0, true)
 			elif ha < 0.0 and hb < 0.0:
 				draw_dashed_line(a, b, Color.WHITE, 6.0, 9.0)
 				draw_dashed_line(a, b, color, 4.0, 9.0)
@@ -76,12 +75,7 @@ func _draw_metro() -> void:
 			var hub: bool = st.has("site")
 			var at: Vector2 = map.px(Vector2(st["at"][0], st["at"][1]))
 			var r := 9.0 if hub else 4.5
-			var sky: bool = Geo2D.track_at(Vector2(st["at"][0], st["at"][1]), line["path"])["height"] > 0.0
-			if sky and not hub:  # square = platform up on the sky rail
-				draw_rect(Rect2(at - Vector2(r, r), Vector2(r, r) * 2.0), Color.WHITE)
-				draw_rect(Rect2(at - Vector2(r, r), Vector2(r, r) * 2.0), Color.BLACK, false, 2.0)
-			else:
-				draw_circle(at, r, Color.WHITE)
-				draw_arc(at, r, 0.0, TAU, 16, Color.BLACK, 2.0)
+			draw_circle(at, r, Color.WHITE)
+			draw_arc(at, r, 0.0, TAU, 16, Color.BLACK, 2.0)
 			if not hub:  # the hub is already labelled by its site
 				DebugDraw.label(self, at + Vector2(7, -5), String(st["name"]), 10, Color.WHITE, Color.BLACK)

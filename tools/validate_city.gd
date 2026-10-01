@@ -21,7 +21,7 @@ const STATION_ON_LINE := 6.0         # a station must sit this close to its metr
 const OUTFALL_REACH := 15.0          # an outfall must be this close to the waterline (m)
 const SITE_KINDS := ["station", "library", "museum", "performance_hall"]
 const LEVEL_TRACK_GRADE := 0.02      # a platform needs track flatter than this
-const MIN_LAND_FRACTION := 0.2       # a district must be at least this much on land
+const MIN_LAND_FRACTION := 0.98      # a district must lie on land (districts are drawn to the coast)
 
 var _fails := 0
 var _warns := 0
@@ -110,7 +110,7 @@ func _check_districts(city: Dictionary) -> void:
 		_expect(not Geometry2D.triangulate_polygon(poly).is_empty(),
 			"district '%s' polygon is simple (no self-crossing)" % id)
 		var on_land := Geo2D.overlap_area(poly, CityData.land_polygon(city)) / Geo2D.polygon_area(poly)
-		_expect(on_land >= MIN_LAND_FRACTION, "district '%s' is on land (%d%% of it; the rest is cut off at the coast)" % [id, int(on_land * 100.0)])
+		_expect(on_land >= MIN_LAND_FRACTION, "district '%s' lies on land, not in the sea (%d%% on land)" % [id, int(on_land * 100.0)])
 
 	for need in ["core", "park", "midrise", "lowrise", "harbour", "financial"]:
 		_expect(types.has(need), "there is a '%s' district" % need)
@@ -129,8 +129,7 @@ func _check_districts(city: Dictionary) -> void:
 	for id in polys:
 		covered += Geo2D.overlap_area(polys[id], land)
 	var coverage := covered / Geo2D.polygon_area(land)
-	if coverage < 0.95:
-		_report("WARN", "districts cover only %d%% of the land; the rest will stay empty" % int(coverage * 100.0))
+	_expect(coverage >= 0.95, "districts cover the land (%d%%); no unzoned gaps" % int(coverage * 100.0))
 
 
 func _check_core_and_landmark(city: Dictionary) -> void:
@@ -143,8 +142,7 @@ func _check_core_and_landmark(city: Dictionary) -> void:
 	var clearance := Geo2D.water_clearance(lm_pt, path, CityData.to_points(city["harbour"]["basin"]))
 	_expect(clearance >= LANDMARK_RIVER_MARGIN,
 		"landmark is not in the water and keeps %.0f m from the bank (found %.0f m)" % [LANDMARK_RIVER_MARGIN, clearance])
-	_expect(_district_at(city, lm_pt, ""), "landmark lies inside some district")
-	_expect(not _district_at(city, lm_pt, "park"), "landmark is not inside the park")
+	_expect(_district_at(city, lm_pt, "core"), "landmark stands in the core (midtown) district")
 	_expect(float(lm["height"]) > 0.0, "landmark has a height > 0")
 
 
@@ -252,7 +250,7 @@ func _check_metro(city: Dictionary) -> void:
 	for p in CityData.land_polygon(city):
 		land_box = land_box.expand(p)
 	var spans_map := false
-	var has_sky := false
+	var has_elevated := false
 	var has_tunnel := false
 	for line in metro["lines"]:
 		var raw: Array = line["path"]
@@ -266,7 +264,7 @@ func _check_metro(city: Dictionary) -> void:
 		for i in range(raw.size() - 1):
 			var length := path[i].distance_to(path[i + 1])
 			worst_grade = maxf(worst_grade, absf(float(raw[i + 1][2]) - float(raw[i][2])) / length)
-			has_sky = has_sky or float(raw[i][2]) > 0.0
+			has_elevated = has_elevated or float(raw[i][2]) > 0.0
 			has_tunnel = has_tunnel or float(raw[i][2]) < 0.0
 		_expect(worst_grade <= float(metro["max_grade"]),
 			"metro line %s ramps are gentle enough (steepest %.1f%%, limit %.1f%%)" % [line["id"], worst_grade * 100.0, float(metro["max_grade"]) * 100.0])
@@ -284,7 +282,7 @@ func _check_metro(city: Dictionary) -> void:
 		_expect(level_ok, "metro line %s: every station platform is on level track" % line["id"])
 		_expect(hub_ok, "metro line %s stops inside the central station" % line["id"])
 	_expect(spans_map, "at least one metro line crosses the whole city (>= 85% of its width or height)")
-	_expect(has_sky and has_tunnel, "the metro has both sky-rail and tunnel sections")
+	_expect(has_elevated and has_tunnel, "the metro has both above-ground and underground sections")
 
 
 # Sewers: everything must be one connected network (otherwise part of the

@@ -124,18 +124,8 @@ func _clip_to_land(poly: PackedVector2Array) -> Array:
 	return Geometry2D.intersect_polygons(poly, land)
 
 
-# The biggest land piece of a polygon (for placing a label where it is visible).
-func _largest_land_piece(poly: PackedVector2Array) -> PackedVector2Array:
-	var best := PackedVector2Array()
-	var best_area := -1.0
-	for piece in _clip_to_land(poly):
-		var area := Geo2D.polygon_area(piece)
-		if area > best_area:
-			best_area = area
-			best = piece
-	return best
-
-
+# Districts are land-only polygons that tile the coast, so they are drawn as
+# stored (no clipping): if one pokes into the sea, the validator fails.
 # Two passes: normal districts first, then districts flagged "roads": false
 # (the park) on top of the roads. The roads still exist in the data under them;
 # the flag is the rule, Phase 3 will use it to clip them.
@@ -144,11 +134,10 @@ func _draw_districts(over_roads: bool) -> void:
 		if (d.get("roads", true) == false) != over_roads:
 			continue
 		var color: Color = DISTRICT_COLORS.get(d["type"], Color.MAGENTA)
-		for piece in _clip_to_land(CityData.to_points(d["polygon"])):
-			var screen := _to_screen(piece)
-			draw_colored_polygon(screen, Color(color, 0.88) if over_roads else color)
-			screen.append(screen[0])
-			draw_polyline(screen, OUTLINE, 2.0)
+		var screen := _to_screen(CityData.to_points(d["polygon"]))  # drawn exactly as stored
+		draw_colored_polygon(screen, Color(color, 0.88) if over_roads else color)
+		screen.append(screen[0])
+		draw_polyline(screen, OUTLINE, 2.0)
 
 
 # Sites (stations, library, museum, hall...) sit on top of the districts and
@@ -190,7 +179,7 @@ func _draw_district_labels() -> void:
 	for d in city["districts"]:
 		var is_park: bool = d["type"] == "park"
 		var label: String = ("PARK: " if is_park else "") + String(d["name"])
-		var at := px(Geo2D.label_point(_largest_land_piece(CityData.to_points(d["polygon"]))))
+		var at := px(Geo2D.label_point(CityData.to_points(d["polygon"])))
 		_text(at + Vector2(-label.length() * 4.0, 0), label, 15, Color.BLACK, Color(1, 1, 1, 0.85))
 
 
@@ -312,8 +301,9 @@ func _draw_legend(view: Vector2) -> void:
 		y += 20
 	y += 8
 	_text(Vector2(x, y), "Underground / rail (keys)", 13, Color("aab")); y += 8
-	y = _legend_line(x, y, Color("e63946"), 4.0, "metro: dashed=tunnel [M]")
-	y = _legend_line(x, y, Color("e63946"), 6.0, "metro: solid=sky rail")
+	_text(Vector2(x, y + 14), "metro [M]: dashed = underground,", 12, Color.WHITE)
+	_text(Vector2(x, y + 29), "solid = above ground, dotted = ramp", 12, Color.WHITE)
+	y += 40
 	y = _legend_line(x, y, Color("6b4f2a"), 4.0, "sewer tunnel / chamber [U]")
 	_text(Vector2(x, y + 14), "[S] surface on/off", 12, Color("aab"))
 	y += 30
