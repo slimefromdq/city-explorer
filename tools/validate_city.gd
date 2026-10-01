@@ -61,6 +61,7 @@ func _init() -> void:
 	_check_sightlines(city)
 	_check_precinct(city)
 	_check_greenery(city)
+	_check_park(city)
 	_check_signs(city)
 	_finish()
 
@@ -1158,6 +1159,162 @@ func _check_greenery(city: Dictionary) -> void:
 		for i in plan.trees.size():
 			same = same and again.trees[i]["pos"].is_equal_approx(plan.trees[i]["pos"]) and is_equal_approx(float(again.trees[i]["scale"]), float(plan.trees[i]["scale"]))
 	_expect(same, "the planting is reproducible (%d trees, %d roof gardens)" % [plan.trees.size(), plan.roofs.size()])
+
+
+# The park: a creek that crosses it (spring to culvert), widening into the lake, footbridges wherever a
+# path crosses it, and distinct zones (cherry garden, basketball courts, open field) that do not collide.
+func _check_park(city: Dictionary) -> void:
+	var network := RoadNetwork.new(city)
+	var lot_plan := LotPlan.new(city, network)
+	var terrain := TerrainHeight.new(city)
+	var sightlines := Sightlines.new(city, terrain)
+	var building_plan := BuildingPlan.new(city, lot_plan, terrain, sightlines)
+	var plan := GreeneryPlan.new(city, network, lot_plan, building_plan, sightlines, terrain)
+	var g: Dictionary = city["greenery"]
+	var park := PackedVector2Array()
+	for d in city["districts"]:
+		if d["type"] == "park":
+			park = CityData.to_points(d["polygon"])
+	var museum := PackedVector2Array()
+	for site in city["sites"]:
+		if site["kind"] == "museum":
+			museum = CityData.to_points(site["polygon"])
+	var roads: Array = network.ribbons(0.0)
+	var creeks: Array = city["terrain"].get("creeks", [])
+	_expect(creeks.size() >= 1, "the park has a creek")
+
+	for creek in creeks:
+		var path: Array = creek["path"]
+		var inside := true
+		var wet := true
+		var low_y := INF
+		var high_y := -INF
+		for pt in path:
+			var p := Vector2(pt[0], pt[1])
+			inside = inside and Geo2D.polygon_signed_distance(p, park) <= -8.0
+			wet = wet and terrain.height_at(p) < terrain.sea_level - 1.0
+			low_y = minf(low_y, p.y)
+			high_y = maxf(high_y, p.y)
+		_expect(inside, "creek '%s' stays inside the park (it never reaches a road or the coast)" % creek["name"])
+		_expect(wet, "creek '%s' is underwater along its whole length" % creek["name"])
+		var park_box := Rect2(park[0], Vector2.ZERO)
+		for p in park:
+			park_box = park_box.expand(p)
+		_expect(high_y - low_y >= 0.7 * park_box.size.y, "creek '%s' runs right across the park (%d m of its %d m)" % [creek["name"], int(high_y - low_y), int(park_box.size.y)])
+		# clear of roads, the museum, and through the lake
+		var water := Geo2D.river_polygon(path)
+		var near_road := INF
+		for r in roads:
+			if _box(r).grow(30.0).intersects(_box(water)):
+				near_road = minf(near_road, _min_distance(water, r))
+		_expect(near_road >= 8.0, "the creek keeps clear of every road (nearest %.0f m)" % near_road)
+		_expect(Geo2D.polygon_signed_distance(Vector2(museum[0]), water) > 15.0 and Geo2D.overlap_area(water, museum) == 0.0, "the creek stays clear of the museum")
+		var through_lake := false
+		for pond in city["terrain"].get("ponds", []):
+			through_lake = through_lake or Geo2D.river_clearance(Vector2(pond["center"][0], pond["center"][1]), path) < float(pond["radius"]) * 0.4
+		_expect(through_lake, "the creek flows through the lake (the lake widens it)")
+
+		# footbridges: every crossing has one, long enough, and no path dips into the creek without one
+		var expected := 0
+		var bank := float(creek["bank_width"])
+		for fp in plan.paths:
+			for banks in Geometry2D.offset_polygon(water, bank):
+				expected += Geometry2D.intersect_polyline_with_polygon(fp["points"], banks).size()
+		_expect(plan.footbridges.size() == expected and expected >= 1, "every path crossing the creek has a footbridge (%d crossings, %d bridges)" % [expected, plan.footbridges.size()])
+		var uncovered := 0
+		for fp in plan.paths:
+			for p in fp["points"]:
+				if Geo2D.river_clearance(p, path) < bank - 0.5:
+					var covered := false
+					for fb in plan.footbridges:
+						covered = covered or Geo2D.polyline_distance(p, PackedVector2Array([fb["from"], fb["to"]])) <= float(fb["width"]) * 0.5 + 0.5
+					if not covered:
+						uncovered += 1
+		_expect(uncovered == 0, "no footpath runs through the creek without a bridge (%d points)" % uncovered)
+
+	# zones
+	var zones: Array = g["park_zones"]
+	var kinds := {}
+	for z in zones:
+		kinds[z["kind"]] = true
+	_expect(kinds.has("cherry_garden") and kinds.has("basketball_court") and kinds.has("open_field"), "the park has a cherry blossom garden, basketball courts and an open field")
+	var polys := []
+	var bad := []
+	for z in zones:
+		var poly := CityData.to_points(z["polygon"])
+		polys.append(poly)
+		if Geo2D.polygon_signed_distance(poly[0], park) > -3.0:
+			bad.append("%s (edge)" % z["id"])
+		for p in poly:
+			if Geo2D.polygon_signed_distance(p, park) > -3.0:
+				bad.append("%s (outside the park)" % z["id"])
+				break
+		if Geo2D.overlap_area(poly, museum) > 0.0:
+			bad.append("%s on the museum" % z["id"])
+		for creek in creeks:
+			var closest := INF
+			for p in poly:
+				closest = minf(closest, Geo2D.river_clearance(p, creek["path"]))
+			if closest < float(creek["bank_width"]) + 3.0:
+				bad.append("%s too close to the creek" % z["id"])
+		for pond in city["terrain"].get("ponds", []):
+			for p in poly:
+				if p.distance_to(Vector2(pond["center"][0], pond["center"][1])) < float(pond["radius"]) + 4.0:
+					bad.append("%s on the lake" % z["id"])
+					break
+	for i in polys.size():
+		for j in range(i + 1, polys.size()):
+			if Geo2D.overlap_area(polys[i], polys[j]) > 0.0:
+				bad.append("%s overlaps %s" % [zones[i]["id"], zones[j]["id"]])
+	_expect(bad.is_empty(), "the zones sit inside the park, clear of the creek, lake, museum and each other%s" % ("" if bad.is_empty() else " (%s)" % ", ".join(bad)))
+
+	# courts: regulation size, inside their zone, not overlapping
+	var court_total := 0
+	var courts_ok := true
+	var court_polys := []
+	for z in zones:
+		if z["kind"] != "basketball_court":
+			continue
+		var zone_poly := CityData.to_points(z["polygon"])
+		for court in z["courts"]:
+			court_total += 1
+			var corners := BuildingPlan.rect_corners(Vector2(court["center"][0], court["center"][1]), Vector2.from_angle(deg_to_rad(float(court["yaw"]))), Vector2(14.0, 7.5))
+			courts_ok = courts_ok and Geo2D.overlap_area(corners, zone_poly) >= Geo2D.polygon_area(corners) * 0.999 and Geo2D.polygon_signed_distance(corners[0], zone_poly) < -2.0
+			for other in court_polys:
+				courts_ok = courts_ok and Geo2D.overlap_area(corners, other) == 0.0
+			court_polys.append(corners)
+	_expect(court_total >= 2 and courts_ok, "%d basketball courts (28 x 15 m) fit inside their paved zone without touching" % court_total)
+
+	# trees follow the zones
+	var cherry_trees := 0
+	var strays := 0
+	var in_creek := 0
+	for t in plan.trees:
+		var p: Vector2 = t["pos"]
+		for creek in creeks:
+			if Geo2D.river_clearance(p, creek["path"]) < 0.0:
+				in_creek += 1
+		for i in zones.size():
+			if Geometry2D.is_point_in_polygon(p, polys[i]):
+				if t["zone"] == "cherry" and zones[i]["kind"] == "cherry_garden":
+					cherry_trees += 1
+				else:
+					strays += 1
+	_expect(cherry_trees >= 40, "the cherry blossom garden is densely planted (%d blossom trees)" % cherry_trees)
+	_expect(strays == 0, "no ordinary tree stands in the court or the open field (%d stray)" % strays)
+	_expect(in_creek == 0, "no tree stands in the creek")
+
+
+# Smallest distance between two polygons' outlines (large if they are far apart).
+func _min_distance(a: PackedVector2Array, b: PackedVector2Array) -> float:
+	var best := INF
+	for p in a:
+		best = minf(best, absf(Geo2D.polygon_signed_distance(p, b)))
+	for p in b:
+		best = minf(best, absf(Geo2D.polygon_signed_distance(p, a)))
+	if Geo2D.overlap_area(a, b) > 0.0:
+		return 0.0
+	return best
 
 
 # Signs: mounted on the facade that faces a road, at shop height, inside the lot, in the count the data asks.

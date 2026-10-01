@@ -6,6 +6,8 @@
 # its spot. (Trees in the gardens are planted by the greenery layer.)
 extends RefCounted
 
+const FlatPatch := preload("res://city/flat_patch.gd")
+
 const LIFT := 0.16  # paving is the lot patch at 0.12; lawns and pool sit a little above it
 
 const LAWN := Color(0.36, 0.64, 0.30)
@@ -113,40 +115,8 @@ static func _pavilion(parent: Node3D, feature: Dictionary, terrain, index: int) 
 
 # ---- helpers -----------------------------------------------------------------------
 
-# A flat coloured patch lying on the terrain, following its height at every corner.
 static func _flat(parent: Node3D, poly: PackedVector2Array, terrain, color: Color, lift: float) -> void:
-	var tris := Geometry2D.triangulate_polygon(poly)
-	if tris.is_empty():
-		return
-	var verts := PackedVector3Array()
-	var indices := PackedInt32Array()
-	for p in poly:
-		verts.append(Vector3(p.x, terrain.height_at(p) + lift, p.y))
-	for t in range(0, tris.size(), 3):
-		var a := poly[tris[t]]
-		var b := poly[tris[t + 1]]
-		var c := poly[tris[t + 2]]
-		if (b - a).cross(c - a) > 0.0:
-			indices.append_array([tris[t], tris[t + 1], tris[t + 2]])
-		else:
-			indices.append_array([tris[t], tris[t + 2], tris[t + 1]])
-	var normals := PackedVector3Array()
-	normals.resize(verts.size())
-	normals.fill(Vector3.UP)
-	var arrays := []
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = verts
-	arrays[Mesh.ARRAY_NORMAL] = normals
-	arrays[Mesh.ARRAY_INDEX] = indices
-	var mesh := ArrayMesh.new()
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	var node := MeshInstance3D.new()
-	node.mesh = mesh
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = color
-	mat.roughness = 1.0
-	node.material_override = mat
-	parent.add_child(node)
+	FlatPatch.add(parent, poly, terrain, color, lift)
 
 
 static func _part(parent: Node3D, mesh: Mesh, at: Vector3, color: Color, roughness: float) -> MeshInstance3D:

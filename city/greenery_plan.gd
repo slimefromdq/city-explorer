@@ -30,6 +30,9 @@ var roofs: Array = []
 var sky_gardens: Array = []
 # Each path: {"name": String, "width": float, "points": PackedVector2Array}
 var paths: Array = []
+# Each footbridge: {"from": Vector2, "to": Vector2, "width": float, "path": String}: planned automatically
+# wherever a footpath crosses a creek (the creek plus its banks), so the path stays level over the water.
+var footbridges: Array = []
 
 var _city: Dictionary
 var _sightlines
@@ -38,6 +41,8 @@ var _ribbons: Array = []   # {"box": Rect2, "poly": PackedVector2Array}: every r
 var _network
 var _keep_clear: Array = []  # polygons trees must avoid (sites, ponds are checked separately)
 var _max_tree_height: float
+var _zones: Array = []   # {"id", "kind", "polygon"}: the named parts of the park
+var _creeks: Array = []  # {"path": Array, "polygon": PackedVector2Array (water), "bank": float}
 
 
 func _init(city: Dictionary, network, lot_plan, building_plan, sightlines, terrain) -> void:
@@ -52,9 +57,15 @@ func _init(city: Dictionary, network, lot_plan, building_plan, sightlines, terra
 	for site in city["sites"]:
 		if site["kind"] != "plaza":
 			_keep_clear.append_array(Geometry2D.offset_polygon(CityData.to_points(site["polygon"]), 3.0))
+	for zone in g["park_zones"]:
+		_zones.append({"id": zone["id"], "kind": zone["kind"], "polygon": CityData.to_points(zone["polygon"])})
+	for creek in city["terrain"].get("creeks", []):
+		_creeks.append({"path": creek["path"], "polygon": Geo2D.river_polygon(creek["path"]), "bank": float(creek["bank_width"])})
 
 	_plan_paths(g)
+	_plan_footbridges()
 	_plan_park_trees(lot_plan, g)
+	_plan_cherry_trees(g)
 	_plan_garden_trees()
 	_plan_street_trees(network, g)
 	_plan_roofs(building_plan, g)
@@ -71,6 +82,21 @@ func _plan_paths(g: Dictionary) -> void:
 			for s in range(1, steps + 1):
 				dense.append(raw[i].lerp(raw[i + 1], float(s) / steps))
 		paths.append({"name": path["name"], "width": float(path["width"]), "points": dense})
+
+
+# A footbridge wherever a path crosses a creek (measured to the top of its banks, plus a metre
+# each side to land on firm ground).
+func _plan_footbridges() -> void:
+	for path in paths:
+		for creek in _creeks:
+			for banks in Geometry2D.offset_polygon(creek["polygon"], float(creek["bank"])):
+				for piece in Geometry2D.intersect_polyline_with_polygon(path["points"], banks):
+					if piece.size() < 2:
+						continue
+					var a := piece[0]
+					var b := piece[piece.size() - 1]
+					var dir := (b - a).normalized()
+					footbridges.append({"from": a - dir, "to": b + dir, "width": float(path["width"]) + 1.5, "path": path["name"]})
 
 
 # ---- trees -----------------------------------------------------------------------
@@ -163,8 +189,38 @@ func _street_spot_ok(p: Vector2) -> bool:
 	return true
 
 
-# Park and garden trees keep away from ponds, paths, pools and buildings.
+# The cherry blossom garden: a dense, even planting of pink blossom trees (the other zones are
+# kept bare of ordinary trees: the court is paved, the field is open lawn).
+func _plan_cherry_trees(g: Dictionary) -> void:
+	var spacing := float(g["cherry_tree_spacing"])
+	for zone in _zones:
+		if zone["kind"] != "cherry_garden":
+			continue
+		var rng := _rng("cherry:%s" % zone["id"])
+		var inner: Array = Geometry2D.offset_polygon(zone["polygon"], -3.0)
+		var box := _bounds(zone["polygon"])
+		var y := box.position.y + spacing * 0.5
+		while y < box.end.y:
+			var x := box.position.x + spacing * 0.5
+			while x < box.end.x:
+				var p := Vector2(x, y) + Vector2(rng.randf() - 0.5, rng.randf() - 0.5) * spacing * 0.5
+				var on_path := false
+				for path in paths:
+					on_path = on_path or Geo2D.polyline_distance(p, path["points"]) < float(path["width"]) * 0.5 + 2.0
+				if _inside_any(p, inner) and not on_path and _tree_allowed(p):
+					_add_tree(p, "cherry", rng, 1.0)
+				x += spacing
+			y += spacing
+
+
+# Park and garden trees keep away from ponds, creeks, paths, pools, buildings and the park's zones.
 func _clear_of_features(p: Vector2) -> bool:
+	for creek in _creeks:
+		if Geo2D.river_clearance(p, creek["path"]) < float(creek["bank"]) + 3.0:
+			return false
+	for zone in _zones:
+		if Geometry2D.is_point_in_polygon(p, zone["polygon"]):
+			return false
 	for pond in _city["terrain"].get("ponds", []):
 		if p.distance_to(Vector2(pond["center"][0], pond["center"][1])) < float(pond["radius"]) + 5.0:
 			return false

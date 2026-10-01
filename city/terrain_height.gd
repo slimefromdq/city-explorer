@@ -11,7 +11,7 @@
 #      cliffs no road can climb. Instead the data keeps hills inland, so they have already
 #      faded out at the shore (the validator checks this).
 #   3. The river and the harbour basin are carved out below sea level, and so are the
-#      ponds listed in the data (a small bowl with a soft rim).
+#      ponds and creeks listed in the data (a small bowl, or a narrow trench, with a soft rim).
 # Water itself is NOT modelled here: it is one flat plane at sea level, so
 # "lower than sea level" simply means "wet".
 extends RefCounted
@@ -34,6 +34,7 @@ var _river: Array
 var _basin: PackedVector2Array
 var _hills: Array  # each: {center: Vector2, radius: float, height: float}
 var _ponds: Array  # each: {center: Vector2, radius: float, depth: float}
+var _creeks: Array  # each: {path: Array, depth: float, bank: float, box: Rect2 (where it can matter)}
 
 
 func _init(city: Dictionary) -> void:
@@ -48,6 +49,13 @@ func _init(city: Dictionary) -> void:
 	_land = CityData.land_polygon(city)
 	_river = city["river"]["path"]
 	_basin = CityData.to_points(city["harbour"]["basin"])
+	for creek in t.get("creeks", []):
+		var box := Rect2(Vector2(creek["path"][0][0], creek["path"][0][1]), Vector2.ZERO)
+		var reach := float(creek["bank_width"])
+		for pt in creek["path"]:
+			box = box.expand(Vector2(pt[0], pt[1]))
+			reach = maxf(reach, float(creek["bank_width"]) + float(pt[2]))
+		_creeks.append({"path": creek["path"], "depth": float(creek["depth"]), "bank": float(creek["bank_width"]), "box": box.grow(reach)})
 	for pond in t.get("ponds", []):
 		_ponds.append({"center": Vector2(pond["center"][0], pond["center"][1]), "radius": float(pond["radius"]), "depth": float(pond["depth"])})
 	for h in t["hills"]:
@@ -58,7 +66,9 @@ func _init(city: Dictionary) -> void:
 		})
 
 
-func height_at(p: Vector2) -> float:
+# `small_water` = false ignores the park's creeks and ponds: that is the level the GROUND would be at
+# without them, which is what a footpath or bridge deck follows so it stays level over a creek.
+func height_at(p: Vector2, small_water: bool = true) -> float:
 	var inland := -Geo2D.polygon_signed_distance(p, _land)  # metres inside the coast (negative = at sea)
 	var ground: float
 	if inland <= 0.0:
@@ -69,6 +79,13 @@ func height_at(p: Vector2) -> float:
 	var clearance := Geo2D.water_clearance(p, _river, _basin)  # negative = inside the water
 	var wet := 1.0 - _smooth(0.0, _bank_width, clearance)
 	var carved := minf(ground, lerpf(ground, sea_level - _river_depth, wet))
+	if not small_water:
+		return carved
+	for creek in _creeks:
+		if creek["box"].has_point(p):
+			var edge := Geo2D.river_clearance(p, creek["path"])  # negative = in the creek
+			var creek_wet := 1.0 - _smooth(0.0, float(creek["bank"]), edge)
+			carved = minf(carved, lerpf(carved, sea_level - float(creek["depth"]), creek_wet))
 	for pond in _ponds:
 		# a bowl: full depth in the middle 60%, easing up to ground level at the rim
 		var closeness := 1.0 - _smooth(0.6, 1.0, p.distance_to(pond["center"]) / float(pond["radius"]))

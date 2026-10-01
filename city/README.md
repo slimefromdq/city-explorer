@@ -24,6 +24,7 @@ result every time.
 | 5 | buildings (MultiMesh) | `height_rule`, `building_plan`, `building_builder` |
 | 6 | landmarks, sightlines | `tower_builder`, `landmark_builder`, `sightlines` |
 | 7 | square, greenery, signs | `precinct_builder`, `greenery_plan`/`_builder`, `sign_plan`/`_builder` |
+| 7+ | park creek, zones, footbridges | `terrain_height` (creeks, ponds), `greenery_plan`, `park_builder` |
 
 `city_generator.gd` conducts them; each `*_plan` script decides (pure rules, no nodes) and each
 `*_builder` script draws. The validator checks the plans, so rules are tested without rendering.
