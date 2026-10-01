@@ -21,9 +21,13 @@ const MIN_FOOTPRINT_WIDTH := 4.0  # a building narrower than this (m) is not wor
 #        "distance": float (to the core centre)}
 var buildings: Array = []
 var unbuilt: Array = []  # lot ids that could not fit any footprint
+var lowered: Array = []  # building ids cut down to keep a line of sight to the tower clear
+var cleared: Array = []  # lot ids left empty because even a 2-floor building would block a line of sight
 
 
-func _init(city: Dictionary, lot_plan) -> void:
+# `terrain` and `sightlines` are optional only so a plan can be built WITHOUT the sightline rule
+# (the validator does that to prove the rule is doing real work).
+func _init(city: Dictionary, lot_plan, terrain = null, sightlines = null) -> void:
 	var rules: Dictionary = city["buildings"]
 	var core := Vector2(city["core"]["center"][0], city["core"]["center"][1])
 	var main_height := 0.0
@@ -61,6 +65,20 @@ func _init(city: Dictionary, lot_plan) -> void:
 		if fit.is_empty():
 			unbuilt.append(lot["id"])
 			continue
+		var lowered_here := false
+		if sightlines != null and terrain != null:
+			# Keep the roof under the line of sight to the tower (measured from the lowest ground under it).
+			var allowed: float = sightlines.ceiling_over(fit["center"], fit["u"], fit["size"] * 0.5) - base_elevation(fit["center"], fit["u"], fit["size"], terrain)
+			if allowed < height:
+				var allowed_floors := int(floor(allowed / float(rules["floor_height"])))
+				if allowed_floors < int(rules["min_floors"]):
+					cleared.append(lot["id"])
+					continue
+				floors = allowed_floors
+				height = floors * float(rules["floor_height"])
+				lowered_here = true
+		if lowered_here:
+			lowered.append("building_%s" % lot["id"])
 		buildings.append({
 			"id": "building_%s" % lot["id"], "lot": lot["id"], "group": group, "type": lot["type"],
 			"site_kind": lot["site_kind"], "center": fit["center"], "u": fit["u"], "size": fit["size"],
@@ -131,6 +149,16 @@ func _longest_edge_direction(poly: PackedVector2Array) -> Vector2:
 			best_len = edge.length()
 			best = edge.normalized()
 	return best
+
+
+# The ground level a building stands on: the LOWEST point under its footprint (so on a slope it is
+# flush downhill and partly buried uphill, never floating). The builder uses this too.
+static func base_elevation(center: Vector2, u: Vector2, size: Vector2, terrain) -> float:
+	var low: float = terrain.height_at(center)
+	var v := u.orthogonal()
+	for corner in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:
+		low = minf(low, terrain.height_at(center + u * corner.x * size.x * 0.5 + v * corner.y * size.y * 0.5))
+	return low
 
 
 # The four corners of a rectangle given its centre, long axis and half-sizes.

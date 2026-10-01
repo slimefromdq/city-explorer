@@ -205,3 +205,27 @@ static func min_area_rect(poly: PackedVector2Array) -> Dictionary:
 			best = {"center": center, "u": d, "half": Vector2(half_d, half_n)} if half_d >= half_n \
 				else {"center": center, "u": n, "half": Vector2(half_n, half_d)}
 	return best
+
+
+# Where does the 2D segment a->b pass through a rotated rectangle? The rectangle is given by its
+# centre, long axis u and half-sizes. Returns Vector2(t_in, t_out) (0 = at a, 1 = at b), or
+# Vector2(-1, -1) if the segment misses it. Used by the line-of-sight checks.
+static func segment_rect_overlap(a: Vector2, b: Vector2, center: Vector2, u: Vector2, half: Vector2) -> Vector2:
+	var v := u.orthogonal()
+	var pa := Vector2((a - center).dot(u), (a - center).dot(v))
+	var pb := Vector2((b - center).dot(u), (b - center).dot(v))
+	var d := pb - pa
+	var t0 := 0.0
+	var t1 := 1.0
+	for axis in 2:
+		if absf(d[axis]) < 0.000001:
+			if absf(pa[axis]) > half[axis]:
+				return Vector2(-1.0, -1.0)
+		else:
+			var ta := (-half[axis] - pa[axis]) / d[axis]
+			var tb := (half[axis] - pa[axis]) / d[axis]
+			t0 = maxf(t0, minf(ta, tb))
+			t1 = minf(t1, maxf(ta, tb))
+			if t0 > t1:
+				return Vector2(-1.0, -1.0)
+	return Vector2(t0, t1)

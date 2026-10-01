@@ -172,10 +172,27 @@
 		"sites": { "station": 22, "library": 16, "museum": 20, "performance_hall": 30, "plaza": 0 }
 	},
 
+	"sightlines": {
+		"note": "The main landmark must be seen from across the city. Each viewpoint stands at eye_height above the ground; from there the tower must show at least its top (1 - visible_from_fraction) of height. Buildings, hills and other landmarks may not poke above that line of sight. The planner lowers (or removes) any building in a corridor of corridor_half_width either side of a line of sight so it stays clearance below it.",
+		"target": "meridian_tower",
+		"eye_height": 1.7,
+		"visible_from_fraction": 0.75,
+		"corridor_half_width": 12,
+		"clearance": 3,
+		"viewpoints": [
+			{ "id": "harbour_quay", "name": "Harbour quay", "position": [1255, 798] },
+			{ "id": "west_hill", "name": "Old Quarter Hill", "position": [200, 850] },
+			{ "id": "marina", "name": "Marina waterfront", "position": [1460, 293] },
+			{ "id": "park_lawn", "name": "Park west lawn", "position": [420, 330] },
+			{ "id": "south_shore", "name": "South shore", "position": [940, 1030] },
+			{ "id": "west_shore", "name": "West shore", "position": [130, 520] }
+		]
+	},
+
 	"landmarks": [
-		{ "id": "meridian_tower", "name": "Meridian Tower", "kind": "tower", "main": true, "district": "midtown_core", "position": [920, 325], "height": 320 },
-		{ "id": "meridia_eye", "name": "Meridia Eye", "kind": "observation_wheel", "district": "harbour", "position": [1255, 885], "height": 120 },
-		{ "id": "hill_basilica", "name": "Basilica of Saint Meridia", "kind": "basilica", "district": "outer_quarters", "position": [200, 800], "height": 70 }
+		{ "id": "meridian_tower", "name": "Meridian Tower", "kind": "tower", "main": true, "district": "midtown_core", "position": [920, 325], "height": 320, "base_width": 70, "yaw": 0 },
+		{ "id": "meridia_eye", "name": "Meridia Eye", "kind": "observation_wheel", "district": "harbour", "position": [1278, 885], "height": 90, "yaw": 0 },
+		{ "id": "hill_basilica", "name": "Basilica of Saint Meridia", "kind": "basilica", "district": "outer_quarters", "position": [199, 804], "height": 70, "yaw": 90 }
 	],
 
 	"metro": {

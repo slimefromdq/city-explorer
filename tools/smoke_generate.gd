@@ -61,6 +61,18 @@ func _init() -> void:
 			tallest = maxf(tallest, b["height"])
 		_expect(instances == gen.building_plan.buildings.size() and instances > 300, "MultiMeshes draw all %d planned buildings" % instances)
 		_expect(tallest > 100.0, "the skyline reaches %.0f m" % tallest)
+	var landmarks: Node3D = gen.get_node_or_null("Landmarks")
+	_expect(landmarks != null and landmarks.get_child_count() == 3, "generator built the three landmarks")
+	if landmarks != null:
+		var tower: Node3D = landmarks.get_node_or_null("Landmark_meridian_tower")
+		_expect(tower != null, "the tower exists")
+		if tower != null:
+			var top := 0.0
+			for part in tower.get_children():
+				var box: AABB = (part as MeshInstance3D).global_transform * (part as MeshInstance3D).get_aabb()
+				top = maxf(top, box.end.y)
+			_expect(absf(top - 320.0 - gen.terrain.height_at(Vector2(920, 325))) < 6.0, "the tower reaches its data height (top %.0f m)" % top)
+	_expect(gen.sightlines.find_blockers(gen.building_plan.buildings).is_empty(), "no line of sight to the tower is blocked in the generated city")
 	var cam: Camera3D = view.get_node("FlyCamera")
 	_expect(cam.position.y > 100.0, "camera was framed above the city")
 	print("generated in %d ms" % (Time.get_ticks_msec() - started))

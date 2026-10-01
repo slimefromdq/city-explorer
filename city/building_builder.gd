@@ -8,6 +8,7 @@
 extends RefCounted
 
 const LotBuilder := preload("res://city/lot_builder.gd")
+const BuildingPlan := preload("res://city/building_plan.gd")
 
 const FOUNDATION := 2.0  # the box reaches this far below its lowest corner, so a slope never shows a gap (m)
 
@@ -65,11 +66,7 @@ static func _group_instance(group: String, items: Array, terrain) -> MultiMeshIn
 static func _transform(b: Dictionary, terrain) -> Transform3D:
 	var u: Vector2 = b["u"]
 	var size: Vector2 = b["size"]
-	var corners := [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]
-	var v := u.orthogonal()
-	var low: float = terrain.height_at(b["center"])
-	for corner in corners:
-		low = minf(low, terrain.height_at(b["center"] + u * corner.x * size.x * 0.5 + v * corner.y * size.y * 0.5))
+	var low: float = BuildingPlan.base_elevation(b["center"], u, size, terrain)
 	var along := Vector3(u.x, 0.0, u.y)
 	var up := Vector3.UP
 	var across := along.cross(up)  # keeps the transform right-handed (otherwise faces turn inside out)
