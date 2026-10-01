@@ -6,6 +6,7 @@ const FIGURE_H := PlayerScale.HEIGHT
 var cam: Camera3D
 var city: Node3D
 var station: StationComplex
+var transit: TransitSystem
 
 
 func _ready() -> void:
@@ -34,10 +35,14 @@ func _ready() -> void:
 		city = CITY_GEN.new()
 		add_child(city)
 		station = city.station
+		transit = city.transit
 	else:
 		station = StationComplex.new()
 		station.position = StationLayout.HUB
 		add_child(station)
+		transit = TransitSystem.new()
+		transit.station = station
+		add_child(transit)
 	await get_tree().process_frame
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -73,6 +78,8 @@ func _shots() -> void:
 	for s in list:
 		if only.size() > 0 and not only.has(s["name"]):
 			continue
+		if s.has("setup"):
+			await call(s["setup"])
 		var fig: Node3D = null
 		if s.get("feet") != null:
 			fig = _figure(s["feet"])
@@ -88,8 +95,27 @@ func _shots() -> void:
 			fig.queue_free()
 
 
+func _put_tower_in_tunnel() -> void:
+	var svc: LineService = transit.services["tower"]
+	svc.state = LineService.State.RUN
+	svc.debug_place(330.0)
+	await get_tree().process_frame
+
+
 func _shot_list(h: Vector3) -> Array:
 	return [
+		{"name": "map_east_wall", "pos": h + Vector3(14.0, 1.7, 0.5), "target": h + Vector3(31.9, 6.8, 0.0), "fov": 50.0},
+		{"name": "map_platform", "pos": h + Vector3(-18.0, -8 + 1.7, 5.5), "target": h + Vector3(-18.0, -8 + 1.9, 0.0), "fov": 60.0, "feet": h + Vector3(-15, -8, 3.5)},
+		{"name": "concourse_map", "pos": h + Vector3(-12.0, 1.7, 2.0), "target": h + Vector3(31.0, 6.5, 0.0), "feet": h + Vector3(-5, 0, -2), "fov": 60.0},
+		{"name": "bridge_sign", "pos": h + Vector3(28.0, 1.7, 0.0), "target": h + Vector3(8.5, 6.9, 0.0), "feet": h + Vector3(22, 0, -1.5), "fov": 62.0},
+		{"name": "boards", "pos": h + Vector3(2.0, 1.7, 8.0), "target": h + Vector3(-4.0, 5.0, -14.5), "fov": 60.0},
+		{"name": "tunnel_river", "pos": Vector3(922.7, -12.0 + 2.0, 640.0), "target": Vector3(922.7, -12.0 + 1.5, 600.0), "setup": "_put_tower_in_tunnel", "fov": 75.0},
+		{"name": "train_waiting", "pos": h + Vector3(-8.0, -8 + 1.7, 3.0), "target": h + Vector3(-22, -8 + 1.5, 11.0), "feet": h + Vector3(-12, -8, 6.0), "fov": 75.0},
+		{"name": "train_inside", "pos": h + Vector3(-10.0, -8 + 1.6, 11.45), "target": h + Vector3(-23, -8 + 1.4, 9.8), "fov": 75.0},
+		{"name": "wellhead_east", "pos": h + Vector3(0.5, 1.7, 0.8), "target": h + Vector3(12, 1.0, 5.0), "feet": h + Vector3(4.5, 0, 1.2), "fov": 75.0},
+		{"name": "well_down", "pos": h + Vector3(10.5, 5.0, 1.5), "target": h + Vector3(13, -4.0, 5.2), "fov": 70.0},
+		{"name": "platform_east", "pos": h + Vector3(2.0, -8 + 1.7, 0.0), "target": h + Vector3(24, -8 + 1.2, 6.0), "feet": h + Vector3(6, -8, 3.0), "fov": 75.0},
+		{"name": "platform_west", "pos": h + Vector3(-2.0, -8 + 1.7, 0.0), "target": h + Vector3(-24, -8 + 1.2, 6.0), "feet": h + Vector3(-6, -8, 3.0), "fov": 75.0},
 		{"name": "west_court", "pos": h + Vector3(-100, 6, 30), "target": h + Vector3(-49, 5, 0), "fov": 60.0},
 		{"name": "garden", "pos": h + Vector3(21, 1.7, -17), "target": h + Vector3(21, 1.5, -34), "feet": h + Vector3(22, 0, -22)},
 		{"name": "arcade", "pos": h + Vector3(12, 1.7, 17), "target": h + Vector3(10, 2.5, 34), "feet": h + Vector3(12, 0, 22)},

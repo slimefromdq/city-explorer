@@ -53,6 +53,61 @@ static func box_ab(parent: Node3D, a: Vector3, b: Vector3, m: Material, col: Sta
 	return box(parent, hi - lo, (lo + hi) * 0.5, m, col)
 
 
+## A box with an arbitrary orientation (basis columns = local x, y, z).
+static func box_basis(parent: Node3D, size: Vector3, pos: Vector3, basis: Basis, m: Material, col: StaticBody3D = null) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	var mesh := BoxMesh.new()
+	mesh.size = size
+	mi.mesh = mesh
+	mi.material_override = m
+	mi.transform = Transform3D(basis, pos)
+	parent.add_child(mi)
+	if col != null:
+		var cs := CollisionShape3D.new()
+		var shape := BoxShape3D.new()
+		shape.size = size
+		cs.shape = shape
+		cs.transform = Transform3D(basis, pos)
+		col.add_child(cs)
+	return mi
+
+
+## A collision-only box (no mesh).
+static func col_box(col: StaticBody3D, size: Vector3, pos: Vector3, basis := Basis.IDENTITY) -> void:
+	var cs := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = size
+	cs.shape = shape
+	cs.transform = Transform3D(basis, pos)
+	col.add_child(cs)
+
+
+## A balustrade along a straight run a -> b (same height): posts every ~1.2 m, a top rail and a mid rail,
+## and (with `col`) a thin solid wall at chest height so nobody walks through. `top` is the walking
+## surface the rail stands on.
+static func railing(parent: Node3D, a: Vector3, b: Vector3, m: Material, col: StaticBody3D = null, height := PlayerScale.CHEST_HEIGHT) -> void:
+	var d := b - a
+	var length := d.length()
+	if length < 0.05:
+		return
+	var f := d / length
+	var posts := maxi(2, int(ceil(length / 1.2)) + 1)
+	for i in posts:
+		var p := a + f * (length * float(i) / (posts - 1))
+		box(parent, Vector3(0.07, height, 0.07), p + Vector3(0, height * 0.5, 0), m)
+	var yaw := atan2(-f.z, f.x)
+	box(parent, Vector3(length, 0.07, 0.07), (a + b) * 0.5 + Vector3(0, height, 0), m, null, yaw)
+	box(parent, Vector3(length, 0.05, 0.05), (a + b) * 0.5 + Vector3(0, height * 0.5, 0), m, null, yaw)
+	if col != null:
+		var cs := CollisionShape3D.new()
+		var shape := BoxShape3D.new()
+		shape.size = Vector3(length, height, 0.1)
+		cs.shape = shape
+		cs.position = (a + b) * 0.5 + Vector3(0, height * 0.5, 0)
+		cs.rotation.y = yaw
+		col.add_child(cs)
+
+
 static func add_box_shape(col: StaticBody3D, size: Vector3, pos: Vector3, rot_y := 0.0, rot_x := 0.0) -> void:
 	var cs := CollisionShape3D.new()
 	var shape := BoxShape3D.new()

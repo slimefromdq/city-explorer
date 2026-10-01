@@ -70,12 +70,16 @@ const TEXT_SURFACE := 0.005
 # text columns, as fractions of the board width: [left edge, width] for time, destination, platform
 const COLUMN_TIME := Vector2(0.0, 0.07)
 const COLUMN_DEST := Vector2(0.10, 0.46)
-const COLUMN_PLATFORM := Vector2(0.62, 0.05)
-const COLUMN_STATUS := Vector2(0.70, 0.20)
+const COLUMN_PLATFORM := Vector2(0.60, 0.05)
+const COLUMN_STATUS := Vector2(0.67, 0.26)
 const DEST_BAR_RATIOS := [0.95, 0.62, 0.8, 0.5, 0.7, 0.58]  # destination bar lengths (fraction of its column)
 
 ## Adds a StaticBody3D for the service room and counter.
 var build_collision := false
+## Live text rows for the board (each: {time, dest, platform, status, color}). Empty = the abstract glowing bars.
+var board_rows: Array = []
+var _row_labels: Array = []   # per row: [time, dest, platform, status] Label3D, plus the colour chip
+var _row_chips: Array = []
 var _rebuild_queued := false
 
 
@@ -183,6 +187,8 @@ func _build_board(root: Node3D) -> void:
 
 	# rows of glowing "text": time, destination, platform and status
 	var glow := _glow_material(kind_color, text_glow)
+	_row_labels.clear()
+	_row_chips.clear()
 	var rows_top := top - header_height
 	var rows_h := (rows_top - board_bottom)
 	var inner_h := rows_h * (1.0 - TEXT_MARGIN * 2.0)
@@ -192,6 +198,9 @@ func _build_board(root: Node3D) -> void:
 	var bar_h := pitch * TEXT_BAR_HEIGHT_RATIO
 	for r in TEXT_ROWS:
 		var y := rows_top - rows_h * TEXT_MARGIN - (r + 0.5) * pitch
+		if not board_rows.is_empty():
+			_build_text_row(root, r, y, left, inner_w, pitch, front, kind_color)
+			continue
 		var dest_ratio: float = DEST_BAR_RATIOS[r % DEST_BAR_RATIOS.size()]
 		for col in [[COLUMN_TIME, 1.0, "Time"], [COLUMN_DEST, dest_ratio, "Dest"], [COLUMN_PLATFORM, 1.0, "Platform"], [COLUMN_STATUS, 0.45 + 0.4 * ((r * 3) % 4) / 3.0, "Status"]]:
 			var c: Vector2 = col[0]
@@ -210,6 +219,58 @@ func _build_board(root: Node3D) -> void:
 		light.light_specular = 0.0
 		light.shadow_enabled = false
 		root.add_child(light)
+
+
+## One row of real text (time, destination, platform, status) with a line-colour chip before the destination.
+func _build_text_row(root: Node3D, r: int, y: float, left: float, inner_w: float, pitch: float, front: float, kind_color: Color) -> void:
+	var labels: Array = []
+	var cols := [COLUMN_TIME, COLUMN_DEST, COLUMN_PLATFORM, COLUMN_STATUS]
+	var px := pitch * 0.68 / 67.0   # capitals about two thirds of the row pitch tall
+	for c in 4:
+		var l := Label3D.new()
+		l.name = "Row%d_%d" % [r, c]
+		l.font_size = LABEL_FONT_SIZE
+		l.pixel_size = px
+		l.modulate = kind_color
+		l.shaded = false
+		l.double_sided = false
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		l.position = Vector3(left + inner_w * (cols[c] as Vector2).x + (pitch * 0.55 if c == 1 else 0.0), y, front + TEXT_SURFACE + 0.01)
+		root.add_child(l)
+		labels.append(l)
+	var chip := MeshInstance3D.new()
+	var cm := BoxMesh.new()
+	cm.size = Vector3(pitch * 0.42, pitch * 0.58, TEXT_SURFACE * 2.0)
+	chip.mesh = cm
+	chip.position = Vector3(left + inner_w * COLUMN_DEST.x + pitch * 0.18, y, front + TEXT_SURFACE)
+	chip.material_override = _glow_material(Color.WHITE, 1.4)
+	root.add_child(chip)
+	_row_labels.append(labels)
+	_row_chips.append(chip)
+	if r < board_rows.size():
+		_set_row(r, board_rows[r])
+
+
+func _set_row(r: int, row: Dictionary) -> void:
+	if r >= _row_labels.size():
+		return
+	var labels: Array = _row_labels[r]
+	var keys := ["time", "dest", "platform", "status"]
+	for c in 4:
+		(labels[c] as Label3D).text = String(row.get(keys[c], ""))
+	var chip_color: Color = row.get("color", Color(0, 0, 0, 0))
+	var chip := _row_chips[r] as MeshInstance3D
+	chip.visible = chip_color.a > 0.0
+	(chip.material_override as StandardMaterial3D).albedo_color = chip_color
+	(chip.material_override as StandardMaterial3D).emission = chip_color
+	var st_col: Color = row.get("status_color", _kind_color())
+	(labels[3] as Label3D).modulate = st_col
+
+
+## Live update of the text rows (only when the board was built with board_rows).
+func refresh_rows(rows: Array) -> void:
+	for r in mini(rows.size(), _row_labels.size()):
+		_set_row(r, rows[r])
 
 
 func _solid(c: Color) -> StandardMaterial3D:

@@ -1,0 +1,37 @@
+{
+	"note": "The single source of truth for the Central Station shuttle network. World metres. Points are [x, y, z] (y = height of the platform/track floor, z = south). A line's path runs from the hub berth to its destination; a train's CENTRE stops at each stop's 'at' point (the train is 24 m long, so its ends are 12 m either side). Every number the departure boards, route maps, tunnels and trains use comes from here.",
+	"train_length": 24.0,
+	"stops": [
+		{ "id": "central", "name": "Central Station", "district": "Centre", "platform": [762.0, -4.25, 850.0], "entrance": [811.0, 3.75, 850.0] },
+		{ "id": "basilica_hill", "name": "Basilica Hill", "district": "Outer Quarters", "platform": [232.0, 3.0, 861.3], "entrance": [232.0, 17.5, 826.0],
+			"style": "hill", "stairs_dir": [0.0, -1.0], "platform_side": "north" },
+		{ "id": "harbour_eye", "name": "Harbour & Eye", "district": "Harbour", "platform": [1230.0, -5.0, 893.3], "entrance": [1230.0, 3.0, 918.0],
+			"style": "harbour", "stairs_dir": [0.0, 1.0], "platform_side": "south" },
+		{ "id": "tower_south", "name": "Meridian Tower", "district": "Midtown Core", "platform": [922.7, -7.0, 455.0], "entrance": [948.0, 3.0, 455.0],
+			"style": "tower", "stairs_dir": [1.0, 0.0], "platform_side": "east" },
+		{ "id": "park_meadow", "name": "Park Meadow", "district": "Central Park", "platform": [540.0, -7.0, 460.7], "entrance": [540.0, 3.0, 436.0],
+			"style": "park", "stairs_dir": [0.0, -1.0], "platform_side": "north" }
+	],
+	"lines": [
+		{
+			"id": "west", "name": "West Line", "short": "W", "color": "#e5483f", "cruise_speed": 26.0,
+			"stops": [ { "stop": "central", "at": [744.0, -4.25, 861.45] }, { "stop": "basilica_hill", "at": [232.0, 3.0, 861.3] } ],
+			"path": [ [760.0, -4.25, 861.45], [709.0, -4.25, 861.45], [400.0, -4.25, 861.4], [292.0, 3.0, 861.3], [205.0, 3.0, 861.3] ]
+		},
+		{
+			"id": "east", "name": "East Line", "short": "E", "color": "#2d7fe0", "cruise_speed": 26.0,
+			"stops": [ { "stop": "central", "at": [780.0, -4.25, 861.45] }, { "stop": "harbour_eye", "at": [1230.0, -5.0, 893.3] } ],
+			"path": [ [764.0, -4.25, 861.45], [1000.0, -4.25, 861.45], [1100.0, -4.5, 861.4], [1190.0, -5.0, 893.3], [1255.0, -5.0, 893.3] ]
+		},
+		{
+			"id": "tower", "name": "Tower Line", "short": "T", "color": "#f2b21a", "cruise_speed": 26.0,
+			"stops": [ { "stop": "central", "at": [780.0, -4.25, 838.55] }, { "stop": "tower_south", "at": [922.7, -7.0, 455.0] } ],
+			"path": [ [764.0, -4.25, 838.55], [815.0, -4.25, 838.55], [880.0, -6.5, 815.0], [922.7, -9.0, 770.0], [922.7, -12.0, 700.0], [922.7, -12.0, 575.0], [922.7, -7.0, 505.0], [922.7, -7.0, 425.0] ]
+		},
+		{
+			"id": "park", "name": "Park Line", "short": "P", "color": "#2eb872", "cruise_speed": 26.0,
+			"stops": [ { "stop": "central", "at": [744.0, -4.25, 838.55] }, { "stop": "park_meadow", "at": [540.0, -7.0, 460.7] } ],
+			"path": [ [760.0, -4.25, 838.55], [690.0, -4.25, 838.55], [660.0, -11.0, 700.0], [660.0, -12.0, 660.0], [660.0, -12.0, 515.0], [655.0, -10.8, 490.0], [640.0, -9.2, 468.0], [610.0, -7.0, 460.7], [512.0, -7.0, 460.7] ]
+		}
+	]
+}

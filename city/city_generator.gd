@@ -47,6 +47,7 @@ var sign_plan  # SignPlan: the neon signs
 var terrain  # TerrainHeight: kept so later layers (roads, lots...) ask the same height function
 var station  # StationComplex: Central Station (hall, shell, plaza, platforms, trains); null when switched off
 var with_station := true
+var transit  # TransitSystem: shuttle lines, tunnels, trains
 
 
 func _ready() -> void:
@@ -76,6 +77,12 @@ func _ready() -> void:
 	add_child(ParkBuilder.build(city, greenery_plan, terrain))
 	sign_plan = SignPlan.new(city, roads, building_plan)
 	add_child(SignBuilder.build(sign_plan, building_plan, terrain))
+	if station != null:
+		transit = TransitSystem.new()
+		transit.terrain = terrain
+		transit.station = station
+		add_child(transit)
+		SurfaceHoles.apply(self, station.hole_rects())
 	add_child(RoadBuilder.build_bridges(roads, terrain, float(city["roads"]["bridge_arch_height"]), float(city["roads"]["bridge_deck_thickness"])))
 
 
