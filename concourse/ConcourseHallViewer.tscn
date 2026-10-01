@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://concourse/concourse_viewer.gd" id="1_viewer"]
+[ext_resource type="PackedScene" path="res://concourse/ConcourseHall.tscn" id="2_hall"]
+
+[node name="ConcourseHallViewer" type="Node3D"]
+script = ExtResource("1_viewer")
+
+[node name="ConcourseHall" parent="." instance=ExtResource("2_hall")]
