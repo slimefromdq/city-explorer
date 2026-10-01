@@ -19,7 +19,7 @@ const BRIDGE_REACH := 40.0           # a road crossing the river needs a bridge 
 const JOIN_REACH := 12.0             # tunnels/chambers closer than this count as connected (m)
 const STATION_ON_LINE := 6.0         # a station must sit this close to its metro line (m)
 const OUTFALL_REACH := 15.0          # an outfall must be this close to the waterline (m)
-const SITE_KINDS := ["station", "library", "museum", "performance_hall"]
+const SITE_KINDS := ["station", "library", "museum", "performance_hall", "plaza"]
 const LEVEL_TRACK_GRADE := 0.02      # a platform needs track flatter than this
 const MIN_LAND_FRACTION := 0.98      # a district must lie on land (districts are drawn to the coast)
 
@@ -137,13 +137,44 @@ func _check_core_and_landmark(city: Dictionary) -> void:
 	var core_pt := Vector2(city["core"]["center"][0], city["core"]["center"][1])
 	_expect(_district_at(city, core_pt, "core"), "core.center lies inside a 'core' district")
 
-	var lm: Dictionary = city["landmark"]
-	var lm_pt := Vector2(lm["position"][0], lm["position"][1])
-	var clearance := Geo2D.water_clearance(lm_pt, path, CityData.to_points(city["harbour"]["basin"]))
-	_expect(clearance >= LANDMARK_RIVER_MARGIN,
-		"landmark is not in the water and keeps %.0f m from the bank (found %.0f m)" % [LANDMARK_RIVER_MARGIN, clearance])
-	_expect(_district_at(city, lm_pt, "core"), "landmark stands in the core (midtown) district")
-	_expect(float(lm["height"]) > 0.0, "landmark has a height > 0")
+	# Landmarks: exactly one main tower in the core, near the core centre and the
+	# tallest thing in the city; every landmark stands in the district it names.
+	var basin := CityData.to_points(city["harbour"]["basin"])
+	var seen := {}
+	var mains := 0
+	var tallest := 0.0
+	var main_height := 0.0
+	var covered_types := {}
+	for lm in city["landmarks"]:
+		var id: String = lm["id"]
+		var pt := Vector2(lm["position"][0], lm["position"][1])
+		_expect(not seen.has(id), "landmark id '%s' is unique" % id)
+		seen[id] = true
+		tallest = maxf(tallest, float(lm["height"]))
+		_expect(float(lm["height"]) > 0.0, "landmark '%s' has a height > 0" % id)
+		var clearance := Geo2D.water_clearance(pt, path, basin)
+		_expect(clearance >= LANDMARK_RIVER_MARGIN,
+			"landmark '%s' is not in the water and keeps %.0f m from the bank (found %.0f m)" % [id, LANDMARK_RIVER_MARGIN, clearance])
+		var named_ok := false
+		for d in city["districts"]:
+			if d["id"] == lm["district"]:
+				named_ok = Geometry2D.is_point_in_polygon(pt, CityData.to_points(d["polygon"]))
+				covered_types[d["type"]] = true
+		_expect(named_ok, "landmark '%s' stands inside its district '%s'" % [id, lm["district"]])
+		var on_site := false
+		for site in city["sites"]:
+			if site["kind"] != "plaza" and Geometry2D.is_point_in_polygon(pt, CityData.to_points(site["polygon"])):
+				on_site = true
+		_expect(not on_site, "landmark '%s' does not stand inside another building site" % id)
+		if lm.get("main", false):
+			mains += 1
+			main_height = float(lm["height"])
+			_expect(_district_at(city, pt, "core"), "the main landmark stands in the core (midtown) district")
+			_expect(pt.distance_to(core_pt) <= 60.0, "the main landmark is at the core centre (%.0f m away)" % pt.distance_to(core_pt))
+	_expect(mains == 1, "exactly one main landmark (found %d)" % mains)
+	_expect(main_height >= tallest, "the main landmark is the tallest landmark")
+	for need in ["core", "harbour", "lowrise"]:
+		_expect(covered_types.has(need), "the '%s' district has a landmark" % need)
 
 
 # Every avenue/diagonal that crosses the river must have a bridge nearby; every
@@ -342,7 +373,7 @@ func _tunnels_touch(a: PackedVector2Array, b: PackedVector2Array) -> bool:
 func _check_everything_on_land(city: Dictionary) -> void:
 	var land := CityData.land_polygon(city)
 	var groups := {
-		"landmark": [city["landmark"]["position"]],
+		"landmarks": [],
 		"core centre": [city["core"]["center"]],
 		"hill centres": [],
 		"bridge ends": [],
@@ -355,6 +386,8 @@ func _check_everything_on_land(city: Dictionary) -> void:
 		"road diagonals": [],
 		"piers (land end)": [],
 	}
+	for lm in city["landmarks"]:
+		groups["landmarks"].append(lm["position"])
 	for h in city["terrain"]["hills"]:
 		groups["hill centres"].append(h["center"])
 	for b in city["bridges"]:

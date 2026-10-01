@@ -32,8 +32,10 @@ const SITE_COLORS := {
 	"library": Color(0.45, 0.28, 0.14, 0.92),
 	"museum": Color(0.12, 0.45, 0.45, 0.92),
 	"performance_hall": Color(0.62, 0.15, 0.45, 0.92),
+	"plaza": Color(0.85, 0.85, 0.8, 0.8),
 }
 const LANDMARK := Color("d6212b")
+const LANDMARK_MINOR := Color("f2a900")
 const OUTLINE := Color(0, 0, 0, 0.55)
 const LEGEND_WIDTH := 250.0
 const MARGIN := 24.0
@@ -93,7 +95,7 @@ func _draw() -> void:
 		_draw_harbour()
 		_draw_bridges()
 		_draw_core_center()
-		_draw_landmark()
+		_draw_landmarks()
 	if show_surface:
 		_draw_coastline()
 		_draw_district_labels()  # last, so no road or river hides a name
@@ -257,15 +259,18 @@ func _draw_core_center() -> void:
 	_text(c + Vector2(10, 14), "core centre", 11, Color.BLACK)
 
 
-# A big red triangle with a white rim: the one marker that must be findable instantly.
-func _draw_landmark() -> void:
-	var lm: Dictionary = city["landmark"]
-	var c := px(Vector2(lm["position"][0], lm["position"][1]))
-	var tri := PackedVector2Array([c + Vector2(0, -14), c + Vector2(12, 10), c + Vector2(-12, 10)])
-	draw_colored_polygon(tri, LANDMARK)
-	tri.append(tri[0])
-	draw_polyline(tri, Color.WHITE, 2.0)
-	_text(c + Vector2(16, 4), "%s (%dm)" % [lm["name"], int(lm["height"])], 14, Color.WHITE, Color.BLACK)
+# Triangles with a white rim: red and large for the main tower (it must be
+# findable instantly), gold and smaller for each district's own landmark.
+func _draw_landmarks() -> void:
+	for lm in city["landmarks"]:
+		var main: bool = lm.get("main", false)
+		var k := 1.0 if main else 0.75
+		var c := px(Vector2(lm["position"][0], lm["position"][1]))
+		var tri := PackedVector2Array([c + Vector2(0, -14) * k, c + Vector2(12, 10) * k, c + Vector2(-12, 10) * k])
+		draw_colored_polygon(tri, LANDMARK if main else LANDMARK_MINOR)
+		tri.append(tri[0])
+		draw_polyline(tri, Color.WHITE, 2.0)
+		_text(c + Vector2(16, 4), "%s (%dm)" % [lm["name"], int(lm["height"])], 14 if main else 12, Color.WHITE, Color.BLACK)
 
 
 func _draw_legend(view: Vector2) -> void:
@@ -289,8 +294,11 @@ func _draw_legend(view: Vector2) -> void:
 	y += 8
 	var tri := PackedVector2Array([Vector2(x + 11, y), Vector2(x + 22, y + 22), Vector2(x, y + 22)])
 	draw_colored_polygon(tri, LANDMARK)
-	_text(Vector2(x + 32, y + 18), "landmark tower", 13, Color.WHITE)
-	y += 32
+	_text(Vector2(x + 32, y + 18), "main landmark", 13, Color.WHITE)
+	y += 26
+	draw_colored_polygon(PackedVector2Array([Vector2(x + 11, y + 4), Vector2(x + 19, y + 20), Vector2(x + 3, y + 20)]), LANDMARK_MINOR)
+	_text(Vector2(x + 32, y + 18), "district landmark", 13, Color.WHITE)
+	y += 28
 	draw_arc(Vector2(x + 11, y + 10), 10.0, 0.0, TAU, 24, Color(0.9, 0.8, 0.6), 1.5, true)
 	_text(Vector2(x + 32, y + 14), "hill (ring = foot)", 13, Color.WHITE)
 	y += 32
