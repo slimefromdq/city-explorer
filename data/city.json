@@ -1,0 +1,217 @@
+{
+	"_readme": "Single source of truth for WHERE things go. Units: metres. x = east, y = south, origin = top-left corner. The 3D phases map (x, y) to (x, z). No script may hardcode a position; change this file and the city changes. Surface layer: meta, core, terrain, river, harbour, roads, bridges, districts, sites, landmarks. Underground layer: metro, underground.",
+
+	"meta": {
+		"name": "Meridia",
+		"seed": 20260501,
+		"map_size": [1600, 1200]
+	},
+
+	"land": {
+		"note": "Coastline of the city; outside it is sea. Districts follow it exactly, roads are cut off at it, and the terrain slopes down to the sea along it. The river springs inland (it does not reach the west coast, so the land stays connected there) and the harbour basin opens to the sea in the east.",
+		"polygon": [
+			[400, 70], [520, 48], [610, 100], [720, 52], [880, 35], [1030, 80],
+			[1150, 42], [1330, 50], [1590, 350], [1585, 520], [1592, 760], [1590, 1010],
+			[1380, 1140], [1280, 1120], [1180, 1138], [1090, 1112], [1010, 1085], [955, 1048],
+			[895, 1052], [850, 1090], [790, 1140], [700, 1125], [610, 1152], [520, 1120],
+			[420, 1145], [330, 1130], [50, 800], [62, 760], [38, 690], [45, 650],
+			[64, 590], [48, 520], [60, 470]
+		]
+	},
+
+	"core": {
+		"center": [920, 325]
+	},
+
+	"terrain": {
+		"note": "Heights in metres. Land sits at base_height above sea_level; hills add to it. The coast slopes down over coast_slope_width, the sea floor drops to sea_depth over shelf_width, and the river and harbour basin are carved river_depth below sea_level with banks that rise over river_bank_width. Water is one flat plane at sea_level: anything lower than that is river, harbour or sea.",
+		"sea_level": 0,
+		"base_height": 3,
+		"sea_depth": 12,
+		"shelf_width": 120,
+		"coast_slope_width": 70,
+		"river_depth": 6,
+		"river_bank_width": 18,
+		"mesh_cell_size": 8,
+		"hills": [
+			{ "name": "Southern Ridge", "center": [480, 920], "radius": 240, "height": 60 },
+			{ "name": "North-East Rise", "center": [1420, 320], "radius": 200, "height": 35 },
+			{ "name": "West Bluff", "center": [230, 420], "radius": 160, "height": 25 },
+			{ "name": "Old Quarter Hill", "center": [190, 810], "radius": 150, "height": 45 }
+		]
+	},
+
+	"river": {
+		"name": "Han-Seine",
+		"path": [
+			[150, 654, 14],
+			[300, 610, 60],
+			[600, 570, 70],
+			[900, 630, 90],
+			[1200, 700, 130],
+			[1450, 715, 170],
+			[1600, 730, 200]
+		]
+	},
+
+	"harbour": {
+		"name": "Meridia Harbour",
+		"basin": [[1440, 650], [1500, 580], [1600, 560], [1600, 960], [1500, 920], [1440, 800]],
+		"piers": [
+			{ "id": "pier_1", "name": "Container Pier", "width": 18, "from": [1520, 935], "to": [1520, 790] },
+			{ "id": "pier_2", "name": "Ferry Pier", "width": 18, "from": [1580, 960], "to": [1580, 780] }
+		]
+	},
+
+	"roads": {
+		"streets": { "width": 14, "y": [80, 150, 220, 290, 360, 430, 500, 570, 640, 710, 780, 850, 920, 990, 1060, 1130] },
+		"avenues": { "width": 26, "x": [110, 320, 660, 920, 1180, 1400] },
+		"diagonals": [
+			{ "id": "west_diagonal", "name": "West Diagonal", "width": 22, "path": [[150, 413], [220, 530], [420, 1000]] },
+			{ "id": "broadway", "name": "Broadway", "width": 22, "path": [[1000, 150], [800, 760]] },
+			{ "id": "port", "name": "Port Boulevard", "width": 22, "path": [[920, 1020], [1180, 925], [1400, 835]] },
+			{ "id": "northeast", "name": "North-East Parkway", "width": 22, "path": [[1470, 278], [1180, 520]] }
+		]
+	},
+
+	"bridges": [
+		{ "id": "b_320", "name": "Park Edge Bridge", "width": 26, "from": [320, 550], "to": [320, 665] },
+		{ "id": "b_660", "name": "Central Bridge", "width": 26, "from": [660, 518], "to": [660, 647] },
+		{ "id": "b_920", "name": "Core Bridge", "width": 26, "from": [920, 561], "to": [920, 711] },
+		{ "id": "b_1180", "name": "Harbour Bridge", "width": 26, "from": [1180, 604], "to": [1180, 789] },
+		{ "id": "b_1400", "name": "East Bridge", "width": 26, "from": [1400, 605], "to": [1400, 820] },
+		{ "id": "b_west_diagonal", "name": "West Diagonal Bridge", "width": 22, "from": [234, 564], "to": [280, 670] },
+		{ "id": "b_broadway", "name": "Broadway Bridge", "width": 22, "from": [868, 553], "to": [824, 685] }
+	],
+
+	"districts": [
+		{
+			"id": "outer_quarters", "name": "Outer Quarters", "type": "lowrise",
+			"polygon": [[320, 1020], [850, 1020], [850, 1090], [790, 1140], [700, 1125], [610, 1152], [520, 1120], [420, 1145], [330, 1130], [50, 800], [62, 760], [38, 690], [45, 650], [64, 590], [48, 520], [60, 470], [320, 164]]
+		},
+		{
+			"id": "central_park", "name": "Central Park", "type": "park", "roads": false,
+			"polygon": [[610, 100], [660, 78], [660, 500], [320, 500], [320, 164], [400, 70], [520, 48]]
+		},
+		{
+			"id": "midtown_core", "name": "Midtown Core", "type": "core",
+			"polygon": [[1030, 80], [1150, 42], [1180, 43], [1180, 500], [660, 500], [660, 78], [720, 52], [880, 35]]
+		},
+		{
+			"id": "marina_financial", "name": "Marina Financial District", "type": "financial",
+			"polygon": [[1330, 50], [1590, 350], [1585, 520], [1586, 570], [1180, 570], [1180, 43]]
+		},
+		{
+			"id": "riverside_midrise", "name": "Riverside Midrise", "type": "midrise",
+			"polygon": [[1180, 570], [1586, 570], [1592, 760], [1591, 829], [1200, 765], [1000, 705], [1000, 1078], [955, 1048], [895, 1052], [850, 1090], [850, 1020], [320, 1020], [320, 500], [1180, 500]]
+		},
+		{
+			"id": "harbour", "name": "Harbour District", "type": "harbour",
+			"polygon": [[1200, 765], [1591, 829], [1590, 1010], [1380, 1140], [1280, 1120], [1180, 1138], [1090, 1112], [1010, 1085], [1000, 1078], [1000, 705]]
+		}
+	],
+
+	"sites": [
+		{
+			"id": "central_station", "name": "Central Station", "kind": "station", "roads": false,
+			"polygon": [[700, 760], [900, 760], [900, 900], [700, 900]]
+		},
+		{
+			"id": "library", "name": "Meridian Library", "kind": "library", "roads": false,
+			"polygon": [[225, 320], [310, 320], [310, 430], [225, 430]]
+		},
+		{
+			"id": "museum", "name": "Museum of Meridia", "kind": "museum", "roads": false,
+			"polygon": [[560, 250], [650, 250], [650, 360], [560, 360]]
+		},
+		{
+			"id": "meridian_plaza", "name": "Meridian Plaza", "kind": "plaza", "roads": false,
+			"polygon": [[870, 275], [970, 275], [970, 375], [870, 375]]
+		},
+		{
+			"id": "performance_hall", "name": "Opera & Concert Hall", "kind": "performance_hall", "roads": false,
+			"polygon": [[1440, 470], [1550, 470], [1550, 540], [1440, 540]]
+		}
+	],
+
+	"landmarks": [
+		{ "id": "meridian_tower", "name": "Meridian Tower", "kind": "tower", "main": true, "district": "midtown_core", "position": [920, 325], "height": 320 },
+		{ "id": "meridia_eye", "name": "Meridia Eye", "kind": "observation_wheel", "district": "harbour", "position": [1300, 820], "height": 120 },
+		{ "id": "hill_basilica", "name": "Basilica of Saint Meridia", "kind": "basilica", "district": "outer_quarters", "position": [200, 800], "height": 70 }
+	],
+
+	"metro": {
+		"note": "One metro system. Path points are [x, y, h]: h = height above ground in metres (negative = underground, positive = above ground on a viaduct). The stretch between points of different h is a ramp; its steepness is limited by max_grade.",
+		"hub": "central_station",
+		"max_grade": 0.08,
+		"lines": [
+			{
+				"id": "A", "name": "Meridian Line", "color": "#e63946",
+				"path": [[150, 874, 18], [300, 865, 18], [730, 834, -14], [800, 830, -14], [1000, 850, -14], [1440, 925, 18], [1560, 975, 18]],
+				"stations": [
+					{ "name": "West Gate", "at": [170, 873] },
+					{ "name": "Southern Ridge", "at": [240, 868] },
+					{ "name": "Central Station", "at": [800, 830], "site": "central_station" },
+					{ "name": "Harbour Market", "at": [950, 845] },
+					{ "name": "East Quay", "at": [1500, 950] }
+				]
+			},
+			{
+				"id": "B", "name": "North-South Line", "color": "#118ab2",
+				"path": [[952, 75, -14], [920, 325, -14], [860, 600, -14], [800, 830, -14], [755, 1100, -14]],
+				"stations": [
+					{ "name": "Northgate", "at": [952, 75] },
+					{ "name": "Midtown Core", "at": [920, 325] },
+					{ "name": "Riverside", "at": [878, 520] },
+					{ "name": "Central Station", "at": [800, 830], "site": "central_station" },
+					{ "name": "Southgate", "at": [772, 1000] },
+					{ "name": "South Terminus", "at": [755, 1100] }
+				]
+			},
+			{
+				"id": "C", "name": "Marina Line", "color": "#06b58a",
+				"path": [[1460, 293, 18], [800, 830, 18], [490, 1085, 18]],
+				"stations": [
+					{ "name": "Marina", "at": [1460, 293] },
+					{ "name": "Financial Plaza", "at": [1350, 382] },
+					{ "name": "Courthouse", "at": [1180, 521] },
+					{ "name": "Central Station", "at": [800, 830], "site": "central_station" },
+					{ "name": "Old Town", "at": [560, 1027] },
+					{ "name": "Ridge End", "at": [490, 1085] }
+				]
+			}
+		]
+	},
+
+	"underground": {
+		"name": "The Underguild",
+		"depth": 9,
+		"tunnels": [
+			{ "id": "main_drain", "name": "Main Drain", "width": 8, "path": [[250, 980], [480, 985], [1000, 1000], [1300, 1010]] },
+			{ "id": "old_town_outfall", "name": "Old Town Outfall", "width": 6, "path": [[500, 618], [500, 800], [480, 985]] },
+			{ "id": "harbour_outfall", "name": "Harbour Outfall", "width": 6, "path": [[1060, 723], [1060, 900], [1000, 1000]] },
+			{ "id": "core_siphon", "name": "Core Siphon", "width": 6, "path": [[480, 985], [640, 900], [760, 700], [880, 500], [1000, 340]] },
+			{ "id": "vault_run", "name": "Vault Run", "width": 5, "path": [[1000, 340], [1250, 330], [1450, 300]] },
+			{ "id": "quay_run", "name": "Quay Run", "width": 6, "path": [[1300, 1010], [1420, 940], [1500, 920]] }
+		],
+		"chambers": [
+			{ "id": "gutter_market", "name": "Gutter Market", "center": [480, 985], "radius": 60 },
+			{ "id": "rat_court", "name": "Rat King's Court", "center": [1000, 340], "radius": 70 },
+			{ "id": "the_vault", "name": "The Vault", "center": [1450, 300], "radius": 55 },
+			{ "id": "smugglers_dock", "name": "Smugglers' Dock", "center": [1300, 1010], "radius": 50 }
+		],
+		"entrances": [
+			{ "id": "e_trapdoor", "name": "Cobbler's Trapdoor", "at": [500, 800], "tunnel": "old_town_outfall" },
+			{ "id": "e_grate", "name": "Back-alley Grate", "at": [760, 700], "tunnel": "core_siphon" },
+			{ "id": "e_hatch", "name": "Core Service Hatch", "at": [880, 500], "tunnel": "core_siphon" },
+			{ "id": "e_drain_gate", "name": "Harbour Drain Gate", "at": [1060, 900], "tunnel": "harbour_outfall" },
+			{ "id": "e_quay_hatch", "name": "Quay Hatch", "at": [1420, 940], "tunnel": "quay_run" },
+			{ "id": "e_vault_lift", "name": "Vault Lift", "at": [1250, 330], "tunnel": "vault_run" }
+		],
+		"outfalls": [
+			{ "id": "o_old_town", "name": "Old Town Outfall", "at": [500, 618], "tunnel": "old_town_outfall" },
+			{ "id": "o_harbour", "name": "Harbour Outfall", "at": [1060, 723], "tunnel": "harbour_outfall" },
+			{ "id": "o_basin", "name": "Basin Outfall", "at": [1500, 920], "tunnel": "quay_run" }
+		]
+	}
+}
