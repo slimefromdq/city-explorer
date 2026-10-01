@@ -237,7 +237,7 @@ func _draw_river() -> void:
 		var hb: float = float(path[i + 1][2]) * 0.5
 		draw_colored_polygon(PackedVector2Array([
 			px(a + n * ha), px(b + n * hb), px(b - n * hb), px(a - n * ha)]), WATER)
-	for i in range(1, path.size() - 1):  # end points sit on the map edge: no cap
+	for i in range(0, path.size() - 1):  # a disc at the spring and each bend; the far end opens into the harbour
 		draw_circle(px(Vector2(path[i][0], path[i][1])), float(path[i][2]) * 0.5 * map_scale, WATER)
 	var mid := Vector2(path[1][0], path[1][1])
 	_text(px(mid) + Vector2(-30, 5), "River " + String(city["river"]["name"]), 13, Color.WHITE)

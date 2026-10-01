@@ -1,0 +1,88 @@
+# TerrainHeight - "how high is the ground at map point (x, y)?"
+#
+# One job: turn the layout data into a height number. It is a plain function of
+# the JSON (no randomness, no nodes), so the mesh, and later roads, lots and
+# buildings, can all ask the same question and always agree on where the ground is.
+#
+# The rule, in plain words:
+#   1. Land sits a little above sea level, and hills add bumps on top.
+#   2. Near the coast the land slopes down to sea level; past it the sea floor drops away.
+#   3. The river and the harbour basin are carved out below sea level.
+# Water itself is NOT modelled here: it is one flat plane at sea level, so
+# "lower than sea level" simply means "wet".
+extends RefCounted
+
+const CityData := preload("res://city/city_data.gd")
+const Geo2D := preload("res://city/geo2d.gd")
+
+# Where the shoreline touches the water: a hair above it so beaches are not underwater.
+const SHORE_LIFT := 0.3
+
+var sea_level: float
+var _base: float
+var _sea_depth: float
+var _shelf_width: float
+var _coast_width: float
+var _river_depth: float
+var _bank_width: float
+var _land: PackedVector2Array
+var _river: Array
+var _basin: PackedVector2Array
+var _hills: Array  # each: {center: Vector2, radius: float, height: float}
+
+
+func _init(city: Dictionary) -> void:
+	var t: Dictionary = city["terrain"]
+	sea_level = float(t["sea_level"])
+	_base = float(t["base_height"])
+	_sea_depth = float(t["sea_depth"])
+	_shelf_width = float(t["shelf_width"])
+	_coast_width = float(t["coast_slope_width"])
+	_river_depth = float(t["river_depth"])
+	_bank_width = float(t["river_bank_width"])
+	_land = CityData.land_polygon(city)
+	_river = city["river"]["path"]
+	_basin = CityData.to_points(city["harbour"]["basin"])
+	for h in t["hills"]:
+		_hills.append({
+			"center": Vector2(h["center"][0], h["center"][1]),
+			"radius": float(h["radius"]),
+			"height": float(h["height"]),
+		})
+
+
+func height_at(p: Vector2) -> float:
+	var inland := -Geo2D.polygon_signed_distance(p, _land)  # metres inside the coast (negative = at sea)
+	var ground: float
+	if inland <= 0.0:
+		ground = sea_level - _sea_depth * _smooth(0.0, _shelf_width, -inland)
+	else:
+		ground = lerpf(sea_level + SHORE_LIFT, _land_height(p), _smooth(0.0, _coast_width, inland))
+	# Carve water downward only (min), so the sea floor is never raised by the river rule.
+	var clearance := Geo2D.water_clearance(p, _river, _basin)  # negative = inside the water
+	var wet := 1.0 - _smooth(0.0, _bank_width, clearance)
+	return minf(ground, lerpf(ground, sea_level - _river_depth, wet))
+
+
+# Land height before coast and water are applied: flat base plus the hills.
+func _land_height(p: Vector2) -> float:
+	var h := sea_level + _base
+	for hill in _hills:
+		var t := 1.0 - p.distance_to(hill["center"]) / float(hill["radius"])
+		h += float(hill["height"]) * _smooth(0.0, 1.0, t)
+	return h
+
+
+# Slope (rise over run) around p, measured with a small step in 4 directions.
+func slope_at(p: Vector2, step: float = 5.0) -> float:
+	var h := height_at(p)
+	var worst := 0.0
+	for dir in [Vector2.RIGHT, Vector2.LEFT, Vector2.UP, Vector2.DOWN]:
+		worst = maxf(worst, absf(height_at(p + dir * step) - h) / step)
+	return worst
+
+
+# Smoothstep: 0 below a, 1 above b, an S-curve between, so slopes have no sharp creases.
+static func _smooth(a: float, b: float, x: float) -> float:
+	var t := clampf((x - a) / (b - a), 0.0, 1.0)
+	return t * t * (3.0 - 2.0 * t)

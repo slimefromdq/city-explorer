@@ -1,5 +1,5 @@
 {
-	"_readme": "Single source of truth for WHERE things go. Units: metres. x = east, y = south, origin = top-left corner. The 3D phases map (x, y) to (x, z). No script may hardcode a position; change this file and the city changes. Surface layer: meta, core, terrain, river, harbour, roads, bridges, districts, sites, landmark. Underground layer: metro, underground.",
+	"_readme": "Single source of truth for WHERE things go. Units: metres. x = east, y = south, origin = top-left corner. The 3D phases map (x, y) to (x, z). No script may hardcode a position; change this file and the city changes. Surface layer: meta, core, terrain, river, harbour, roads, bridges, districts, sites, landmarks. Underground layer: metro, underground.",
 
 	"meta": {
 		"name": "Meridia",
@@ -8,7 +8,7 @@
 	},
 
 	"land": {
-		"note": "Coastline of the city. Everything is clipped to this polygon; outside it is sea. The river starts on the west coast and the harbour basin opens to the sea in the east.",
+		"note": "Coastline of the city; outside it is sea. Districts follow it exactly, roads are cut off at it, and the terrain slopes down to the sea along it. The river springs inland (it does not reach the west coast, so the land stays connected there) and the harbour basin opens to the sea in the east.",
 		"polygon": [
 			[400, 70], [520, 48], [610, 100], [720, 52], [880, 35], [1030, 80],
 			[1150, 42], [1330, 50], [1590, 350], [1585, 520], [1592, 760], [1590, 1010],
@@ -24,7 +24,15 @@
 	},
 
 	"terrain": {
-		"base_height": 0,
+		"note": "Heights in metres. Land sits at base_height above sea_level; hills add to it. The coast slopes down over coast_slope_width, the sea floor drops to sea_depth over shelf_width, and the river and harbour basin are carved river_depth below sea_level with banks that rise over river_bank_width. Water is one flat plane at sea_level: anything lower than that is river, harbour or sea.",
+		"sea_level": 0,
+		"base_height": 3,
+		"sea_depth": 12,
+		"shelf_width": 120,
+		"coast_slope_width": 70,
+		"river_depth": 6,
+		"river_bank_width": 18,
+		"mesh_cell_size": 8,
 		"hills": [
 			{ "name": "Southern Ridge", "center": [480, 920], "radius": 240, "height": 60 },
 			{ "name": "North-East Rise", "center": [1420, 320], "radius": 200, "height": 35 },
@@ -36,7 +44,7 @@
 	"river": {
 		"name": "Han-Seine",
 		"path": [
-			[45, 650, 50],
+			[150, 654, 14],
 			[300, 610, 60],
 			[600, 570, 70],
 			[900, 630, 90],
@@ -67,14 +75,13 @@
 	},
 
 	"bridges": [
-		{ "id": "b_110", "name": "West Avenue Bridge", "width": 26, "from": [110, 594], "to": [110, 676] },
-		{ "id": "b_320", "name": "Park Edge Bridge", "width": 26, "from": [320, 563], "to": [320, 652] },
-		{ "id": "b_660", "name": "Central Bridge", "width": 26, "from": [660, 531], "to": [660, 633] },
-		{ "id": "b_920", "name": "Core Bridge", "width": 26, "from": [920, 574], "to": [920, 695] },
-		{ "id": "b_1180", "name": "Harbour Bridge", "width": 26, "from": [1180, 618], "to": [1180, 773] },
-		{ "id": "b_1400", "name": "East Bridge", "width": 26, "from": [1400, 618], "to": [1400, 812] },
-		{ "id": "b_west_diagonal", "name": "West Diagonal Bridge", "width": 22, "from": [238, 573], "to": [275, 659] },
-		{ "id": "b_broadway", "name": "Broadway Bridge", "width": 22, "from": [865, 562], "to": [827, 676] }
+		{ "id": "b_320", "name": "Park Edge Bridge", "width": 26, "from": [320, 550], "to": [320, 665] },
+		{ "id": "b_660", "name": "Central Bridge", "width": 26, "from": [660, 518], "to": [660, 647] },
+		{ "id": "b_920", "name": "Core Bridge", "width": 26, "from": [920, 561], "to": [920, 711] },
+		{ "id": "b_1180", "name": "Harbour Bridge", "width": 26, "from": [1180, 604], "to": [1180, 789] },
+		{ "id": "b_1400", "name": "East Bridge", "width": 26, "from": [1400, 605], "to": [1400, 820] },
+		{ "id": "b_west_diagonal", "name": "West Diagonal Bridge", "width": 22, "from": [234, 564], "to": [280, 670] },
+		{ "id": "b_broadway", "name": "Broadway Bridge", "width": 22, "from": [868, 553], "to": [824, 685] }
 	],
 
 	"districts": [

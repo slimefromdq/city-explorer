@@ -11,6 +11,7 @@ extends SceneTree
 
 const CityData := preload("res://city/city_data.gd")
 const Geo2D := preload("res://city/geo2d.gd")
+const TerrainHeight := preload("res://city/terrain_height.gd")
 
 const DISTRICT_TYPES := ["core", "midrise", "lowrise", "harbour", "park", "financial"]
 const LANDMARK_RIVER_MARGIN := 25.0  # landmark must stand at least this far from the water (m)
@@ -46,6 +47,7 @@ func _init() -> void:
 	_check_metro(city)
 	_check_underground(city)
 	_check_everything_on_land(city)
+	_check_terrain_heights(city)
 	_finish()
 
 
@@ -77,8 +79,9 @@ func _check_river(city: Dictionary) -> void:
 	_expect(path.size() >= 2, "river has at least 2 path points")
 	var land := CityData.land_polygon(city)
 	var first := Vector2(path[0][0], path[0][1])
-	_expect(absf(Geo2D.polygon_signed_distance(first, land)) <= 25.0,
-		"river starts on the coast (it enters the city from outside)")
+	_expect(Geo2D.polygon_signed_distance(first, land) <= -60.0,
+		"the river springs inland (>= 60 m from the coast), so the land stays connected upstream")
+	_expect(float(path[0][2]) <= 25.0, "the river starts narrow (a spring, width %d m)" % int(path[0][2]))
 	var widths_ok := true
 	for p in path:
 		widths_ok = widths_ok and float(p[2]) > 0.0
@@ -421,6 +424,48 @@ func _check_everything_on_land(city: Dictionary) -> void:
 			if not Geometry2D.is_point_in_polygon(Vector2(p[0], p[1]), land):
 				bad += 1
 		_expect(bad == 0, "%s: all on land%s" % [name, "" if bad == 0 else " (%d outside the coast)" % bad])
+
+
+# The height function must agree with the layout: water is low, everything built is dry.
+func _check_terrain_heights(city: Dictionary) -> void:
+	var t: Dictionary = city["terrain"]
+	for key in ["sea_level", "base_height", "sea_depth", "shelf_width", "coast_slope_width", "river_depth", "river_bank_width", "mesh_cell_size"]:
+		_expect(t.has(key) and typeof(t[key]) in [TYPE_INT, TYPE_FLOAT], "terrain.%s is a number" % key)
+	var terrain := TerrainHeight.new(city)
+	var wet := terrain.sea_level - 1.0   # lower than this = properly underwater
+	var dry := terrain.sea_level + 1.0   # higher than this = properly dry
+
+	var river_ok := true
+	for p in city["river"]["path"]:
+		river_ok = river_ok and terrain.height_at(Vector2(p[0], p[1])) < wet
+	_expect(river_ok, "the river centreline is underwater everywhere")
+	var basin := CityData.to_points(city["harbour"]["basin"])
+	_expect(terrain.height_at(Geo2D.label_point(basin)) < wet, "the harbour basin is underwater")
+
+	var bridges_ok := true
+	for b in city["bridges"]:
+		var a := Vector2(b["from"][0], b["from"][1])
+		var c := Vector2(b["to"][0], b["to"][1])
+		bridges_ok = bridges_ok and terrain.height_at(a) > dry and terrain.height_at(c) > dry and terrain.height_at((a + c) * 0.5) < wet
+	_expect(bridges_ok, "every bridge starts and ends on dry ground and crosses water in the middle")
+
+	var dry_ok := true
+	for lm in city["landmarks"]:
+		dry_ok = dry_ok and terrain.height_at(Vector2(lm["position"][0], lm["position"][1])) > dry
+	for site in city["sites"]:
+		for p in site["polygon"]:
+			dry_ok = dry_ok and terrain.height_at(Vector2(p[0], p[1])) > dry
+	_expect(dry_ok, "landmarks and building sites stand on dry ground")
+
+	for lm in city["landmarks"]:
+		if lm.get("main", false):
+			var slope := terrain.slope_at(Vector2(lm["position"][0], lm["position"][1]))
+			_expect(slope <= 0.1, "ground under the main landmark is flat enough (slope %.0f%%)" % (slope * 100.0))
+	for h in t["hills"]:
+		var top := terrain.height_at(Vector2(h["center"][0], h["center"][1]))
+		var want: float = float(t["sea_level"]) + float(t["base_height"]) + float(h["height"])
+		_expect(top > float(t["sea_level"]) + float(t["base_height"]) + 0.5 * float(h["height"]),
+			"hill '%s' really rises (top %.0f m, planned about %.0f m)" % [h["name"], top, want])
 
 
 # ---- helpers ---------------------------------------------------------------
