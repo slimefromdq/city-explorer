@@ -1,0 +1,85 @@
+{
+	"_readme": "Single source of truth for WHERE things go. Units: metres. x = east, y = south, origin = top-left corner. The 3D phases map (x, y) to (x, z). No script may hardcode a position; change this file and the city changes.",
+
+	"meta": {
+		"name": "Meridia",
+		"seed": 20260501,
+		"map_size": [1600, 1200]
+	},
+
+	"core": {
+		"center": [920, 325]
+	},
+
+	"terrain": {
+		"base_height": 0,
+		"hills": [
+			{ "name": "Southern Ridge", "center": [480, 920], "radius": 240, "height": 60 },
+			{ "name": "North-East Rise", "center": [1420, 320], "radius": 200, "height": 35 },
+			{ "name": "West Bluff", "center": [150, 250], "radius": 160, "height": 25 }
+		]
+	},
+
+	"river": {
+		"name": "Han-Seine",
+		"path": [
+			[0, 650, 50],
+			[300, 610, 60],
+			[600, 570, 70],
+			[900, 630, 90],
+			[1200, 700, 130],
+			[1600, 730, 200]
+		]
+	},
+
+	"roads": {
+		"streets": { "width": 14, "y": [80, 150, 220, 290, 360, 430, 500, 570, 640, 710, 780, 850, 920, 990, 1060, 1130] },
+		"avenues": { "width": 26, "x": [110, 320, 660, 920, 1180, 1400] },
+		"diagonals": [
+			{ "id": "monument", "name": "Avenue du Monument", "width": 22, "path": [[0, 300], [220, 530], [420, 1000]] },
+			{ "id": "broadway", "name": "Broadway", "width": 22, "path": [[700, 1000], [1000, 150]] },
+			{ "id": "port", "name": "Port Boulevard", "width": 22, "path": [[980, 1150], [1320, 830]] },
+			{ "id": "northeast", "name": "North-East Parkway", "width": 22, "path": [[1600, 170], [1180, 520]] }
+		]
+	},
+
+	"bridges": [
+		{ "id": "b_110", "name": "West Avenue Bridge", "width": 26, "from": [110, 594], "to": [110, 676] },
+		{ "id": "b_320", "name": "Park Edge Bridge", "width": 26, "from": [320, 563], "to": [320, 652] },
+		{ "id": "b_660", "name": "Central Bridge", "width": 26, "from": [660, 531], "to": [660, 633] },
+		{ "id": "b_920", "name": "Core Bridge", "width": 26, "from": [920, 574], "to": [920, 695] },
+		{ "id": "b_1180", "name": "Harbour Bridge", "width": 26, "from": [1180, 618], "to": [1180, 773] },
+		{ "id": "b_1400", "name": "East Bridge", "width": 26, "from": [1400, 618], "to": [1400, 812] },
+		{ "id": "b_monument", "name": "Monument Bridge", "width": 22, "from": [238, 573], "to": [275, 659] },
+		{ "id": "b_broadway", "name": "Broadway Bridge", "width": 22, "from": [815, 673], "to": [855, 560] }
+	],
+
+	"districts": [
+		{
+			"id": "outer_quarters", "name": "Outer Quarters", "type": "lowrise",
+			"polygon": [[0, 0], [1600, 0], [1600, 150], [320, 150], [320, 1200], [0, 1200]]
+		},
+		{
+			"id": "central_park", "name": "Central Park", "type": "park",
+			"polygon": [[320, 150], [660, 150], [660, 500], [320, 500]]
+		},
+		{
+			"id": "midtown_core", "name": "Midtown Core", "type": "core",
+			"polygon": [[660, 150], [1180, 150], [1180, 500], [660, 500]]
+		},
+		{
+			"id": "riverside_midrise", "name": "Riverside Midrise", "type": "midrise",
+			"polygon": [[320, 500], [1180, 500], [1180, 150], [1600, 150], [1600, 830], [1200, 765], [1000, 705], [1000, 1200], [320, 1200]]
+		},
+		{
+			"id": "harbour", "name": "Harbour District", "type": "harbour",
+			"polygon": [[1000, 705], [1200, 765], [1600, 830], [1600, 1200], [1000, 1200]]
+		}
+	],
+
+	"landmark": {
+		"name": "Meridian Tower",
+		"position": [220, 530],
+		"height": 320
+	}
+}
