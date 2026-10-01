@@ -18,17 +18,20 @@ var cam: Camera3D
 
 func _ready() -> void:
 	var stage := OS.get_environment("STAGE")
-	_add_light()
-	_add_environment()
 	cam = Camera3D.new()
 	cam.far = 800.0
 	add_child(cam)
 	cam.current = true
 	if stage == "" or stage == "bay":
+		var rig := Node3D.new()  # the bay row has no lighting of its own; the hall does
+		add_child(rig)
+		_add_light(rig)
+		_add_environment(rig)
 		var row := _build_bay_row()
 		await _settle()
 		await _take_shots("concourse_bay", _bay_shots(row), 60.0)
 		row.queue_free()
+		rig.queue_free()
 	if stage == "" or stage == "hall":
 		var hall := _build_hall()
 		await _settle()
@@ -92,13 +95,20 @@ func _hall_shots(hall: ConcourseHall) -> Array:
 	var length: float = hall.hall_bays * bay.bay_width
 	var wall_h: float = bay.wall_height
 	var half: float = length * 0.5
+	var clock_y: float = hall.landmark_height - 1.8  # roughly the clock faces' height
+	var half_w: float = hall.hall_width * 0.5
+	var side_x: float = half * 0.7  # camera offset along the hall for the wall shots
+	var side_z: float = half_w * 0.6
+	# Looking down +X, "right" is +Z and "left" is -Z.
 	return [
-		# standing just inside one entrance, looking down the hall
 		["entrance_down_hall", Vector3(-half + 2.0, EYE_HEIGHT, 0), Vector3(half, wall_h * 0.4, 0)],
-		# mid-hall, looking up at the vault
-		["mid_hall_vault", Vector3(0, EYE_HEIGHT, 0), Vector3(length * 0.2, wall_h + hall.vault_rise * 0.8, 0)],
-		# from the far end (outside the opposite entrance, looking back)
-		["far_end", Vector3(half - 2.0, EYE_HEIGHT, 0), Vector3(-half, wall_h * 0.4, 0)],
+		# (offset along the hall so the booth at the centre isn't in the way)
+		["mid_hall_right_wall", Vector3(side_x, EYE_HEIGHT, -side_z), Vector3(side_x, wall_h * 0.4, half_w)],
+		["mid_hall_left_wall", Vector3(side_x, EYE_HEIGHT, side_z), Vector3(side_x, wall_h * 0.4, -half_w)],
+		["landmark_clock", Vector3(-8.0, EYE_HEIGHT, 6.0), Vector3(0, clock_y, 0)],
+		["far_end_looking_back", Vector3(half - 2.0, EYE_HEIGHT, 0), Vector3(-half, wall_h * 0.4, 0)],
+		# extra: straight down from under the vault, to check the floor pattern and where the beams land
+		["floor_plan", Vector3(0, wall_h - 1.0, 0), Vector3(0, 0, 0), Vector3.RIGHT],
 	]
 
 
@@ -116,22 +126,22 @@ func _add_ground(parent: Node, size_x: float, size_z: float, pos: Vector3, color
 	parent.add_child(mi)
 
 
-func _add_light() -> void:
+func _add_light(parent: Node) -> void:
 	# Sun sits outside (behind the -Z wall) and shines into the hall (+Z), pitched down.
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-35.0, 200.0, 0.0)
 	sun.light_energy = 2.2
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 200.0
-	add_child(sun)
+	parent.add_child(sun)
 	# Weak shadowless fill so the greybox reads where the sun doesn't reach.
 	var fill := DirectionalLight3D.new()
 	fill.rotation_degrees = Vector3(-20.0, 15.0, 0.0)
 	fill.light_energy = 0.3
-	add_child(fill)
+	parent.add_child(fill)
 
 
-func _add_environment() -> void:
+func _add_environment(parent: Node) -> void:
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color(0.55, 0.70, 0.90)
@@ -140,7 +150,7 @@ func _add_environment() -> void:
 	env.ambient_light_energy = 0.6
 	var we := WorldEnvironment.new()
 	we.environment = env
-	add_child(we)
+	parent.add_child(we)
 
 
 func _take_shots(prefix: String, shots: Array, fov: float) -> void:
@@ -149,7 +159,7 @@ func _take_shots(prefix: String, shots: Array, fov: float) -> void:
 	cam.fov = fov
 	for s in shots:
 		cam.position = s[1]
-		cam.look_at(s[2], Vector3.UP)
+		cam.look_at(s[2], s[3] if s.size() > 3 else Vector3.UP)
 		await RenderingServer.frame_post_draw
 		await get_tree().process_frame
 		await RenderingServer.frame_post_draw

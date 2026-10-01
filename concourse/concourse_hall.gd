@@ -42,14 +42,48 @@ extends Node3D
 @export_range(2.0, 60.0, 0.1, "suffix:m") var entrance_height := 14.0: set = _set_entrance_height
 
 @export_group("Floor")
-@export var floor_color := Color(0.30, 0.28, 0.26): set = _set_floor_color
 @export_range(0.1, 5.0, 0.05, "suffix:m") var floor_thickness := 0.5: set = _set_floor_thickness
+@export_range(0.25, 6.0, 0.05, "suffix:m") var tile_size := 2.0: set = _set_tile_size
+@export var tile_color_a := Color(0.74, 0.70, 0.64): set = _set_tile_color_a
+@export var tile_color_b := Color(0.60, 0.56, 0.50): set = _set_tile_color_b
+## Band along the walls (0 = none).
+@export_range(0.0, 5.0, 0.05, "suffix:m") var border_width := 1.6: set = _set_border_width
+@export var border_color := Color(0.46, 0.41, 0.36): set = _set_border_color
+## Radius of the compass inlay at the hall centre (0 = none).
+@export_range(0.0, 15.0, 0.1, "suffix:m") var inlay_radius := 7.0: set = _set_inlay_radius
+@export var inlay_color := Color(0.40, 0.31, 0.22): set = _set_inlay_color
+
+@export_group("Landmark")
+@export var landmark_enabled := true: set = _set_landmark_enabled
+## Height of the clock tower's apex above the floor.
+@export_range(4.0, 20.0, 0.1, "suffix:m") var landmark_height := 8.0: set = _set_landmark_height
+
+@export_group("Lighting")
+## Adds the sun, two wall-washing fills, and a WorldEnvironment (ambient + sky) to the hall.
+@export var lighting_enabled := true: set = _set_lighting_enabled
+## Compass direction the sun's light travels. 180 = straight from the -Z wall to the +Z wall;
+## away from 180 makes the beams drift along the hall.
+@export_range(0.0, 360.0, 1.0, "suffix:deg") var sun_yaw_degrees := 200.0: set = _set_sun_yaw
+## Negative = shining downward. Steeper (more negative) lands the beams closer to the walls.
+@export_range(-85.0, -5.0, 1.0, "suffix:deg") var sun_pitch_degrees := -38.0: set = _set_sun_pitch
+@export_range(0.0, 8.0, 0.05) var sun_energy := 1.2: set = _set_sun_energy
+## Soft light everywhere, so shadowed areas aren't black.
+@export var ambient_color := Color(0.62, 0.66, 0.78): set = _set_ambient_color
+@export_range(0.0, 4.0, 0.05) var ambient_energy := 0.6: set = _set_ambient_energy
+## Two shadowless fills, one washing each wall, so piers and cornices read on both sides.
+@export_range(0.0, 2.0, 0.05) var fill_energy := 0.3: set = _set_fill_energy
+@export var sky_color := Color(0.55, 0.70, 0.90): set = _set_sky_color
 
 @export_group("Look")
 @export var stone_color := Color(0.55, 0.55, 0.57): set = _set_stone_color
 
 const VAULT_STARS := preload("res://concourse/vault_stars.gdshader")
+const FLOOR_STONE := preload("res://concourse/floor_stone.gdshader")
 const GENERATED := "Generated"
+const SHADOW_DISTANCE := 200.0
+const FILL_PITCH_DEGREES := -30.0
+const FILL_YAW_TOWARD_NEG_Z := 10.0   # light travels toward -Z: washes the -Z wall
+const FILL_YAW_TOWARD_POS_Z := 190.0  # light travels toward +Z: washes the +Z wall
 const CUT_OVERSHOOT := 0.05  # entrance cutters poke past the wall so no skin remains
 
 var _rebuild_queued := false
@@ -80,6 +114,8 @@ func rebuild() -> void:
 	_build_floor(root, length, dims.wall_thickness)
 	_build_end_walls(root, length, dims, stone)
 	_build_vault(root, length, dims)
+	_build_landmark(root)
+	_build_lighting(root)
 
 
 ## Instantiates both rows. Returns the facts about one bay the rest needs.
@@ -114,9 +150,16 @@ func _build_floor(root: Node3D, length: float, wall_t: float) -> void:
 	var mesh := BoxMesh.new()
 	# Under the end walls and the long walls too, so there is no seam at the edges.
 	mesh.size = Vector3(length + 2.0 * wall_t, t, hall_width + 2.0 * wall_t)
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = floor_color
-	mat.roughness = 0.6
+	var mat := ShaderMaterial.new()
+	mat.shader = FLOOR_STONE
+	mat.set_shader_parameter("half_size", Vector2(length, hall_width) * 0.5)
+	mat.set_shader_parameter("tile_size", tile_size)
+	mat.set_shader_parameter("color_a", tile_color_a)
+	mat.set_shader_parameter("color_b", tile_color_b)
+	mat.set_shader_parameter("border_width", border_width)
+	mat.set_shader_parameter("border_color", border_color)
+	mat.set_shader_parameter("inlay_radius", inlay_radius)
+	mat.set_shader_parameter("inlay_color", inlay_color)
 	mesh.material = mat
 	mi.mesh = mesh
 	mi.position.y = -t * 0.5
@@ -262,6 +305,50 @@ func _tri(st: SurfaceTool, c0: Array, c1: Array, c2: Array) -> void:
 		st.add_vertex(c[0])
 
 
+# ------------------------------------------------------------------- landmark
+
+func _build_landmark(root: Node3D) -> void:
+	if not landmark_enabled:
+		return
+	var lm := ConcourseLandmark.new()
+	lm.name = "Landmark"
+	lm.tower_height = landmark_height
+	root.add_child(lm)
+
+
+# ------------------------------------------------------------------- lighting
+
+func _build_lighting(root: Node3D) -> void:
+	if not lighting_enabled:
+		return
+	var sun := DirectionalLight3D.new()
+	sun.name = "Sun"
+	sun.rotation_degrees = Vector3(sun_pitch_degrees, sun_yaw_degrees, 0.0)
+	sun.light_energy = sun_energy
+	sun.shadow_enabled = true
+	sun.directional_shadow_max_distance = SHADOW_DISTANCE
+	root.add_child(sun)
+
+	for fill_yaw in [FILL_YAW_TOWARD_NEG_Z, FILL_YAW_TOWARD_POS_Z]:
+		var fill := DirectionalLight3D.new()
+		fill.name = "FillNegZ" if fill_yaw == FILL_YAW_TOWARD_NEG_Z else "FillPosZ"
+		fill.rotation_degrees = Vector3(FILL_PITCH_DEGREES, fill_yaw, 0.0)
+		fill.light_energy = fill_energy
+		root.add_child(fill)
+
+	var env := Environment.new()
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = sky_color
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = ambient_color
+	env.ambient_light_energy = ambient_energy
+	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC  # keeps lit floor tiles from clipping to white
+	var we := WorldEnvironment.new()
+	we.name = "Environment"
+	we.environment = env
+	root.add_child(we)
+
+
 # ---------------------------------------------------------------------- setters
 
 func _queue_rebuild() -> void:
@@ -283,6 +370,22 @@ func _set_star_density(v: float) -> void: star_density = v; _queue_rebuild()
 func _set_star_energy(v: float) -> void: star_energy = v; _queue_rebuild()
 func _set_entrance_width(v: float) -> void: entrance_width = v; _queue_rebuild()
 func _set_entrance_height(v: float) -> void: entrance_height = v; _queue_rebuild()
-func _set_floor_color(v: Color) -> void: floor_color = v; _queue_rebuild()
+func _set_tile_size(v: float) -> void: tile_size = v; _queue_rebuild()
+func _set_tile_color_a(v: Color) -> void: tile_color_a = v; _queue_rebuild()
+func _set_tile_color_b(v: Color) -> void: tile_color_b = v; _queue_rebuild()
+func _set_border_width(v: float) -> void: border_width = v; _queue_rebuild()
+func _set_border_color(v: Color) -> void: border_color = v; _queue_rebuild()
+func _set_inlay_radius(v: float) -> void: inlay_radius = v; _queue_rebuild()
+func _set_inlay_color(v: Color) -> void: inlay_color = v; _queue_rebuild()
+func _set_landmark_enabled(v: bool) -> void: landmark_enabled = v; _queue_rebuild()
+func _set_landmark_height(v: float) -> void: landmark_height = v; _queue_rebuild()
+func _set_lighting_enabled(v: bool) -> void: lighting_enabled = v; _queue_rebuild()
+func _set_sun_yaw(v: float) -> void: sun_yaw_degrees = v; _queue_rebuild()
+func _set_sun_pitch(v: float) -> void: sun_pitch_degrees = v; _queue_rebuild()
+func _set_sun_energy(v: float) -> void: sun_energy = v; _queue_rebuild()
+func _set_ambient_color(v: Color) -> void: ambient_color = v; _queue_rebuild()
+func _set_ambient_energy(v: float) -> void: ambient_energy = v; _queue_rebuild()
+func _set_fill_energy(v: float) -> void: fill_energy = v; _queue_rebuild()
+func _set_sky_color(v: Color) -> void: sky_color = v; _queue_rebuild()
 func _set_floor_thickness(v: float) -> void: floor_thickness = v; _queue_rebuild()
 func _set_stone_color(v: Color) -> void: stone_color = v; _queue_rebuild()
