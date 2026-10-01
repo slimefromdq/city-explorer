@@ -32,16 +32,16 @@ var segments: Array = []
 # Each: {"id", "name", "width", "from": Vector2, "to": Vector2}
 var bridges: Array = []
 
-var _interior: Array = []    # polygons: the land inside the coast road
-var _water_zone: Array = []  # polygons: river + harbour + the embankment margin
+var interior: Array = []    # polygons: the land inside the coast road
+var water_zone: Array = []  # polygons: river + harbour + the embankment margin
 var _no_road: Array = []     # polygons where roads are not allowed
 
 
 func _init(city: Dictionary) -> void:
 	var roads: Dictionary = city["roads"]
 	var water := Geo2D.water_polygon(city["river"]["path"], CityData.to_points(city["harbour"]["basin"]))
-	_interior = Geometry2D.offset_polygon(CityData.land_polygon(city), -float(roads["ring"]["inset"]), Geometry2D.JOIN_ROUND)
-	_water_zone = Geometry2D.offset_polygon(water, float(roads["quay"]["inset"]), Geometry2D.JOIN_ROUND)
+	interior = Geometry2D.offset_polygon(CityData.land_polygon(city), -float(roads["ring"]["inset"]), Geometry2D.JOIN_ROUND)
+	water_zone = Geometry2D.offset_polygon(water, float(roads["quay"]["inset"]), Geometry2D.JOIN_ROUND)
 	for group in [city["districts"], city["sites"]]:
 		for area in group:
 			if area.get("roads", true) == false:
@@ -84,9 +84,9 @@ func _ideal_lines(city: Dictionary) -> Array:
 func _trim(pieces: Array) -> Array:
 	var inside: Array = []
 	for piece in pieces:
-		for poly in _interior:
+		for poly in interior:
 			inside.append_array(Geometry2D.intersect_polyline_with_polygon(piece, poly))
-	return _subtract(_subtract(inside, _water_zone), _no_road)
+	return _subtract(_subtract(inside, water_zone), _no_road)
 
 
 # Remove the parts of every polyline that lie inside any of the polygons.
@@ -104,8 +104,8 @@ func _subtract(pieces: Array, polygons: Array) -> Array:
 # river mouth) interrupts it.
 func _add_ring(width: float) -> void:
 	var n := 0
-	for poly in _interior:
-		for piece in _subtract([_closed(poly)], _water_zone):
+	for poly in interior:
+		for piece in _subtract([_closed(poly)], water_zone):
 			if _length(piece) >= MIN_PIECE:
 				segments.append(_segment("ring_%d" % n, "ring", width, piece))
 				n += 1
@@ -114,14 +114,28 @@ func _add_ring(width: float) -> void:
 # The embankment follows the water zone's outline, but only the part on land.
 func _add_quay(width: float) -> void:
 	var n := 0
-	for poly in _water_zone:
+	for poly in water_zone:
 		var on_land: Array = []
-		for inner in _interior:
+		for inner in interior:
 			on_land.append_array(Geometry2D.intersect_polyline_with_polygon(_closed(poly), inner))
 		for piece in _subtract(on_land, _no_road):
 			if _length(piece) >= MIN_PIECE:
 				segments.append(_segment("quay_%d" % n, "quay", width, piece))
 				n += 1
+
+
+# Every road as a filled polygon (its width plus `margin` each side). Used to keep
+# lots, trees and the like off the roads.
+# The ORDER matters to anyone cutting these out of land: coast road and embankment first,
+# then avenues, diagonals, streets. Each road then touches one that was cut before it, so a
+# cut always splits or notches the land and never leaves a floating hole.
+func ribbons(margin: float = 0.0) -> Array:
+	var out: Array = []
+	for kind in ["ring", "quay", "avenue", "diagonal", "street"]:
+		for seg in segments:
+			if seg["kind"] == kind:
+				out.append_array(Geometry2D.offset_polyline(seg["points"], float(seg["width"]) * 0.5 + margin, Geometry2D.JOIN_ROUND, Geometry2D.END_BUTT))
+	return out
 
 
 func _segment(id: String, kind: String, width: float, points: PackedVector2Array) -> Dictionary:

@@ -13,6 +13,7 @@ const CityData := preload("res://city/city_data.gd")
 const Geo2D := preload("res://city/geo2d.gd")
 const TerrainHeight := preload("res://city/terrain_height.gd")
 const RoadNetwork := preload("res://city/road_network.gd")
+const LotPlan := preload("res://city/lot_plan.gd")
 
 const DISTRICT_TYPES := ["core", "midrise", "lowrise", "harbour", "park", "financial"]
 const LANDMARK_RIVER_MARGIN := 25.0  # landmark must stand at least this far from the water (m)
@@ -50,6 +51,7 @@ func _init() -> void:
 	_check_everything_on_land(city)
 	_check_terrain_heights(city)
 	_check_road_network(city)
+	_check_lots(city)
 	_finish()
 
 
@@ -622,6 +624,135 @@ func _check_road_tidiness(city: Dictionary, network) -> void:
 			if not met:
 				dead.append("%s (%d, %d)" % [seg["id"], end.x, end.y])
 	_expect(dead.is_empty(), "no random dead ends: every road ends on another road or a park/plaza/station%s" % ("" if dead.is_empty() else " - found %d: %s" % [dead.size(), ", ".join(dead.slice(0, 6))]))
+
+
+# Lots: they must sit on buildable land only (no road, water, park, sea, or another lot),
+# be a sensible size, stand on gentle ground, and come out identical on every run.
+func _check_lots(city: Dictionary) -> void:
+	var network := RoadNetwork.new(city)
+	var plan := LotPlan.new(city, network)
+	var rules: Dictionary = city["lots"]
+	var terrain := TerrainHeight.new(city)
+	var lots: Array = plan.lots
+
+	var per_type := {}
+	for lot in lots:
+		if lot["kind"] == "lot":
+			per_type[lot["type"]] = int(per_type.get(lot["type"], 0)) + 1
+	var summary := []
+	for t in rules["types"]:
+		summary.append("%s %d" % [t, int(per_type.get(t, 0))])
+		_expect(int(per_type.get(t, 0)) > 0, "the '%s' district has building lots" % t)
+	_report("PASS", "%d lots in total (%s)" % [lots.size(), ", ".join(summary)])
+
+	var land := CityData.land_polygon(city)
+	var water := Geo2D.water_polygon(city["river"]["path"], CityData.to_points(city["harbour"]["basin"]))
+	var roads: Array = network.ribbons(0.0)
+	var park_zones := []
+	for d in city["districts"]:
+		if d["type"] == "park":
+			park_zones.append(CityData.to_points(d["polygon"]))
+	var off_land := 0
+	var on_road := []
+	var in_water := 0
+	var in_park := 0
+	var too_small := 0
+	var too_shallow := 0
+	var too_steep := []
+	for lot in lots:
+		var poly: PackedVector2Array = lot["polygon"]
+		if Geo2D.overlap_area(poly, land) < float(lot["area"]) - 0.5:
+			off_land += 1
+		for r in roads:
+			if _boxes_touch(poly, r) and Geo2D.overlap_area(poly, r) > 0.5:
+				on_road.append(lot["id"])
+				break
+		if Geo2D.overlap_area(poly, water) > 0.5:
+			in_water += 1
+		if lot["kind"] == "lot":
+			for zone in park_zones:
+				if Geo2D.overlap_area(poly, zone) > 0.5:
+					in_park += 1
+			var rect := Geo2D.min_area_rect(poly)
+			if float(lot["area"]) < float(rules["min_lot_area"]) - 0.5:
+				too_small += 1
+			if float(rect["half"].y) * 2.0 < float(rules["min_depth"]) - 0.5:
+				too_shallow += 1
+		var slope := terrain.slope_at(lot["center"])
+		if slope > float(rules["max_slope"]):
+			too_steep.append("%s (%.0f%%)" % [lot["id"], slope * 100.0])
+	_expect(off_land == 0, "every lot is on land (%d in the sea)" % off_land)
+	_expect(on_road.is_empty(), "no lot overlaps a road%s" % ("" if on_road.is_empty() else " (%s)" % ", ".join(on_road.slice(0, 5))))
+	_expect(in_water == 0, "no lot overlaps the river or harbour (%d do)" % in_water)
+	_expect(in_park == 0, "no lot is inside the park")
+	_expect(too_small == 0 and too_shallow == 0, "every lot is big and deep enough (%d too small, %d too shallow)" % [too_small, too_shallow])
+	_expect(too_steep.is_empty(), "every lot stands on ground gentler than %d%%%s" % [int(float(rules["max_slope"]) * 100.0), "" if too_steep.is_empty() else " - steep: %s" % ", ".join(too_steep.slice(0, 5))])
+
+	# Lots never overlap each other: bucket them in a coarse grid so only neighbours are compared.
+	var buckets := {}
+	for i in lots.size():
+		for cell in _cells(lots[i]["polygon"]):
+			if not buckets.has(cell):
+				buckets[cell] = []
+			buckets[cell].append(i)
+	var overlaps := 0
+	var done := {}
+	for cell in buckets:
+		var ids: Array = buckets[cell]
+		for a in ids.size():
+			for b in range(a + 1, ids.size()):
+				var key := "%d_%d" % [ids[a], ids[b]]
+				if done.has(key):
+					continue
+				done[key] = true
+				var pa: PackedVector2Array = lots[ids[a]]["polygon"]
+				var pb: PackedVector2Array = lots[ids[b]]["polygon"]
+				if _boxes_touch(pa, pb) and Geo2D.overlap_area(pa, pb) > 0.5:
+					overlaps += 1
+	_expect(overlaps == 0, "no two lots overlap (%d overlapping pairs)" % overlaps)
+
+	# Every landmark has a lot (or special site) to stand on, so the next phases can place it.
+	var homeless := []
+	for lm in city["landmarks"]:
+		var p := Vector2(lm["position"][0], lm["position"][1])
+		var found := false
+		for lot in lots:
+			found = found or Geometry2D.is_point_in_polygon(p, lot["polygon"])
+		for site in city["sites"]:
+			found = found or Geometry2D.is_point_in_polygon(p, CityData.to_points(site["polygon"]))
+		if not found:
+			homeless.append(lm["id"])
+	_expect(homeless.is_empty(), "every landmark stands on a lot or a special site%s" % ("" if homeless.is_empty() else " (not: %s)" % ", ".join(homeless)))
+
+	# Same JSON, same seed -> exactly the same lots.
+	var again := LotPlan.new(city, RoadNetwork.new(city))
+	var same := again.lots.size() == lots.size()
+	if same:
+		for i in lots.size():
+			same = same and again.lots[i]["id"] == lots[i]["id"] and again.lots[i]["center"].is_equal_approx(lots[i]["center"]) \
+				and is_equal_approx(float(again.lots[i]["area"]), float(lots[i]["area"]))
+	_expect(same, "lots are reproducible: a second run gives exactly the same %d lots" % lots.size())
+
+
+func _boxes_touch(a: PackedVector2Array, b: PackedVector2Array) -> bool:
+	return _box(a).grow(0.01).intersects(_box(b))
+
+
+func _box(poly: PackedVector2Array) -> Rect2:
+	var box := Rect2(poly[0], Vector2.ZERO)
+	for p in poly:
+		box = box.expand(p)
+	return box
+
+
+# The 100 m grid cells a polygon's bounding box touches.
+func _cells(poly: PackedVector2Array) -> Array:
+	var box := _box(poly)
+	var cells := []
+	for cx in range(int(floor(box.position.x / 100.0)), int(floor(box.end.x / 100.0)) + 1):
+		for cy in range(int(floor(box.position.y / 100.0)), int(floor(box.end.y / 100.0)) + 1):
+			cells.append("%d,%d" % [cx, cy])
+	return cells
 
 
 # ---- helpers ---------------------------------------------------------------

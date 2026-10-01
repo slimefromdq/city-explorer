@@ -46,6 +46,10 @@ func _init() -> void:
 			deck_lo = minf(deck_lo, v.y)
 			deck_hi = maxf(deck_hi, v.y)
 		_expect(deck_hi > gen.terrain.sea_level + 3.0, "bridge decks rise clear of the water (top %.1f m)" % deck_hi)
+	var lots: MeshInstance3D = gen.get_node_or_null("Lots")
+	_expect(lots != null and (lots.mesh as ArrayMesh).get_surface_count() == 1, "generator built the Lots layer")
+	if lots != null:
+		_expect(gen.plan.lots.size() > 100, "plan has %d lots" % gen.plan.lots.size())
 	var cam: Camera3D = view.get_node("FlyCamera")
 	_expect(cam.position.y > 100.0, "camera was framed above the city")
 	print("generated in %d ms" % (Time.get_ticks_msec() - started))

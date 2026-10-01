@@ -138,6 +138,22 @@
 		}
 	],
 
+	"lots": {
+		"note": "How blocks (the land left between roads, water and parks) are cut into building lots. sidewalk = gap between a road's edge and any lot (m). A block is split across its long side until each lot is at most max_area (m2) and at least min_width wide; split_jitter moves each cut a little off-centre (seeded, so the same JSON always gives the same lots). Pieces smaller than min_lot_area or shallower than min_depth are dropped. max_slope = steepest allowed ground under a lot.",
+		"sidewalk": 4,
+		"min_lot_area": 150,
+		"min_depth": 7,
+		"split_jitter": 0.15,
+		"max_slope": 0.3,
+		"types": {
+			"core": { "max_area": 3200, "min_width": 30 },
+			"financial": { "max_area": 3000, "min_width": 28 },
+			"midrise": { "max_area": 1100, "min_width": 16 },
+			"lowrise": { "max_area": 520, "min_width": 8 },
+			"harbour": { "max_area": 3500, "min_width": 30 }
+		}
+	},
+
 	"landmarks": [
 		{ "id": "meridian_tower", "name": "Meridian Tower", "kind": "tower", "main": true, "district": "midtown_core", "position": [920, 325], "height": 320 },
 		{ "id": "meridia_eye", "name": "Meridia Eye", "kind": "observation_wheel", "district": "harbour", "position": [1255, 885], "height": 120 },
