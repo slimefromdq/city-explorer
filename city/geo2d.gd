@@ -93,3 +93,25 @@ static func crossings(a: Vector2, b: Vector2, polyline: PackedVector2Array) -> A
 		if hit != null:
 			found.append(hit)
 	return found
+
+
+# Signed distance from p to a polygon's outline: negative inside, positive outside.
+static func polygon_signed_distance(p: Vector2, poly: PackedVector2Array) -> float:
+	var best := INF
+	for i in poly.size():
+		var q := Geometry2D.get_closest_point_to_segment(p, poly[i], poly[(i + 1) % poly.size()])
+		best = minf(best, p.distance_to(q))
+	return -best if Geometry2D.is_point_in_polygon(p, poly) else best
+
+
+# Distance from p to the nearest point on a polyline (tunnel, metro line...).
+static func polyline_distance(p: Vector2, line: PackedVector2Array) -> float:
+	var best := INF
+	for i in range(line.size() - 1):
+		best = minf(best, p.distance_to(Geometry2D.get_closest_point_to_segment(p, line[i], line[i + 1])))
+	return best
+
+
+# Clearance to ANY water: the river or the harbour basin (negative = in the water).
+static func water_clearance(p: Vector2, river_path: Array, basin: PackedVector2Array) -> float:
+	return minf(river_clearance(p, river_path), polygon_signed_distance(p, basin))

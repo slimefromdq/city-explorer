@@ -12,10 +12,13 @@ extends SceneTree
 const CityData := preload("res://city/city_data.gd")
 const Geo2D := preload("res://city/geo2d.gd")
 
-const DISTRICT_TYPES := ["core", "midrise", "lowrise", "harbour", "park"]
+const DISTRICT_TYPES := ["core", "midrise", "lowrise", "harbour", "park", "financial"]
 const LANDMARK_RIVER_MARGIN := 25.0  # landmark must stand at least this far from the water (m)
 const MAX_OVERLAP_FRACTION := 0.02   # districts may share at most 2% of the smaller one's area
 const BRIDGE_REACH := 40.0           # a road crossing the river needs a bridge this close (m)
+const JOIN_REACH := 12.0             # tunnels/chambers closer than this count as connected (m)
+const STATION_ON_LINE := 6.0         # a station must sit this close to its metro line (m)
+const OUTFALL_REACH := 15.0          # an outfall must be this close to the waterline (m)
 
 var _fails := 0
 var _warns := 0
@@ -31,9 +34,13 @@ func _init() -> void:
 	_check_meta(city)
 	_check_river(city)
 	_check_districts(city)
+	_check_harbour(city)
+	_check_sites(city)
 	_check_core_and_landmark(city)
 	_check_roads_and_bridges(city)
 	_check_terrain(city)
+	_check_metro(city)
+	_check_underground(city)
 	_finish()
 
 
@@ -63,7 +70,7 @@ func _check_river(city: Dictionary) -> void:
 func _check_districts(city: Dictionary) -> void:
 	var size := CityData.map_size(city)
 	var districts: Array = city["districts"]
-	_expect(districts.size() >= 4 and districts.size() <= 5, "4-5 districts (found %d)" % districts.size())
+	_expect(districts.size() >= 5, "at least 5 districts (found %d)" % districts.size())
 
 	var ids := {}
 	var polys := {}
@@ -74,6 +81,7 @@ func _check_districts(city: Dictionary) -> void:
 		ids[id] = true
 		_expect(d["type"] in DISTRICT_TYPES, "district '%s' has a known type (%s)" % [id, d["type"]])
 		types[d["type"]] = true
+		_expect(typeof(d.get("roads", true)) == TYPE_BOOL, "district '%s' has a boolean 'roads' flag (or none)" % id)
 		var poly := CityData.to_points(d["polygon"])
 		polys[id] = poly
 		_expect(poly.size() >= 3, "district '%s' polygon has >= 3 points" % id)
@@ -84,7 +92,7 @@ func _check_districts(city: Dictionary) -> void:
 		_expect(not Geometry2D.triangulate_polygon(poly).is_empty(),
 			"district '%s' polygon is simple (no self-crossing)" % id)
 
-	for need in ["core", "park", "midrise", "lowrise", "harbour"]:
+	for need in ["core", "park", "midrise", "lowrise", "harbour", "financial"]:
 		_expect(types.has(need), "there is a '%s' district" % need)
 
 	var keys := polys.keys()
@@ -111,9 +119,9 @@ func _check_core_and_landmark(city: Dictionary) -> void:
 
 	var lm: Dictionary = city["landmark"]
 	var lm_pt := Vector2(lm["position"][0], lm["position"][1])
-	var clearance := Geo2D.river_clearance(lm_pt, path)
+	var clearance := Geo2D.water_clearance(lm_pt, path, CityData.to_points(city["harbour"]["basin"]))
 	_expect(clearance >= LANDMARK_RIVER_MARGIN,
-		"landmark is not in the river and keeps %.0f m from the bank (found %.0f m)" % [LANDMARK_RIVER_MARGIN, clearance])
+		"landmark is not in the water and keeps %.0f m from the bank (found %.0f m)" % [LANDMARK_RIVER_MARGIN, clearance])
 	_expect(_district_at(city, lm_pt, ""), "landmark lies inside some district")
 	_expect(not _district_at(city, lm_pt, "park"), "landmark is not inside the park")
 	_expect(float(lm["height"]) > 0.0, "landmark has a height > 0")
@@ -165,6 +173,128 @@ func _check_terrain(city: Dictionary) -> void:
 		var c := Vector2(h["center"][0], h["center"][1])
 		_expect(Rect2(Vector2.ZERO, size).has_point(c) and float(h["radius"]) > 0.0 and float(h["height"]) > 0.0,
 			"hill '%s' centre is on the map with radius and height > 0" % h["name"])
+
+
+# The harbour is where the river ends: the basin must touch the map edge, the
+# river's last point must be in it, and each pier must run from land into water.
+func _check_harbour(city: Dictionary) -> void:
+	var size := CityData.map_size(city)
+	var river: Array = city["river"]["path"]
+	var basin := CityData.to_points(city["harbour"]["basin"])
+	_expect(basin.size() >= 3 and not Geometry2D.triangulate_polygon(basin).is_empty(), "harbour basin is a simple polygon")
+	var on_edge := false
+	for p in basin:
+		on_edge = on_edge or _on_edge(p, size)
+	_expect(on_edge, "harbour basin touches the map edge")
+	var end := Vector2(river[-1][0], river[-1][1])
+	_expect(Geometry2D.is_point_in_polygon(end, basin), "the river's far end flows into the harbour basin")
+	for pier in city["harbour"]["piers"]:
+		var from_c := Geo2D.polygon_signed_distance(Vector2(pier["from"][0], pier["from"][1]), basin)
+		var to_c := Geo2D.polygon_signed_distance(Vector2(pier["to"][0], pier["to"][1]), basin)
+		_expect(from_c >= -2.0 and to_c < -10.0, "pier '%s' starts on land and ends in the basin" % pier["id"])
+
+
+# Sites sit on top of districts, so they may not touch water or each other.
+func _check_sites(city: Dictionary) -> void:
+	var river: Array = city["river"]["path"]
+	var basin := CityData.to_points(city["harbour"]["basin"])
+	var polys := {}
+	for site in city["sites"]:
+		var poly := CityData.to_points(site["polygon"])
+		polys[site["id"]] = poly
+		var dry := true
+		for p in poly:
+			dry = dry and Geo2D.water_clearance(p, river, basin) >= 10.0
+		dry = dry and Geo2D.water_clearance(Geo2D.polygon_centroid(poly), river, basin) >= 10.0
+		_expect(dry, "site '%s' is on dry land" % site["id"])
+	var keys := polys.keys()
+	for i in keys.size():
+		for j in range(i + 1, keys.size()):
+			_expect(Geo2D.overlap_area(polys[keys[i]], polys[keys[j]]) == 0.0, "sites '%s' and '%s' do not overlap" % [keys[i], keys[j]])
+
+
+# Metro: at least one line crosses the whole map, every station sits on its line,
+# and EVERY line stops inside the hub site (Central Station).
+func _check_metro(city: Dictionary) -> void:
+	var size := CityData.map_size(city)
+	var metro: Dictionary = city["metro"]
+	var hub_poly := PackedVector2Array()
+	for site in city["sites"]:
+		if site["id"] == metro["hub"]:
+			hub_poly = CityData.to_points(site["polygon"])
+	_expect(not hub_poly.is_empty(), "metro hub '%s' is a defined site" % metro["hub"])
+
+	var spans_map := false
+	for line in metro["lines"]:
+		var path := CityData.to_points(line["path"])
+		var a := path[0]
+		var b := path[-1]
+		if (is_zero_approx(a.x) and is_equal_approx(b.x, size.x)) or (is_equal_approx(a.x, size.x) and is_zero_approx(b.x)) \
+				or (is_zero_approx(a.y) and is_equal_approx(b.y, size.y)) or (is_equal_approx(a.y, size.y) and is_zero_approx(b.y)):
+			spans_map = true
+		var stations_ok := true
+		var hub_ok := false
+		for st in line["stations"]:
+			var at := Vector2(st["at"][0], st["at"][1])
+			stations_ok = stations_ok and Geo2D.polyline_distance(at, path) <= STATION_ON_LINE
+			if st.has("site") and st["site"] == metro["hub"]:
+				hub_ok = hub_ok or Geometry2D.is_point_in_polygon(at, hub_poly)
+		_expect(stations_ok, "metro line %s: every station lies on the line (within %d m)" % [line["id"], int(STATION_ON_LINE)])
+		_expect(hub_ok, "metro line %s stops inside the central station" % line["id"])
+	_expect(spans_map, "at least one metro line crosses the entire map edge to edge")
+
+
+# Sewers: everything must be one connected network (otherwise part of the
+# Underguild is unreachable), entrances must be on tunnels, outfalls on the water.
+func _check_underground(city: Dictionary) -> void:
+	var size := CityData.map_size(city)
+	var river: Array = city["river"]["path"]
+	var basin := CityData.to_points(city["harbour"]["basin"])
+	var u: Dictionary = city["underground"]
+	var lines := {}
+	for t in u["tunnels"]:
+		lines[t["id"]] = CityData.to_points(t["path"])
+
+	for e in u["entrances"]:
+		var at := Vector2(e["at"][0], e["at"][1])
+		_expect(lines.has(e["tunnel"]) and Geo2D.polyline_distance(at, lines[e["tunnel"]]) <= JOIN_REACH,
+			"entrance '%s' sits on its tunnel '%s'" % [e["id"], e["tunnel"]])
+	for o in u["outfalls"]:
+		var at := Vector2(o["at"][0], o["at"][1])
+		var gap := absf(Geo2D.water_clearance(at, river, basin))
+		_expect(lines.has(o["tunnel"]) and Geo2D.polyline_distance(at, lines[o["tunnel"]]) <= JOIN_REACH and gap <= OUTFALL_REACH,
+			"outfall '%s' joins tunnel '%s' and sits at the waterline (%.0f m off)" % [o["id"], o["tunnel"], gap])
+	for c in u["chambers"]:
+		var at := Vector2(c["center"][0], c["center"][1])
+		_expect(Rect2(Vector2.ZERO, size).has_point(at), "chamber '%s' is on the map" % c["id"])
+
+	# Connectivity: flood-fill from the first tunnel across tunnels that touch.
+	var ids := lines.keys()
+	var seen := {ids[0]: true}
+	var queue := [ids[0]]
+	while not queue.is_empty():
+		var cur: String = queue.pop_back()
+		for other in ids:
+			if not seen.has(other) and _tunnels_touch(lines[cur], lines[other]):
+				seen[other] = true
+				queue.append(other)
+	_expect(seen.size() == ids.size(), "all %d tunnels form one connected network (%d reachable)" % [ids.size(), seen.size()])
+	for c in u["chambers"]:
+		var at := Vector2(c["center"][0], c["center"][1])
+		var linked := false
+		for id in ids:
+			linked = linked or Geo2D.polyline_distance(at, lines[id]) <= float(c["radius"])
+		_expect(linked, "chamber '%s' is reached by a tunnel" % c["id"])
+
+
+func _tunnels_touch(a: PackedVector2Array, b: PackedVector2Array) -> bool:
+	for p in a:
+		if Geo2D.polyline_distance(p, b) <= JOIN_REACH:
+			return true
+	for p in b:
+		if Geo2D.polyline_distance(p, a) <= JOIN_REACH:
+			return true
+	return false
 
 
 # ---- helpers ---------------------------------------------------------------
