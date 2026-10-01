@@ -35,7 +35,7 @@ var step_depth := 0.3       # tread
 var floor_color := Color(0.40, 0.28, 0.21)
 var stone_color := Color(0.55, 0.55, 0.57)
 
-const MIN_STAIR_HEADROOM := 4.0         # clear height wanted above the treads where a flight passes under a bridge: head 1.8 + a jump + margin
+const MIN_STAIR_HEADROOM := PlayerScale.HEIGHT + PlayerScale.JUMP_HEIGHT + PlayerScale.HEADROOM_MARGIN  # above the treads under a bridge: stand, jump, margin
 const SEGMENT_OVERLAP := 0.1
 const BRIDGE_SEGMENTS := 24             # straight pieces per arched bridge (about 1 m each)
 const STAIR_GAP := 1.0                  # between the entrance edge and the flights
@@ -47,7 +47,7 @@ const CORBEL_STEP_PROJECTION := 0.7     # each higher step projects this much fu
 const CORBEL_WIDTH := 1.4
 const GIRDER_HEIGHT := 0.6              # kept shallow: a flight rises under each bridge, so depth eats headroom
 const GIRDER_WIDTH := 0.4
-const RAIL_HEIGHT := 1.1
+const RAIL_HEIGHT := PlayerScale.CHEST_HEIGHT  # top rail at chest height of the reference player
 const POST_SIZE := 0.12
 const POST_SPACING := 1.0
 const TOP_RAIL_SIZE := 0.14

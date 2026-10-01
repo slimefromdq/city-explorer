@@ -36,7 +36,7 @@ func _ready() -> void:
 	if stage == "" or stage == "hall":
 		var hall := _build_hall()
 		await _settle()
-		await _take_shots("concourse_hall", _hall_shots(hall), 75.0, _headroom_figure(hall))
+		await _take_shots("concourse_hall", _hall_shots(hall), 75.0, _make_figure(hall))
 	if OS.get_environment("KEEP_OPEN") == "":
 		get_tree().quit()
 
@@ -96,6 +96,20 @@ func _build_hall() -> ConcourseHall:
 	return hall
 
 
+## One hall shot. `feet` = where the reference capsule stands (null = no capsule); `jump` adds a
+## second capsule at the top of a jump.
+func _shot(shot_name: String, pos: Vector3, target: Vector3, feet = null, jump := false, up := Vector3.UP, fov := -1.0) -> Dictionary:
+	return {"name": shot_name, "pos": pos, "target": target, "feet": feet, "jump": jump, "up": up, "fov": fov}
+
+
+## Top of the tread at world X on the +X end's flights (the landing edge is `depth` in from the end wall).
+func _stair_top_at(hall: ConcourseHall, x: float, half: float) -> float:
+	var steps: int = maxi(2, ceili(hall.mezzanine_height / hall.step_height))
+	var riser: float = hall.mezzanine_height / steps
+	var from_landing: float = (half - hall.mezzanine_depth) - x
+	return hall.mezzanine_height - (floorf(from_landing / hall.step_depth) + 1.0) * riser
+
+
 func _hall_shots(hall: ConcourseHall) -> Array:
 	var bay: ConcourseBay = hall.get_node("Generated/WallNegZ/Bay0")
 	var length: float = hall.hall_bays * bay.bay_width
@@ -108,60 +122,59 @@ func _hall_shots(hall: ConcourseHall) -> Array:
 	# stair foot: the landing edge is `depth` in from the end wall; the flight runs back from there
 	var steps: int = ceili(deck_y / hall.step_height)
 	var foot_x: float = half - hall.mezzanine_depth - (steps - 1) * hall.step_depth
-	var stair_z: float = hall.entrance_width * 0.5 + 1.0 + hall.stair_width * 0.5
+	var za: float = hall.entrance_width * 0.5 + 1.0
+	var stair_z: float = za + hall.stair_width * 0.5
+	var inner_z: float = half_w - hall.mezzanine_depth
+	var outer_z: float = minf(za + hall.stair_width, inner_z)
+	var tight_x: float = hall.bridge_distance + hall.bridge_width * 0.5  # bridge edge nearest the landing
+	var tight_top: float = _stair_top_at(hall, tight_x, half)
+	var u: float = outer_z / inner_z
+	var underside: float = deck_y + hall.bridge_arch_rise * (1.0 - u * u) - hall.mezzanine_thickness - 0.6
+	print("headroom check: tread top %.2f m, bridge underside over the flight's outer edge %.2f m, clearance %.2f m (standing %.1f m, jumping %.1f m)" % [tight_top, underside, underside - tight_top, PlayerScale.HEIGHT, PlayerScale.HEIGHT + PlayerScale.JUMP_HEIGHT])
+	var foot_tread_x: float = foot_x + 1.2  # a few treads up from the bottom
 	return [
-		# 1. at the near entrance, looking down the hall
-		["entrance_down_hall", Vector3(-half + 2.0, EYE_HEIGHT, 0), Vector3(half, wall_h * 0.4, 0)],
-		# 2. the whole hall from above (long axis horizontal)
-		["top_down", Vector3(0, wall_h + 3.0, 0), Vector3(0, 0, 0), Vector3(0, 0, -1), 90.0],
-		# 3. on the -Z balcony, looking across at the clock
-		["mezzanine_to_clock", Vector3(-4.0, deck_y + EYE_HEIGHT, -half_w + 0.8), Vector3(0, clock_y, 0)],
-		# 4. on the +Z balcony, looking down at the floor and booth
-		["mezzanine_down_to_floor", Vector3(5.0, deck_y + EYE_HEIGHT, half_w - 0.8), Vector3(0, 0, -2.0)],
+		# 1. at the near entrance, looking down the hall; the capsule stands a few metres ahead
+		_shot("entrance_down_hall", Vector3(-half + 2.0, EYE_HEIGHT, 0), Vector3(half, wall_h * 0.4, 0), Vector3(-half + 6.0, 0, -1.5)),
+		# 2. the whole hall from above (long axis horizontal); the capsule stands on the compass inlay
+		_shot("top_down", Vector3(0, wall_h + 3.0, 0), Vector3.ZERO, Vector3(6.0, 0, 2.0), false, Vector3(0, 0, -1), 90.0),
+		# 3. on the -Z balcony, looking across at the clock; the capsule stands at the rail
+		_shot("mezzanine_to_clock", Vector3(-4.0, deck_y + EYE_HEIGHT, -half_w + 0.8), Vector3(0, clock_y, 0), Vector3(-1.5, deck_y, -inner_z - 0.9)),
+		# 4. on the +Z balcony, looking down at the floor and booth; the capsule stands at the rail
+		_shot("mezzanine_down_to_floor", Vector3(5.0, deck_y + EYE_HEIGHT, half_w - 0.8), Vector3(0, 0, -2.0), Vector3(2.0, deck_y, inner_z + 0.9)),
 		# 5. from the floor, looking up at a bridge and the vault above it
-		["floor_up_to_bridge", Vector3(bridge_x - 6.0, EYE_HEIGHT, -4.0), Vector3(bridge_x, deck_y + 9.0, 2.0)],
-		# 6. at the foot of a grand staircase (+X end, +Z flight), looking up it
-		["stair_foot_looking_up", Vector3(foot_x - 2.0, EYE_HEIGHT, stair_z), Vector3(half - hall.mezzanine_depth, deck_y + 2.5, stair_z)],
-		# extra: headroom where a flight passes under a bridge, with a standing and a jumping 1.8 m figure at the tightest point
-		["stair_headroom_check", Vector3(-bridge_x - 0.5, EYE_HEIGHT, 0.0), Vector3(-bridge_x + 1.5, 5.5, stair_z), Vector3.UP, 75.0, true],
-		# extra: the far wall's round window. From the entrance the near bridge hides it, so look from between the bridges, off-axis so the clock is not in the way.
-		["far_wall_window", Vector3(-6.0, EYE_HEIGHT, -7.0), Vector3(half, hall.rose_height - 4.0, 0)],
+		_shot("floor_up_to_bridge", Vector3(bridge_x - 6.0, EYE_HEIGHT, -4.0), Vector3(bridge_x, deck_y + 9.0, 2.0), Vector3(bridge_x - 3.5, 0, -2.5)),
+		# 6. at the foot of a grand staircase (+X end, +Z flight), looking up it; the capsule is a few treads up
+		_shot("stair_foot_looking_up", Vector3(foot_x - 2.0, EYE_HEIGHT, stair_z), Vector3(half - hall.mezzanine_depth, deck_y + 2.5, stair_z),
+			Vector3(foot_tread_x, _stair_top_at(hall, foot_tread_x, half), stair_z)),
+		# extra: headroom where a flight passes under a bridge: standing and jumping capsules at the tightest tread
+		_shot("stair_headroom_check", Vector3(-bridge_x - 0.5, EYE_HEIGHT, 0.0), Vector3(-bridge_x + 1.5, 5.5, stair_z),
+			Vector3(tight_x, tight_top, outer_z - 0.5), true),
+		# extra: the far wall's round window, seen from between the bridges, off-axis so the clock is not in the way
+		_shot("far_wall_window", Vector3(-6.0, EYE_HEIGHT, -7.0), Vector3(half, hall.rose_height - 4.0, 0), Vector3(-1.0, 0, -4.5)),
 		# extras kept from earlier passes: the clock up close, and the view back from the far end
-		["landmark_clock", Vector3(-8.0, EYE_HEIGHT, 6.0), Vector3(0, clock_y, 0)],
-		["far_end_looking_back", Vector3(half - 2.0, EYE_HEIGHT, 0), Vector3(-half, wall_h * 0.4, 0)],
+		_shot("landmark_clock", Vector3(-8.0, EYE_HEIGHT, 6.0), Vector3(0, clock_y, 0), Vector3(-5.5, 0, 3.5)),
+		_shot("far_end_looking_back", Vector3(half - 2.0, EYE_HEIGHT, 0), Vector3(-half, wall_h * 0.4, 0), Vector3(half - 7.0, 0, 1.0)),
 	]
 
 
-## Two 1.8 m capsules on the tightest tread under a bridge (the flight's outer edge, at the bridge's
-## landing-side edge): one standing, one at the top of a 1.2 m jump. Only shown for the headroom shot.
-func _headroom_figure(hall: ConcourseHall) -> Node3D:
-	var bay: ConcourseBay = hall.get_node("Generated/WallNegZ/Bay0")
-	var half: float = hall.hall_bays * bay.bay_width * 0.5
-	var steps: int = maxi(2, ceili(hall.mezzanine_height / hall.step_height))
-	var riser: float = hall.mezzanine_height / steps
-	var x: float = hall.bridge_distance + hall.bridge_width * 0.5
-	var run_from_landing: float = (half - hall.mezzanine_depth) - x
-	var tread_top: float = hall.mezzanine_height - (floorf(run_from_landing / hall.step_depth) + 1.0) * riser
-	var inner_z: float = hall.hall_width * 0.5 - hall.mezzanine_depth
-	var za: float = hall.entrance_width * 0.5 + 1.0
-	var outer_z: float = minf(za + hall.stair_width, inner_z)
-	var u: float = outer_z / inner_z
-	var underside: float = hall.mezzanine_height + hall.bridge_arch_rise * (1.0 - u * u) - hall.mezzanine_thickness - 0.6
+## The reference player: a red capsule (PlayerScale.HEIGHT x PlayerScale.RADIUS), plus a twin that is
+## shown at the top of a jump. Root origin = the standing player's feet.
+func _make_figure(parent: Node3D) -> Node3D:
 	var root := Node3D.new()
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = Color(0.9, 0.2, 0.15)
-	for lift in [0.0, 1.2]:
+	for lift in [0.0, PlayerScale.JUMP_HEIGHT]:
 		var person := MeshInstance3D.new()
+		person.name = "Standing" if lift == 0.0 else "Jumping"
 		var mesh := CapsuleMesh.new()
-		mesh.height = 1.8
-		mesh.radius = 0.25
+		mesh.height = PlayerScale.HEIGHT
+		mesh.radius = PlayerScale.RADIUS
 		mesh.material = mat
 		person.mesh = mesh
-		person.position = Vector3(x, tread_top + 0.9 + lift, outer_z - 0.5)
+		person.position.y = PlayerScale.HEIGHT * 0.5 + lift
 		root.add_child(person)
-	hall.add_child(root)
+	parent.add_child(root)
 	root.visible = false
-	print("headroom check: tread top %.2f m, bridge underside over the flight's outer edge %.2f m, clearance %.2f m (standing 1.8 m, jumping 3.0 m)" % [tread_top, underside, underside - tread_top])
 	return root
 
 
@@ -209,16 +222,23 @@ func _add_environment(parent: Node) -> void:
 func _take_shots(prefix: String, shots: Array, fov: float, figure: Node3D = null) -> void:
 	var out := OS.get_environment("OUT") if OS.get_environment("OUT") != "" else "res://tests/out"
 	DirAccess.make_dir_recursive_absolute(out)
-	for s in shots:
+	for raw in shots:
+		# bay shots are [name, position, target, (up, fov)]; hall shots are dictionaries from _shot()
+		var s: Dictionary = raw if raw is Dictionary else {
+			"name": raw[0], "pos": raw[1], "target": raw[2], "up": raw[3] if raw.size() > 3 else Vector3.UP,
+			"fov": raw[4] if raw.size() > 4 else -1.0, "feet": null, "jump": false}
 		if figure != null:
-			figure.visible = s.size() > 5 and s[5]
-		cam.fov = s[4] if s.size() > 4 else fov
-		cam.position = s[1]
-		cam.look_at(s[2], s[3] if s.size() > 3 else Vector3.UP)
+			figure.visible = s.feet != null
+			if s.feet != null:
+				figure.position = s.feet
+			figure.get_node("Jumping").visible = s.jump
+		cam.fov = s.fov if s.fov > 0.0 else fov
+		cam.position = s.pos
+		cam.look_at(s.target, s.up)
 		await RenderingServer.frame_post_draw
 		await get_tree().process_frame
 		await RenderingServer.frame_post_draw
 		var img := get_viewport().get_texture().get_image()
-		var path: String = "%s/%s_%s.png" % [out, prefix, s[0]]
+		var path: String = "%s/%s_%s.png" % [out, prefix, s.name]
 		img.save_png(path)
 		print("saved ", path, " ", img.get_size())

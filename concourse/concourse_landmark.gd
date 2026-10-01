@@ -14,7 +14,7 @@ extends Node3D
 @export_range(0.5, 3.0, 0.05) var booth_scale := 1.4: set = _set_booth_scale
 @export_group("Booth")
 @export_range(1.0, 6.0, 0.05, "suffix:m") var booth_radius := 2.5: set = _set_booth_radius
-@export_range(0.5, 2.0, 0.05, "suffix:m") var counter_height := 1.1: set = _set_counter_height
+@export_range(0.5, 2.0, 0.05, "suffix:m") var counter_height := PlayerScale.WAIST_HEIGHT: set = _set_counter_height
 @export_range(1.0, 5.0, 0.1, "suffix:m") var booth_height := 3.0: set = _set_booth_height
 @export_group("Tower")
 @export_range(0.05, 0.6, 0.01, "suffix:m") var post_radius := 0.15: set = _set_post_radius
@@ -70,7 +70,7 @@ func rebuild() -> void:
 
 	var hs := clock_size * booth_scale
 	var b_radius := booth_radius * booth_scale
-	var b_counter_h := counter_height * booth_scale
+	var b_counter_h := counter_height  # not scaled by booth_scale: counters stay at waist height
 	var b_height := booth_height * booth_scale
 	var cap_h := hs * CAP_HEIGHT_RATIO
 	var housing_bottom := tower_height - cap_h - hs
