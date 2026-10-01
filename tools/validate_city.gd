@@ -12,6 +12,7 @@ extends SceneTree
 const CityData := preload("res://city/city_data.gd")
 const Geo2D := preload("res://city/geo2d.gd")
 const TerrainHeight := preload("res://city/terrain_height.gd")
+const RoadNetwork := preload("res://city/road_network.gd")
 
 const DISTRICT_TYPES := ["core", "midrise", "lowrise", "harbour", "park", "financial"]
 const LANDMARK_RIVER_MARGIN := 25.0  # landmark must stand at least this far from the water (m)
@@ -48,6 +49,7 @@ func _init() -> void:
 	_check_underground(city)
 	_check_everything_on_land(city)
 	_check_terrain_heights(city)
+	_check_road_network(city)
 	_finish()
 
 
@@ -461,11 +463,90 @@ func _check_terrain_heights(city: Dictionary) -> void:
 		if lm.get("main", false):
 			var slope := terrain.slope_at(Vector2(lm["position"][0], lm["position"][1]))
 			_expect(slope <= 0.1, "ground under the main landmark is flat enough (slope %.0f%%)" % (slope * 100.0))
+	# Hills must have faded out by the shore (otherwise: sea cliffs and unclimbable roads).
+	var land := CityData.land_polygon(city)
+	for h in t["hills"]:
+		var centre := Vector2(h["center"][0], h["center"][1])
+		var coast_gap := -Geo2D.polygon_signed_distance(centre, land)  # metres from the hill centre to the coast
+		var fade := 1.0 - coast_gap / float(h["radius"])
+		var at_coast := 0.0 if fade <= 0.0 else float(h["height"]) * fade * fade * (3.0 - 2.0 * fade)
+		_expect(at_coast <= 2.0, "hill '%s' has faded out by the coast (%.1f m of hill left at the shore)" % [h["name"], at_coast])
 	for h in t["hills"]:
 		var top := terrain.height_at(Vector2(h["center"][0], h["center"][1]))
 		var want: float = float(t["sea_level"]) + float(t["base_height"]) + float(h["height"])
 		_expect(top > float(t["sea_level"]) + float(t["base_height"]) + 0.5 * float(h["height"]),
 			"hill '%s' really rises (top %.0f m, planned about %.0f m)" % [h["name"], top, want])
+
+
+# The road network built from the data must be sane: roads exist, stay dry and out
+# of no-road zones, climb hills at a drivable grade, and every bridge meets a road.
+func _check_road_network(city: Dictionary) -> void:
+	var network := RoadNetwork.new(city)
+	var terrain := TerrainHeight.new(city)
+	var roads: Dictionary = city["roads"]
+	var kinds := {}
+	for seg in network.segments:
+		kinds[seg["id"].rsplit("_", true, 1)[0]] = true  # which ideal lines produced at least one piece
+	var lost := []
+	for y in roads["streets"]["y"]:
+		if not kinds.has("street_y%d" % int(y)):
+			lost.append("street y=%d" % int(y))
+	for x in roads["avenues"]["x"]:
+		if not kinds.has("avenue_x%d" % int(x)):
+			lost.append("avenue x=%d" % int(x))
+	for d in roads["diagonals"]:
+		if not kinds.has("diagonal_%s" % d["id"]):
+			lost.append("diagonal %s" % d["id"])
+	_expect(lost.is_empty(), "every street, avenue and diagonal survives as drivable road%s" % ("" if lost.is_empty() else " (lost: %s)" % ", ".join(lost)))
+
+	var wet := 0
+	var worst := 0.0
+	var worst_at := Vector2.ZERO
+	for seg in network.segments:
+		var pts: PackedVector2Array = seg["points"]
+		for i in pts.size():
+			if terrain.height_at(pts[i]) < terrain.sea_level + 0.5:
+				wet += 1
+			if i > 0:
+				var grade := absf(terrain.height_at(pts[i]) - terrain.height_at(pts[i - 1])) / pts[i].distance_to(pts[i - 1])
+				if grade > worst:
+					worst = grade
+					worst_at = pts[i]
+	_expect(wet == 0, "no road point is under water (%d wet)" % wet)
+	var shortest := INF
+	for seg in network.segments:
+		var length := 0.0
+		for i in range(seg["points"].size() - 1):
+			length += seg["points"][i].distance_to(seg["points"][i + 1])
+		shortest = minf(shortest, length)
+	_expect(shortest >= RoadNetwork.MIN_PIECE, "no tiny road stubs (shortest piece %.0f m)" % shortest)
+	_expect(worst <= float(roads["max_grade"]),
+		"roads are climbable (steepest %.0f%% at (%d, %d), limit %.0f%%)" % [worst * 100.0, worst_at.x, worst_at.y, float(roads["max_grade"]) * 100.0])
+
+	var zones := []
+	for group in [city["districts"], city["sites"]]:
+		for area in group:
+			if area.get("roads", true) == false:
+				zones.append_array(Geometry2D.offset_polygon(CityData.to_points(area["polygon"]), -RoadNetwork.ZONE_INSET))
+	var inside := 0
+	for seg in network.segments:
+		for p in seg["points"]:
+			for zone in zones:
+				if Geometry2D.is_point_in_polygon(p, zone):
+					inside += 1
+	_expect(inside == 0, "no road enters a 'roads: false' zone (park, station, plaza, library, museum, hall)")
+
+	var unmet := []
+	for b in network.bridges:
+		for tip in [b["from"], b["to"]]:
+			var met := false
+			for seg in network.segments:
+				var pts: PackedVector2Array = seg["points"]
+				met = met or pts[0].distance_to(tip) < 2.0 or pts[pts.size() - 1].distance_to(tip) < 2.0
+			if not met:
+				unmet.append("%s" % b["id"])
+	_expect(unmet.is_empty(), "every bridge end meets a road%s" % ("" if unmet.is_empty() else " (not met: %s)" % ", ".join(unmet)))
+	_expect(float(roads["bridge_arch_height"]) >= 0.0 and float(roads["bridge_deck_thickness"]) > 0.0, "bridge style values are valid")
 
 
 # ---- helpers ---------------------------------------------------------------

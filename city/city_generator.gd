@@ -5,11 +5,14 @@
 # nothing in this file knows WHERE anything goes, that is all in the JSON.
 #
 # Phase 2 layers: ground (terrain mesh) and water (one flat sea-level plane).
+# Phase 3 layers: roads (draped over the terrain) and bridges.
 extends Node3D
 
 const CityData := preload("res://city/city_data.gd")
 const TerrainHeight := preload("res://city/terrain_height.gd")
 const TerrainBuilder := preload("res://city/terrain_builder.gd")
+const RoadNetwork := preload("res://city/road_network.gd")
+const RoadBuilder := preload("res://city/road_builder.gd")
 
 # Extra sea around the map so the edge of the world is open water, not a cliff.
 # Pure presentation (the map itself is defined by the JSON), hence a constant here.
@@ -19,6 +22,7 @@ const WATER_REACH := 6000.0
 
 var city: Dictionary
 var map_size := Vector2.ZERO
+var roads  # RoadNetwork: the cut-down road pieces, shared with later layers (lots avoid them)
 var terrain  # TerrainHeight: kept so later layers (roads, lots...) ask the same height function
 
 
@@ -31,6 +35,9 @@ func _ready() -> void:
 	add_child(_make_ground())
 	add_child(_make_deep_sea_floor())
 	add_child(_make_water())
+	roads = RoadNetwork.new(city)
+	add_child(RoadBuilder.build_roads(roads, terrain))
+	add_child(RoadBuilder.build_bridges(roads, terrain, float(city["roads"]["bridge_arch_height"]), float(city["roads"]["bridge_deck_thickness"])))
 
 
 func _make_ground() -> MeshInstance3D:

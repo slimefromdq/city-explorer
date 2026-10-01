@@ -7,6 +7,9 @@
 # The rule, in plain words:
 #   1. Land sits a little above sea level, and hills add bumps on top.
 #   2. Near the coast the land slopes down to sea level; past it the sea floor drops away.
+#      Hills are NOT squeezed by the coast: squeezing a tall hill into a shore ramp makes
+#      cliffs no road can climb. Instead the data keeps hills inland, so they have already
+#      faded out at the shore (the validator checks this).
 #   3. The river and the harbour basin are carved out below sea level.
 # Water itself is NOT modelled here: it is one flat plane at sea level, so
 # "lower than sea level" simply means "wet".
@@ -57,16 +60,16 @@ func height_at(p: Vector2) -> float:
 	if inland <= 0.0:
 		ground = sea_level - _sea_depth * _smooth(0.0, _shelf_width, -inland)
 	else:
-		ground = lerpf(sea_level + SHORE_LIFT, _land_height(p), _smooth(0.0, _coast_width, inland))
+		ground = lerpf(sea_level + SHORE_LIFT, sea_level + _base, _smooth(0.0, _coast_width, inland)) + _hills_at(p)
 	# Carve water downward only (min), so the sea floor is never raised by the river rule.
 	var clearance := Geo2D.water_clearance(p, _river, _basin)  # negative = inside the water
 	var wet := 1.0 - _smooth(0.0, _bank_width, clearance)
 	return minf(ground, lerpf(ground, sea_level - _river_depth, wet))
 
 
-# Land height before coast and water are applied: flat base plus the hills.
-func _land_height(p: Vector2) -> float:
-	var h := sea_level + _base
+# Height the hills add at p (zero outside every hill's radius).
+func _hills_at(p: Vector2) -> float:
+	var h := 0.0
 	for hill in _hills:
 		var t := 1.0 - p.distance_to(hill["center"]) / float(hill["radius"])
 		h += float(hill["height"]) * _smooth(0.0, 1.0, t)
