@@ -122,9 +122,8 @@ func _hall_shots(hall: ConcourseHall) -> Array:
 		["floor_up_to_bridge", Vector3(bridge_x - 6.0, EYE_HEIGHT, -4.0), Vector3(bridge_x, deck_y + 9.0, 2.0)],
 		# 6. at the foot of a grand staircase (+X end, +Z flight), looking up it
 		["stair_foot_looking_up", Vector3(foot_x - 2.0, EYE_HEIGHT, stair_z), Vector3(half - hall.mezzanine_depth, deck_y + 2.5, stair_z)],
-		# extra: headroom where a flight passes under a bridge, with a 1.8 m figure standing on the tread at the
-		# bridge's landing-side edge (the tightest point). The figure is only shown for this shot.
-		["stair_headroom_check", Vector3(-bridge_x - 0.5, EYE_HEIGHT, 0.0), Vector3(-bridge_x + 1.5, 5.0, stair_z), Vector3.UP, 75.0, true],
+		# extra: headroom where a flight passes under a bridge, with a standing and a jumping 1.8 m figure at the tightest point
+		["stair_headroom_check", Vector3(-bridge_x - 0.5, EYE_HEIGHT, 0.0), Vector3(-bridge_x + 1.5, 5.5, stair_z), Vector3.UP, 75.0, true],
 		# extra: the far wall's round window. From the entrance the near bridge hides it, so look from between the bridges, off-axis so the clock is not in the way.
 		["far_wall_window", Vector3(-6.0, EYE_HEIGHT, -7.0), Vector3(half, hall.rose_height - 4.0, 0)],
 		# extras kept from earlier passes: the clock up close, and the view back from the far end
@@ -133,7 +132,8 @@ func _hall_shots(hall: ConcourseHall) -> Array:
 	]
 
 
-## A 1.8 m capsule standing on the +X, +Z flight's tread at the bridge's landing-side edge.
+## Two 1.8 m capsules on the tightest tread under a bridge (the flight's outer edge, at the bridge's
+## landing-side edge): one standing, one at the top of a 1.2 m jump. Only shown for the headroom shot.
 func _headroom_figure(hall: ConcourseHall) -> Node3D:
 	var bay: ConcourseBay = hall.get_node("Generated/WallNegZ/Bay0")
 	var half: float = hall.hall_bays * bay.bay_width * 0.5
@@ -142,19 +142,27 @@ func _headroom_figure(hall: ConcourseHall) -> Node3D:
 	var x: float = hall.bridge_distance + hall.bridge_width * 0.5
 	var run_from_landing: float = (half - hall.mezzanine_depth) - x
 	var tread_top: float = hall.mezzanine_height - (floorf(run_from_landing / hall.step_depth) + 1.0) * riser
-	var person := MeshInstance3D.new()
-	var mesh := CapsuleMesh.new()
-	mesh.height = 1.8
-	mesh.radius = 0.25
+	var inner_z: float = hall.hall_width * 0.5 - hall.mezzanine_depth
+	var za: float = hall.entrance_width * 0.5 + 1.0
+	var outer_z: float = minf(za + hall.stair_width, inner_z)
+	var u: float = outer_z / inner_z
+	var underside: float = hall.mezzanine_height + hall.bridge_arch_rise * (1.0 - u * u) - hall.mezzanine_thickness - 0.6
+	var root := Node3D.new()
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = Color(0.9, 0.2, 0.15)
-	mesh.material = mat
-	person.mesh = mesh
-	person.position = Vector3(x, tread_top + 0.9, hall.entrance_width * 0.5 + 1.0 + hall.stair_width * 0.5)
-	hall.add_child(person)
-	person.visible = false
-	print("headroom check: tread top %.2f m at x=%.2f, bridge underside %.2f m, clearance %.2f m" % [tread_top, x, hall.mezzanine_height - hall.mezzanine_thickness - 0.6, hall.mezzanine_height - hall.mezzanine_thickness - 0.6 - tread_top])
-	return person
+	for lift in [0.0, 1.2]:
+		var person := MeshInstance3D.new()
+		var mesh := CapsuleMesh.new()
+		mesh.height = 1.8
+		mesh.radius = 0.25
+		mesh.material = mat
+		person.mesh = mesh
+		person.position = Vector3(x, tread_top + 0.9 + lift, outer_z - 0.5)
+		root.add_child(person)
+	hall.add_child(root)
+	root.visible = false
+	print("headroom check: tread top %.2f m, bridge underside over the flight's outer edge %.2f m, clearance %.2f m (standing 1.8 m, jumping 3.0 m)" % [tread_top, underside, underside - tread_top])
+	return root
 
 
 # -------------------------------------------------------------------- shared

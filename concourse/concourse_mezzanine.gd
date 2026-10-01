@@ -28,13 +28,16 @@ var depth := 3.0            # balcony and landing depth
 var thickness := 0.5        # deck slab thickness
 var bridge_width := 3.5
 var bridge_distance := 8.5   # each bridge's centre, measured from the hall centre along X
+var bridge_arch_rise := 3.0  # how far the middle of a bridge is raised above the balcony level
 var stair_width := 4.0
 var step_height := 0.2      # target riser; adjusted so a whole number of risers reaches `height`
 var step_depth := 0.3       # tread
 var floor_color := Color(0.40, 0.28, 0.21)
 var stone_color := Color(0.55, 0.55, 0.57)
 
-const MIN_STAIR_HEADROOM := 3.0         # clear height wanted above the treads where a flight passes under a bridge (head 1.8 + margin)
+const MIN_STAIR_HEADROOM := 4.0         # clear height wanted above the treads where a flight passes under a bridge: head 1.8 + a jump + margin
+const SEGMENT_OVERLAP := 0.1
+const BRIDGE_SEGMENTS := 24             # straight pieces per arched bridge (about 1 m each)
 const STAIR_GAP := 1.0                  # between the entrance edge and the flights
 const FASCIA_HEIGHT := 0.8
 const FASCIA_THICKNESS := 0.3
@@ -75,26 +78,28 @@ func rebuild() -> void:
 		for s in [-1, 1]:
 			_build_flight(e, s, half_l, half_w, inner_z)
 
-	_check_stair_headroom(half_l)
+	_check_stair_headroom(half_l, inner_z)
 
 	_commit("MezzanineStone", _stone, _material(stone_color))
 	_commit("MezzanineDecks", _decks, _material(floor_color))
 
 
-## A flight rises toward its end wall at the same slope whatever the mezzanine height,
-## so a bridge over it always leaves (distance from landing * slope) minus the bridge's
-## depth. Warn when that is too tight to walk under.
-func _check_stair_headroom(half_l: float) -> void:
+## A flight rises toward its end wall at the same slope whatever the mezzanine height, so
+## the room under a bridge depends on where the bridge crosses the flight and how high the
+## bridge arches over the flight's outer edge (the lowest part of the span above it).
+## Warn when a player could not stand, and jump, on the treads there.
+func _check_stair_headroom(half_l: float, inner_z: float) -> void:
 	var slope := (height / maxi(2, ceili(height / step_height))) / step_depth
 	var land_x := half_l - depth
-	var underside := height - thickness - GIRDER_HEIGHT
+	var outer_z := minf(entrance_width * 0.5 + STAIR_GAP + stair_width, inner_z)
+	var underside := _bridge_top(outer_z, inner_z) - thickness - GIRDER_HEIGHT
 	for edge in [absf(bridge_distance) - bridge_width * 0.5, absf(bridge_distance) + bridge_width * 0.5]:
 		var run_from_landing: float = land_x - edge
 		if run_from_landing <= 0.0:
 			continue  # beyond the landing's inner edge: no flight there
 		var tread_top: float = height - run_from_landing * slope
 		if tread_top > 0.0 and underside - tread_top < MIN_STAIR_HEADROOM:
-			push_warning("ConcourseMezzanine: only %.1f m of headroom where a flight passes under a bridge (want %.1f). Move the bridges toward the hall centre (bridge_distance) or reduce the girder depth." % [underside - tread_top, MIN_STAIR_HEADROOM])
+			push_warning("ConcourseMezzanine: only %.1f m of headroom where a flight passes under a bridge (want %.1f). Raise bridge_arch_rise, or move the bridges toward the hall centre (bridge_distance)." % [underside - tread_top, MIN_STAIR_HEADROOM])
 			return
 
 
@@ -140,14 +145,50 @@ func _free_intervals(lo: float, hi: float, cuts: Array) -> Array:
 
 # --------------------------------------------------------------------- bridges
 
+## Walking-surface height of a bridge at cross-hall position z: balcony level at both
+## ends (|z| = inner_z), raised by `bridge_arch_rise` at the middle, on a parabola.
+func _bridge_top(z: float, inner_z: float) -> float:
+	var u := z / inner_z
+	return height + bridge_arch_rise * (1.0 - u * u)
+
+
+## An arched bridge: deck and two girders as short straight pieces following the
+## curve, with a balustrade on each side. The arch lifts the middle of the span, which
+## is where the stair flights pass underneath.
 func _build_bridge(bx: float, inner_z: float) -> void:
-	var span := inner_z * 2.0
-	_add(_decks, Vector3(bx, height - thickness * 0.5, 0), Vector3(bridge_width, thickness, span))
+	var n := BRIDGE_SEGMENTS
+	var zs: Array[float] = []
+	for i in n + 1:
+		zs.append(-inner_z + 2.0 * inner_z * i / n)
+	for i in n:
+		var p0 := Vector3(0, _bridge_top(zs[i], inner_z), zs[i])
+		var p1 := Vector3(0, _bridge_top(zs[i + 1], inner_z), zs[i + 1])
+		var dir := p1 - p0
+		var length := dir.length()
+		var z_axis := dir / length
+		var y_axis := Vector3(0, z_axis.z, -z_axis.y)  # perpendicular to the piece, pointing up
+		var rot := Basis(Vector3.RIGHT, y_axis, z_axis)
+		var mid := (p0 + p1) * 0.5
+		var seg_len := length + SEGMENT_OVERLAP  # a little extra so bends leave no wedge-shaped gap
+		_add(_decks, Vector3(bx, mid.y, mid.z) - y_axis * (thickness * 0.5), Vector3(bridge_width, thickness, seg_len), rot)
+		for sx in [-1, 1]:
+			var gx: float = bx + sx * (bridge_width * 0.5 - GIRDER_WIDTH * 0.5)
+			_add(_stone, Vector3(gx, mid.y, mid.z) - y_axis * (thickness + GIRDER_HEIGHT * 0.5), Vector3(GIRDER_WIDTH, GIRDER_HEIGHT, seg_len), rot)
 	for sx in [-1, 1]:
-		_add(_stone, Vector3(bx + sx * (bridge_width * 0.5 - GIRDER_WIDTH * 0.5), height - thickness - GIRDER_HEIGHT * 0.5, 0),
-			Vector3(GIRDER_WIDTH, GIRDER_HEIGHT, span))
 		var x: float = bx + sx * (bridge_width * 0.5 - POST_SIZE * 0.5)
-		_balustrade(Vector3(x, height, -inner_z), Vector3(x, height, inner_z))
+		_arched_balustrade(x, zs, inner_z)
+
+
+## Posts at each node of the arch, with top and lower rails between them.
+func _arched_balustrade(x: float, zs: Array[float], inner_z: float) -> void:
+	var prev := Vector3.ZERO
+	for i in zs.size():
+		var base := Vector3(x, _bridge_top(zs[i], inner_z), zs[i])
+		_add(_stone, base + Vector3(0, RAIL_HEIGHT * 0.5, 0), Vector3(POST_SIZE, RAIL_HEIGHT, POST_SIZE))
+		if i > 0:
+			_rail(prev + Vector3(0, RAIL_HEIGHT, 0), base + Vector3(0, RAIL_HEIGHT, 0), TOP_RAIL_SIZE)
+			_rail(prev + Vector3(0, LOWER_RAIL_HEIGHT, 0), base + Vector3(0, LOWER_RAIL_HEIGHT, 0), LOWER_RAIL_SIZE)
+		prev = base
 
 
 # ---------------------------------------------------------------------- stairs

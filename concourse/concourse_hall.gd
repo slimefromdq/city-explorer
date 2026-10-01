@@ -70,9 +70,13 @@ extends Node3D
 @export_range(0.2, 1.5, 0.05, "suffix:m") var mezzanine_thickness := 0.5: set = _set_mezzanine_thickness
 @export_range(1.0, 8.0, 0.1, "suffix:m") var bridge_width := 3.5: set = _set_bridge_width
 ## Distance of each bridge from the hall centre. The stair flights pass under the bridges, and the
-## closer a bridge is to the hall centre, the more headroom it leaves (the hall warns below 3 m).
+## closer a bridge is to the hall centre, the more headroom it leaves (the hall warns below 4 m).
 ## Too close and the near bridge starts to hide the clock from the entrances.
 @export_range(2.0, 18.0, 0.1, "suffix:m") var bridge_distance := 8.5: set = _set_bridge_distance
+## How far the middle of each bridge is raised above the balcony level. The bridges arch up from
+## the balconies, which lifts them over the stair flights (the hall warns if a player could not
+## jump on the stairs under a bridge). Steeper arches are harder to walk: 0 = a flat bridge.
+@export_range(0.0, 6.0, 0.1, "suffix:m") var bridge_arch_rise := 3.0: set = _set_bridge_arch_rise
 ## Width of each of the four flights (two at each end).
 @export_range(1.0, 6.0, 0.1, "suffix:m") var stair_width := 4.0: set = _set_stair_width
 ## Target riser height; the hall adjusts it slightly so a whole number of steps reaches the mezzanine.
@@ -442,6 +446,7 @@ func _build_mezzanine(root: Node3D, dims: Dictionary) -> void:
 	mz.thickness = mezzanine_thickness
 	mz.bridge_width = bridge_width
 	mz.bridge_distance = bridge_distance
+	mz.bridge_arch_rise = bridge_arch_rise
 	mz.stair_width = stair_width
 	mz.step_height = step_height
 	mz.step_depth = step_depth
@@ -521,6 +526,7 @@ func _set_mezzanine_height(v: float) -> void: mezzanine_height = v; _queue_rebui
 func _set_mezzanine_depth(v: float) -> void: mezzanine_depth = v; _queue_rebuild()
 func _set_mezzanine_thickness(v: float) -> void: mezzanine_thickness = v; _queue_rebuild()
 func _set_bridge_width(v: float) -> void: bridge_width = v; _queue_rebuild()
+func _set_bridge_arch_rise(v: float) -> void: bridge_arch_rise = v; _queue_rebuild()
 func _set_bridge_distance(v: float) -> void: bridge_distance = v; _queue_rebuild()
 func _set_stair_width(v: float) -> void: stair_width = v; _queue_rebuild()
 func _set_step_height(v: float) -> void: step_height = v; _queue_rebuild()
