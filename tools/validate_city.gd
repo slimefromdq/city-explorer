@@ -15,6 +15,8 @@ const TerrainHeight := preload("res://city/terrain_height.gd")
 const RoadNetwork := preload("res://city/road_network.gd")
 const LotPlan := preload("res://city/lot_plan.gd")
 const BuildingPlan := preload("res://city/building_plan.gd")
+const Sightlines := preload("res://city/sightlines.gd")
+const LandmarkBuilder := preload("res://city/landmark_builder.gd")
 
 const DISTRICT_TYPES := ["core", "midrise", "lowrise", "harbour", "park", "financial"]
 const LANDMARK_RIVER_MARGIN := 25.0  # landmark must stand at least this far from the water (m)
@@ -54,6 +56,7 @@ func _init() -> void:
 	_check_road_network(city)
 	_check_lots(city)
 	_check_buildings(city)
+	_check_sightlines(city)
 	_finish()
 
 
@@ -874,6 +877,81 @@ func _check_buildings(city: Dictionary) -> void:
 			same = same and again.buildings[i]["id"] == items[i]["id"] and is_equal_approx(float(again.buildings[i]["height"]), float(items[i]["height"])) \
 				and again.buildings[i]["center"].is_equal_approx(items[i]["center"])
 	_expect(same, "buildings are reproducible: a second run gives the same %d buildings and heights" % items.size())
+
+
+# The tower must be seen from across the city: every viewpoint has an unobstructed line of sight to
+# its upper part, and the planner keeps it that way by lowering buildings in the way.
+func _check_sightlines(city: Dictionary) -> void:
+	var network := RoadNetwork.new(city)
+	var lot_plan := LotPlan.new(city, network)
+	var terrain := TerrainHeight.new(city)
+	var sightlines := Sightlines.new(city, terrain)
+	var cfg: Dictionary = city["sightlines"]
+	var plan := BuildingPlan.new(city, lot_plan, terrain, sightlines)
+	var viewpoints: Array = cfg["viewpoints"]
+	_expect(viewpoints.size() >= 5, "at least 5 viewpoints look at the tower (%d)" % viewpoints.size())
+
+	# Viewpoints must be real, dry places, far enough away to be "across the city", and spread around it.
+	var tower := sightlines.target_position
+	var quadrants := {}
+	var places_ok := true
+	var far_enough := true
+	var land := CityData.land_polygon(city)
+	for vp in viewpoints:
+		var p := Vector2(vp["position"][0], vp["position"][1])
+		places_ok = places_ok and terrain.height_at(p) > terrain.sea_level + 0.5 and Geometry2D.is_point_in_polygon(p, land)
+		for b in plan.buildings:
+			places_ok = places_ok and Geo2D.segment_rect_overlap(p, p + Vector2(0.01, 0.0), b["center"], b["u"], b["size"] * 0.5).x < 0.0
+		far_enough = far_enough and p.distance_to(tower) >= 250.0
+		quadrants["%d%d" % [int(p.x > tower.x), int(p.y > tower.y)]] = true
+	_expect(places_ok, "every viewpoint is on dry land, not inside a building")
+	_expect(far_enough, "every viewpoint is at least 250 m from the tower")
+	_expect(quadrants.size() >= 3, "the viewpoints surround the tower (%d of 4 directions)" % quadrants.size())
+
+	# The check itself: nothing blocks any line of sight.
+	var blocked := sightlines.find_blockers(plan.buildings)
+	var text := []
+	for b in blocked:
+		text.append("%s blocked by %s" % [b["id"], b["blocked_by"]])
+	_expect(blocked.is_empty(), "the tower is visible from every viewpoint (top %d%% shows)%s" % [int((1.0 - float(cfg["visible_from_fraction"])) * 100.0), "" if blocked.is_empty() else ": " + "; ".join(text)])
+	# ...and with a safety margin too (the planner keeps `clearance` metres below every line).
+	var margin_blocked := sightlines.find_blockers(plan.buildings, float(cfg["clearance"]) * 0.5)
+	_expect(margin_blocked.is_empty(), "every line of sight keeps a safety margin of %.1f m" % (float(cfg["clearance"]) * 0.5))
+
+	# The rule must be doing real work: the same city WITHOUT it has blocked sightlines.
+	var without := BuildingPlan.new(city, lot_plan)
+	var would_block := sightlines.find_blockers(without.buildings)
+	_expect(would_block.size() >= 1, "the corridor rule is needed (without it %d of %d sightlines would be blocked)" % [would_block.size(), viewpoints.size()])
+
+	# The rule must not wreck the city: most lots keep their building.
+	var affected := plan.lowered.size() + plan.cleared.size()
+	_expect(float(affected) <= 0.08 * float(plan.buildings.size()), "the corridors touch few lots (%d lowered, %d cleared of %d buildings)" % [plan.lowered.size(), plan.cleared.size(), plan.buildings.size()])
+
+	# The tower stays the tallest thing, including every other landmark.
+	var main_height := sightlines.tower_height
+	var others_ok := true
+	for lm in city["landmarks"]:
+		if lm["id"] != sightlines.target_id:
+			others_ok = others_ok and float(lm["height"]) < main_height * 0.9
+	_expect(others_ok, "the tower is clearly taller than the other landmarks")
+
+	# Each landmark's structure fits the ground reserved for it (its lot, or the plaza).
+	var reserved := {}
+	for lot in lot_plan.lots:
+		reserved[lot["id"]] = lot["polygon"]
+	var misfit := []
+	for lm in city["landmarks"]:
+		var footprint := LandmarkBuilder.ground_footprint(lm)
+		var centre := Vector2(lm["position"][0], lm["position"][1])
+		var yaw := Vector2.from_angle(deg_to_rad(float(lm.get("yaw", 0.0))))
+		var corners := BuildingPlan.rect_corners(centre, yaw, footprint["half"])
+		var home := PackedVector2Array()
+		for lot in lot_plan.lots:
+			if Geometry2D.is_point_in_polygon(centre, lot["polygon"]):
+				home = lot["polygon"]
+		if home.is_empty() or Geo2D.overlap_area(corners, home) < Geo2D.polygon_area(corners) * 0.99:
+			misfit.append(lm["id"])
+	_expect(misfit.is_empty(), "every landmark's structure fits inside the lot or plaza reserved for it%s" % ("" if misfit.is_empty() else " (not: %s)" % ", ".join(misfit)))
 
 
 # ---- helpers ---------------------------------------------------------------
