@@ -32,6 +32,9 @@ var bridge_arch_rise := 3.0  # how far the middle of a bridge is raised above th
 var stair_width := 4.0
 var step_height := 0.2      # target riser; adjusted so a whole number of risers reaches `height`
 var step_depth := 0.3       # tread
+var undercroft_enabled := true
+var undercroft_height := 3.8   # clear height of the walkway cut through each flight
+var undercroft_width := 3.0    # its width along the flight (the walkway is as long as the flight is wide)
 var floor_color := Color(0.40, 0.28, 0.21)
 var stone_color := Color(0.55, 0.55, 0.57)
 
@@ -53,6 +56,7 @@ const POST_SPACING := 1.0
 const TOP_RAIL_SIZE := 0.14
 const LOWER_RAIL_HEIGHT := 0.35
 const LOWER_RAIL_SIZE := 0.08
+const SOFFIT_THICKNESS := 0.5           # solid stone left above the undercroft opening
 const STAIR_POST_EVERY := 2             # a post on every Nth tread
 
 var _stone: Array[Transform3D] = []
@@ -79,9 +83,21 @@ func rebuild() -> void:
 			_build_flight(e, s, half_l, half_w, inner_z)
 
 	_check_stair_headroom(half_l, inner_z)
+	_check_undercroft()
 
 	_commit("MezzanineStone", _stone, _material(stone_color))
 	_commit("MezzanineDecks", _decks, _material(floor_color))
+
+
+## The undercroft should feel roomy: about twice the player's height and three times their width.
+func _check_undercroft() -> void:
+	if not undercroft_enabled:
+		return
+	if undercroft_height < PlayerScale.HEIGHT * 2.0 or undercroft_width < PlayerScale.WIDTH * 3.0:
+		push_warning("ConcourseMezzanine: undercroft is %.1f x %.1f m; want at least %.1f x %.1f m (2x the player's height, 3x their width)." % [undercroft_height, undercroft_width, PlayerScale.HEIGHT * 2.0, PlayerScale.WIDTH * 3.0])
+	var near: float = undercroft_run_range(height / maxi(2, ceili(height / step_height))).x
+	if near < step_depth:
+		push_warning("ConcourseMezzanine: the undercroft reaches the landing; lower undercroft_height or its width.")
 
 
 ## A flight rises toward its end wall at the same slope whatever the mezzanine height, so
@@ -218,12 +234,18 @@ func _build_flight(e: int, s: int, half_l: float, half_w: float, inner_z: float)
 	var riser := height / n
 	var tread_cx: Array[float] = []
 	var tread_top: Array[float] = []
+	var cut := undercroft_run_range(riser)  # distances from the landing edge covered by the opening
 	for j in n - 1:
 		var top := height - (j + 1) * riser
 		var cx := x_land - e * (j + 0.5) * step_depth
 		tread_cx.append(cx)
 		tread_top.append(top)
-		_add(_stone, Vector3(cx, top * 0.5, zc), Vector3(step_depth, top, width))
+		var run := (j + 0.5) * step_depth
+		if undercroft_enabled and run > cut.x and run < cut.y:
+			# undercroft: leave only the stone above the opening, so a walkway passes under the flight
+			_add(_stone, Vector3(cx, (top + undercroft_height) * 0.5, zc), Vector3(step_depth, top - undercroft_height, width))
+		else:
+			_add(_stone, Vector3(cx, top * 0.5, zc), Vector3(step_depth, top, width))
 
 	# side balustrades following the slope, plus a post on every Nth tread
 	var last := n - 2
@@ -241,6 +263,22 @@ func _build_flight(e: int, s: int, half_l: float, half_w: float, inner_z: float)
 	if zb < inner_z - POST_SIZE:
 		var edge_x := x_land - e * POST_SIZE * 0.5
 		_balustrade(Vector3(edge_x, height, s * zb), Vector3(edge_x, height, s * inner_z))
+
+
+## Distances from the landing's inner edge between which each flight is hollowed: the opening ends
+## where the flight is just tall enough to leave SOFFIT_THICKNESS of stone above `undercroft_height`.
+## Returns Vector2(near, far).
+func undercroft_run_range(riser: float) -> Vector2:
+	var slope := riser / step_depth
+	var far := (height - undercroft_height - SOFFIT_THICKNESS) / slope
+	return Vector2(far - undercroft_width, far)
+
+
+## World X (absolute value) of the middle of the undercroft opening.
+func undercroft_centre_x() -> float:
+	var n := maxi(2, ceili(height / step_height))
+	var r := undercroft_run_range(height / n)
+	return hall_length * 0.5 - depth - (r.x + r.y) * 0.5
 
 
 # ------------------------------------------------------------------ primitives

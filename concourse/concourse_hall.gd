@@ -87,6 +87,22 @@ extends Node3D
 ## window opening. The window tops stay where they are. Off = windows unchanged.
 @export var raise_window_sills := true: set = _set_raise_window_sills
 
+@export_group("Undercroft")
+## A walkway cut through each stair flight, so you can pass from the central floor to the arcade under the balcony.
+@export var undercroft_enabled := true: set = _set_undercroft_enabled
+## Clear height. At least 2x the player's height (3.6 m for the 1.8 m reference).
+@export_range(2.0, 6.0, 0.1, "suffix:m") var undercroft_height := 3.8: set = _set_undercroft_height
+## Width of the opening along the flight. At least 3x the player's width.
+@export_range(1.0, 8.0, 0.1, "suffix:m") var undercroft_width := 3.0: set = _set_undercroft_width
+
+@export_group("Kiosks")
+@export var kiosks_enabled := true: set = _set_kiosks_enabled
+## Which bays (counting from 0 at the -X end) get a kiosk, on both long walls. The default is the
+## middle bay: the end bays sit behind the stair flights, which hide a kiosk and block the way to it.
+@export var kiosk_bays: PackedInt32Array = PackedInt32Array([2]): set = _set_kiosk_bays
+## Per-kiosk overrides, e.g. {"board_bottom": 3.4, "width": 4.5}. See ConcourseKiosk.
+@export var kiosk_properties: Dictionary = {}: set = _set_kiosk_properties
+
 @export_group("Landmark")
 @export var landmark_enabled := true: set = _set_landmark_enabled
 ## Height of the clock tower's apex above the floor.
@@ -187,6 +203,13 @@ func _build_bays(root: Node3D) -> Dictionary:
 			bay.name = "Bay%d" % i
 			bay.position.x = (i - (hall_bays - 1) * 0.5) * first.bay_width
 			row.add_child(bay)
+			if kiosks_enabled and kiosk_bays.has(i):
+				var kiosk := ConcourseKiosk.new()  # origin on the wall face, +Z into the hall (the row is turned for the +Z wall)
+				for k in kiosk_properties:
+					kiosk.set(k, kiosk_properties[k])
+				kiosk.name = "Kiosk%d" % i
+				kiosk.position.x = bay.position.x
+				row.add_child(kiosk)
 	dims.length = first.bay_width * hall_bays
 	dims.wall_height = first.wall_height
 	dims.wall_thickness = first.wall_thickness
@@ -450,6 +473,9 @@ func _build_mezzanine(root: Node3D, dims: Dictionary) -> void:
 	mz.stair_width = stair_width
 	mz.step_height = step_height
 	mz.step_depth = step_depth
+	mz.undercroft_enabled = undercroft_enabled
+	mz.undercroft_height = undercroft_height
+	mz.undercroft_width = undercroft_width
 	mz.floor_color = mezzanine_floor_color
 	mz.stone_color = stone_color
 	root.add_child(mz)
@@ -533,6 +559,12 @@ func _set_step_height(v: float) -> void: step_height = v; _queue_rebuild()
 func _set_step_depth(v: float) -> void: step_depth = v; _queue_rebuild()
 func _set_mezzanine_floor_color(v: Color) -> void: mezzanine_floor_color = v; _queue_rebuild()
 func _set_raise_window_sills(v: bool) -> void: raise_window_sills = v; _queue_rebuild()
+func _set_undercroft_enabled(v: bool) -> void: undercroft_enabled = v; _queue_rebuild()
+func _set_undercroft_height(v: float) -> void: undercroft_height = v; _queue_rebuild()
+func _set_undercroft_width(v: float) -> void: undercroft_width = v; _queue_rebuild()
+func _set_kiosks_enabled(v: bool) -> void: kiosks_enabled = v; _queue_rebuild()
+func _set_kiosk_bays(v: PackedInt32Array) -> void: kiosk_bays = v; _queue_rebuild()
+func _set_kiosk_properties(v: Dictionary) -> void: kiosk_properties = v; _queue_rebuild()
 func _set_sun_yaw(v: float) -> void: sun_yaw_degrees = v; _queue_rebuild()
 func _set_sun_pitch(v: float) -> void: sun_pitch_degrees = v; _queue_rebuild()
 func _set_sun_energy(v: float) -> void: sun_energy = v; _queue_rebuild()
