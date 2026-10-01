@@ -69,6 +69,9 @@ extends Node3D
 @export_range(1.5, 6.0, 0.1, "suffix:m") var mezzanine_depth := 3.0: set = _set_mezzanine_depth
 @export_range(0.2, 1.5, 0.05, "suffix:m") var mezzanine_thickness := 0.5: set = _set_mezzanine_thickness
 @export_range(1.0, 8.0, 0.1, "suffix:m") var bridge_width := 3.5: set = _set_bridge_width
+## Distance of each bridge from the hall centre (10 = at 1/4 and 3/4 of a 40 m hall). The stair
+## flights pass under the bridges; the hall warns if that leaves too little headroom.
+@export_range(2.0, 18.0, 0.1, "suffix:m") var bridge_distance := 10.0: set = _set_bridge_distance
 ## Width of each of the four flights (two at each end).
 @export_range(1.0, 6.0, 0.1, "suffix:m") var stair_width := 4.0: set = _set_stair_width
 ## Target riser height; the hall adjusts it slightly so a whole number of steps reaches the mezzanine.
@@ -437,6 +440,7 @@ func _build_mezzanine(root: Node3D, dims: Dictionary) -> void:
 	mz.depth = mezzanine_depth
 	mz.thickness = mezzanine_thickness
 	mz.bridge_width = bridge_width
+	mz.bridge_distance = bridge_distance
 	mz.stair_width = stair_width
 	mz.step_height = step_height
 	mz.step_depth = step_depth
@@ -516,6 +520,7 @@ func _set_mezzanine_height(v: float) -> void: mezzanine_height = v; _queue_rebui
 func _set_mezzanine_depth(v: float) -> void: mezzanine_depth = v; _queue_rebuild()
 func _set_mezzanine_thickness(v: float) -> void: mezzanine_thickness = v; _queue_rebuild()
 func _set_bridge_width(v: float) -> void: bridge_width = v; _queue_rebuild()
+func _set_bridge_distance(v: float) -> void: bridge_distance = v; _queue_rebuild()
 func _set_stair_width(v: float) -> void: stair_width = v; _queue_rebuild()
 func _set_step_height(v: float) -> void: step_height = v; _queue_rebuild()
 func _set_step_depth(v: float) -> void: step_depth = v; _queue_rebuild()

@@ -27,13 +27,14 @@ var height := 8.0           # top of the walking surface
 var depth := 3.0            # balcony and landing depth
 var thickness := 0.5        # deck slab thickness
 var bridge_width := 3.5
+var bridge_distance := 10.0  # each bridge's centre, measured from the hall centre along X
 var stair_width := 4.0
 var step_height := 0.2      # target riser; adjusted so a whole number of risers reaches `height`
 var step_depth := 0.3       # tread
 var floor_color := Color(0.40, 0.28, 0.21)
 var stone_color := Color(0.55, 0.55, 0.57)
 
-const BRIDGE_FRACTIONS := [0.25, 0.75]  # of the hall length, measured from one end
+const MIN_STAIR_HEADROOM := 2.2         # clear height wanted where a flight passes under a bridge
 const STAIR_GAP := 1.0                  # between the entrance edge and the flights
 const FASCIA_HEIGHT := 0.8
 const FASCIA_THICKNESS := 0.3
@@ -41,7 +42,7 @@ const CORBEL_STEPS := 3
 const CORBEL_STEP_HEIGHT := 0.5
 const CORBEL_STEP_PROJECTION := 0.7     # each higher step projects this much further from the wall
 const CORBEL_WIDTH := 1.4
-const GIRDER_HEIGHT := 1.2
+const GIRDER_HEIGHT := 0.6              # kept shallow: a flight rises under each bridge, so depth eats headroom
 const GIRDER_WIDTH := 0.4
 const RAIL_HEIGHT := 1.1
 const POST_SIZE := 0.12
@@ -65,9 +66,7 @@ func rebuild() -> void:
 	var half_l := hall_length * 0.5
 	var half_w := hall_width * 0.5
 	var inner_z := half_w - depth  # |z| of a balcony's open edge
-	var bridge_xs: Array[float] = []
-	for f in BRIDGE_FRACTIONS:
-		bridge_xs.append(-half_l + f * hall_length)
+	var bridge_xs: Array[float] = [-bridge_distance, bridge_distance]
 
 	_build_balconies(half_l, half_w, inner_z, bridge_xs)
 	for bx in bridge_xs:
@@ -76,8 +75,27 @@ func rebuild() -> void:
 		for s in [-1, 1]:
 			_build_flight(e, s, half_l, half_w, inner_z)
 
+	_check_stair_headroom(half_l)
+
 	_commit("MezzanineStone", _stone, _material(stone_color))
 	_commit("MezzanineDecks", _decks, _material(floor_color))
+
+
+## A flight rises toward its end wall at the same slope whatever the mezzanine height,
+## so a bridge over it always leaves (distance from landing * slope) minus the bridge's
+## depth. Warn when that is too tight to walk under.
+func _check_stair_headroom(half_l: float) -> void:
+	var slope := (height / maxi(2, ceili(height / step_height))) / step_depth
+	var land_x := half_l - depth
+	var underside := height - thickness - GIRDER_HEIGHT
+	for edge in [absf(bridge_distance) - bridge_width * 0.5, absf(bridge_distance) + bridge_width * 0.5]:
+		var run_from_landing: float = land_x - edge
+		if run_from_landing <= 0.0:
+			continue  # beyond the landing's inner edge: no flight there
+		var tread_top: float = height - run_from_landing * slope
+		if tread_top > 0.0 and underside - tread_top < MIN_STAIR_HEADROOM:
+			push_warning("ConcourseMezzanine: only %.1f m of headroom where a flight passes under a bridge (want %.1f). Move the bridges toward the hall centre (bridge_distance) or reduce the girder depth." % [underside - tread_top, MIN_STAIR_HEADROOM])
+			return
 
 
 # ------------------------------------------------------------------- balconies

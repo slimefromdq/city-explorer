@@ -104,7 +104,7 @@ func _hall_shots(hall: ConcourseHall) -> Array:
 	var half_w: float = hall.hall_width * 0.5
 	var deck_y: float = hall.mezzanine_height
 	var clock_y: float = hall.landmark_height - 3.0  # about the clock faces' height
-	var bridge_x: float = -length * 0.25
+	var bridge_x: float = -hall.bridge_distance
 	# stair foot: the landing edge is `depth` in from the end wall; the flight runs back from there
 	var steps: int = ceili(deck_y / hall.step_height)
 	var foot_x: float = half - hall.mezzanine_depth - (steps - 1) * hall.step_depth
@@ -122,6 +122,8 @@ func _hall_shots(hall: ConcourseHall) -> Array:
 		["floor_up_to_bridge", Vector3(bridge_x - 6.0, EYE_HEIGHT, -4.0), Vector3(bridge_x, deck_y + 9.0, 2.0)],
 		# 6. at the foot of a grand staircase (+X end, +Z flight), looking up it
 		["stair_foot_looking_up", Vector3(foot_x - 2.0, EYE_HEIGHT, stair_z), Vector3(half - hall.mezzanine_depth, deck_y + 2.5, stair_z)],
+		# extra: the headroom where a flight passes under a bridge, seen from the side
+		["stair_under_bridge", Vector3(-bridge_x - 1.0, EYE_HEIGHT, 0.0), Vector3(-bridge_x + 2.0, 5.0, stair_z)],
 		# extra: the far wall's round window. From the entrance the near bridge hides it, so look from between the bridges, off-axis so the clock is not in the way.
 		["far_wall_window", Vector3(-6.0, EYE_HEIGHT, -7.0), Vector3(half, hall.rose_height - 4.0, 0)],
 		# extras kept from earlier passes: the clock up close, and the view back from the far end
