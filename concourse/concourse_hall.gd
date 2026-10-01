@@ -68,6 +68,8 @@ extends Node3D
 ## Depth of the balcony strips (and the stair landings).
 @export_range(1.5, 6.0, 0.1, "suffix:m") var mezzanine_depth := 3.0: set = _set_mezzanine_depth
 @export_range(0.2, 1.5, 0.05, "suffix:m") var mezzanine_thickness := 0.5: set = _set_mezzanine_thickness
+## Bridge slab thickness (balconies and landings use mezzanine_thickness). Thin, because a stair flight passes under each bridge.
+@export_range(0.1, 1.0, 0.01, "suffix:m") var bridge_thickness := 0.25: set = _set_bridge_thickness
 @export_range(1.0, 8.0, 0.1, "suffix:m") var bridge_width := 3.5: set = _set_bridge_width
 ## Distance of each bridge from the hall centre. The stair flights pass under the bridges, and the
 ## closer a bridge is to the hall centre, the more headroom it leaves (the hall warns below 4 m).
@@ -82,7 +84,10 @@ extends Node3D
 ## Target riser height; the hall adjusts it slightly so a whole number of steps reaches the mezzanine.
 @export_range(0.1, 0.3, 0.005, "suffix:m") var step_height := 0.2: set = _set_step_height
 @export_range(0.2, 0.5, 0.01, "suffix:m") var step_depth := 0.3: set = _set_step_depth
+## Walking surfaces only (dark brown).
 @export var mezzanine_floor_color := Color(0.40, 0.28, 0.21): set = _set_mezzanine_floor_color
+## Slabs, girders, fascia and corbels (warm stone).
+@export var mezzanine_underside_color := Color(0.74, 0.68, 0.58): set = _set_mezzanine_underside_color
 ## Raise the windows' sills to sit above the balustrade, so the walkway never crosses a
 ## window opening. The window tops stay where they are. Off = windows unchanged.
 @export var raise_window_sills := true: set = _set_raise_window_sills
@@ -96,11 +101,18 @@ extends Node3D
 ## player's height (3.6 m for the 1.8 m reference).
 @export_range(2.0, 6.0, 0.1, "suffix:m") var undercroft_height := 3.8: set = _set_undercroft_height
 
+@export_group("Undercroft dressing")
+## One prop per undercroft ("bench", "planter", "lamp", or "" for none), in the order (+X,+Z) (+X,-Z)
+## (-X,-Z) (-X,+Z): so the two undercrofts flanking an entrance, and each pair's neighbours, differ.
+@export var undercroft_props: PackedStringArray = PackedStringArray(["bench", "planter", "lamp", ""]): set = _set_undercroft_props
+
 @export_group("Kiosks")
 @export var kiosks_enabled := true: set = _set_kiosks_enabled
 ## Which bays (counting from 0 at the -X end) get a kiosk, on both long walls. The default is the
 ## middle bay: the end bays sit behind the stair flights, which hide a kiosk and block the way to it.
 @export var kiosk_bays: PackedInt32Array = PackedInt32Array([2]): set = _set_kiosk_bays
+## Energy of the warm OmniLight3D in front of each departures / arrivals board.
+@export_range(0.0, 8.0, 0.05) var board_light_energy := 1.2: set = _set_board_light_energy
 ## Per-kiosk overrides, e.g. {"board_bottom": 3.4, "width": 4.5}. See ConcourseKiosk.
 @export var kiosk_properties: Dictionary = {}: set = _set_kiosk_properties
 
@@ -206,6 +218,10 @@ func _build_bays(root: Node3D) -> Dictionary:
 			row.add_child(bay)
 			if kiosks_enabled and kiosk_bays.has(i):
 				var kiosk := ConcourseKiosk.new()  # origin on the wall face, +Z into the hall (the row is turned for the +Z wall)
+				kiosk.board_kind = "DEPARTURES" if side < 0 else "ARRIVALS"
+				kiosk.pier_spacing = first.bay_width
+				kiosk.pier_depth = first.pier_depth
+				kiosk.board_light_energy = board_light_energy
 				for k in kiosk_properties:
 					kiosk.set(k, kiosk_properties[k])
 				kiosk.name = "Kiosk%d" % i
@@ -477,6 +493,9 @@ func _build_mezzanine(root: Node3D, dims: Dictionary) -> void:
 	mz.undercroft_enabled = undercroft_enabled
 	mz.undercroft_height = undercroft_height
 	mz.floor_color = mezzanine_floor_color
+	mz.underside_color = mezzanine_underside_color
+	mz.bridge_thickness = bridge_thickness
+	mz.undercroft_props = undercroft_props
 	mz.stone_color = stone_color
 	root.add_child(mz)
 	mz.rebuild()
@@ -564,6 +583,10 @@ func _set_undercroft_height(v: float) -> void: undercroft_height = v; _queue_reb
 func _set_kiosks_enabled(v: bool) -> void: kiosks_enabled = v; _queue_rebuild()
 func _set_kiosk_bays(v: PackedInt32Array) -> void: kiosk_bays = v; _queue_rebuild()
 func _set_kiosk_properties(v: Dictionary) -> void: kiosk_properties = v; _queue_rebuild()
+func _set_board_light_energy(v: float) -> void: board_light_energy = v; _queue_rebuild()
+func _set_bridge_thickness(v: float) -> void: bridge_thickness = v; _queue_rebuild()
+func _set_mezzanine_underside_color(v: Color) -> void: mezzanine_underside_color = v; _queue_rebuild()
+func _set_undercroft_props(v: PackedStringArray) -> void: undercroft_props = v; _queue_rebuild()
 func _set_sun_yaw(v: float) -> void: sun_yaw_degrees = v; _queue_rebuild()
 func _set_sun_pitch(v: float) -> void: sun_pitch_degrees = v; _queue_rebuild()
 func _set_sun_energy(v: float) -> void: sun_energy = v; _queue_rebuild()

@@ -25,7 +25,9 @@ var bay_count := 5
 var entrance_width := 10.0
 var height := 8.0           # top of the walking surface
 var depth := 3.0            # balcony and landing depth
-var thickness := 0.5        # deck slab thickness
+var thickness := 0.5        # balcony / landing slab thickness
+var bridge_thickness := 0.25  # bridge slab thickness (thinner: a flight passes under each bridge)
+var undercroft_props := PackedStringArray(["bench", "planter", "lamp", ""])  # one per flight: (+X,+Z) (+X,-Z) (-X,-Z) (-X,+Z)
 var bridge_width := 3.5
 var bridge_distance := 8.5   # each bridge's centre, measured from the hall centre along X
 var bridge_arch_rise := 3.0  # how far the middle of a bridge is raised above the balcony level
@@ -34,7 +36,8 @@ var step_height := 0.2      # target riser; adjusted so a whole number of risers
 var step_depth := 0.3       # tread
 var undercroft_enabled := true
 var undercroft_height := 3.8   # minimum clear height under a flight: the flight is hollowed out wherever it is tall enough
-var floor_color := Color(0.40, 0.28, 0.21)
+var floor_color := Color(0.40, 0.28, 0.21)       # walking surfaces only
+var underside_color := Color(0.74, 0.68, 0.58)   # warm stone: slabs, girders, fascia, corbels
 var stone_color := Color(0.55, 0.55, 0.57)
 
 const MIN_STAIR_HEADROOM := PlayerScale.HEIGHT + PlayerScale.JUMP_HEIGHT + PlayerScale.HEADROOM_MARGIN  # above the treads under a bridge: stand, jump, margin
@@ -47,20 +50,22 @@ const CORBEL_STEPS := 3
 const CORBEL_STEP_HEIGHT := 0.5
 const CORBEL_STEP_PROJECTION := 0.7     # each higher step projects this much further from the wall
 const CORBEL_WIDTH := 1.4
-const GIRDER_HEIGHT := 0.6              # kept shallow: a flight rises under each bridge, so depth eats headroom
+const GIRDER_HEIGHT := 0.4              # kept shallow: a flight rises under each bridge, so depth eats headroom
+const DECK_SURFACE := 0.06              # the walking-surface layer on top of a slab (the only brown part)
 const GIRDER_WIDTH := 0.4
 const RAIL_HEIGHT := PlayerScale.CHEST_HEIGHT  # top rail at chest height of the reference player
-const POST_SIZE := 0.12
+const POST_SIZE := 0.07
 const POST_SPACING := 1.0
-const TOP_RAIL_SIZE := 0.14
+const TOP_RAIL_SIZE := 0.09
 const LOWER_RAIL_HEIGHT := 0.35
-const LOWER_RAIL_SIZE := 0.08
+const LOWER_RAIL_SIZE := 0.05
 const SOFFIT_THICKNESS := 0.5           # thickness of the stair slab / landing deck above the undercroft
 const LANDING_COLUMN := 0.8             # side of the square columns that carry a hollowed landing
 const STAIR_POST_EVERY := 2             # a post on every Nth tread
 
 var _stone: Array[Transform3D] = []
-var _decks: Array[Transform3D] = []
+var _decks: Array[Transform3D] = []   # walking surfaces (brown)
+var _under: Array[Transform3D] = []   # slabs and structure under them (warm stone)
 
 
 func rebuild() -> void:
@@ -69,6 +74,7 @@ func rebuild() -> void:
 		c.queue_free()
 	_stone.clear()
 	_decks.clear()
+	_under.clear()
 
 	var half_l := hall_length * 0.5
 	var half_w := hall_width * 0.5
@@ -87,6 +93,7 @@ func rebuild() -> void:
 
 	_commit("MezzanineStone", _stone, _material(stone_color))
 	_commit("MezzanineDecks", _decks, _material(floor_color))
+	_commit("MezzanineUnder", _under, _material(underside_color))
 
 
 ## The undercroft should feel roomy: about twice the player's height, and the flight (so the
@@ -106,7 +113,7 @@ func _check_stair_headroom(half_l: float, inner_z: float) -> void:
 	var slope := (height / maxi(2, ceili(height / step_height))) / step_depth
 	var land_x := half_l - depth
 	var outer_z := minf(entrance_width * 0.5 + STAIR_GAP + stair_width, inner_z)
-	var underside := _bridge_top(outer_z, inner_z) - thickness - GIRDER_HEIGHT
+	var underside := _bridge_top(outer_z, inner_z) - bridge_thickness - GIRDER_HEIGHT
 	for edge in [absf(bridge_distance) - bridge_width * 0.5, absf(bridge_distance) + bridge_width * 0.5]:
 		var run_from_landing: float = land_x - edge
 		if run_from_landing <= 0.0:
@@ -121,9 +128,9 @@ func _check_stair_headroom(half_l: float, inner_z: float) -> void:
 
 func _build_balconies(half_l: float, half_w: float, inner_z: float, bridge_xs: Array[float]) -> void:
 	for s in [-1, 1]:
-		_add(_decks, Vector3(0, height - thickness * 0.5, s * (half_w - depth * 0.5)), Vector3(hall_length, thickness, depth))
+		_add_deck(Vector3(0, height - thickness * 0.5, s * (half_w - depth * 0.5)), Vector3(hall_length, thickness, depth))
 		# fascia beam hanging off the open edge
-		_add(_stone, Vector3(0, height - thickness - FASCIA_HEIGHT * 0.5, s * (inner_z + FASCIA_THICKNESS * 0.5)),
+		_add(_under, Vector3(0, height - thickness - FASCIA_HEIGHT * 0.5, s * (inner_z + FASCIA_THICKNESS * 0.5)),
 			Vector3(hall_length, FASCIA_HEIGHT, FASCIA_THICKNESS))
 		# corbel stacks: the lowest step projects least, the one under the deck most
 		for i in bay_count:
@@ -131,7 +138,7 @@ func _build_balconies(half_l: float, half_w: float, inner_z: float, bridge_xs: A
 			for k in CORBEL_STEPS:
 				var proj := (k + 1) * CORBEL_STEP_PROJECTION
 				var top := height - thickness - (CORBEL_STEPS - 1 - k) * CORBEL_STEP_HEIGHT
-				_add(_stone, Vector3(xc, top - CORBEL_STEP_HEIGHT * 0.5, s * (half_w - proj * 0.5)),
+				_add(_under, Vector3(xc, top - CORBEL_STEP_HEIGHT * 0.5, s * (half_w - proj * 0.5)),
 					Vector3(CORBEL_WIDTH, CORBEL_STEP_HEIGHT, proj))
 		# balustrade along the open edge, except where a bridge or a landing joins
 		var cuts: Array = [[-half_l, -half_l + depth], [half_l - depth, half_l]]
@@ -184,10 +191,10 @@ func _build_bridge(bx: float, inner_z: float) -> void:
 		var rot := Basis(Vector3.RIGHT, y_axis, z_axis)
 		var mid := (p0 + p1) * 0.5
 		var seg_len := length + SEGMENT_OVERLAP  # a little extra so bends leave no wedge-shaped gap
-		_add(_decks, Vector3(bx, mid.y, mid.z) - y_axis * (thickness * 0.5), Vector3(bridge_width, thickness, seg_len), rot)
+		_add_deck(Vector3(bx, mid.y, mid.z) - y_axis * (bridge_thickness * 0.5), Vector3(bridge_width, bridge_thickness, seg_len), rot)
 		for sx in [-1, 1]:
 			var gx: float = bx + sx * (bridge_width * 0.5 - GIRDER_WIDTH * 0.5)
-			_add(_stone, Vector3(gx, mid.y, mid.z) - y_axis * (thickness + GIRDER_HEIGHT * 0.5), Vector3(GIRDER_WIDTH, GIRDER_HEIGHT, seg_len), rot)
+			_add(_under, Vector3(gx, mid.y, mid.z) - y_axis * (bridge_thickness + GIRDER_HEIGHT * 0.5), Vector3(GIRDER_WIDTH, GIRDER_HEIGHT, seg_len), rot)
 	for sx in [-1, 1]:
 		var x: float = bx + sx * (bridge_width * 0.5 - POST_SIZE * 0.5)
 		_arched_balustrade(x, zs, inner_z)
@@ -224,7 +231,7 @@ func _build_flight(e: int, s: int, half_l: float, half_w: float, inner_z: float)
 	var land_z1 := inner_z
 	var land_cz := s * (land_z0 + land_z1) * 0.5
 	var land_cx := e * (half_l - depth * 0.5)
-	_add(_decks, Vector3(land_cx, height - thickness * 0.5, land_cz), Vector3(depth, thickness, land_z1 - land_z0))
+	_add_deck(Vector3(land_cx, height - thickness * 0.5, land_cz), Vector3(depth, thickness, land_z1 - land_z0))
 	if undercroft_enabled:
 		# open underneath: two columns at the flight side carry the deck (the end wall carries the other edge)
 		var col_x := x_land + e * (LANDING_COLUMN * 0.5 + 0.1)
@@ -268,6 +275,29 @@ func _build_flight(e: int, s: int, half_l: float, half_w: float, inner_z: float)
 		var edge_x := x_land - e * POST_SIZE * 0.5
 		_balustrade(Vector3(edge_x, height, s * zb), Vector3(edge_x, height, s * inner_z))
 
+	if undercroft_enabled:
+		_place_undercroft_prop(e, s, half_l, x_land, zc)
+
+
+## Dress one undercroft with a bench, planter or lamp (or nothing), so that no two neighbouring
+## undercrofts look alike. Index: (+X,+Z) 0, (+X,-Z) 1, (-X,-Z) 2, (-X,+Z) 3.
+func _place_undercroft_prop(e: int, s: int, half_l: float, x_land: float, zc: float) -> void:
+	var idx := (0 if s > 0 else 1) if e > 0 else (2 if s < 0 else 3)
+	if idx >= undercroft_props.size() or undercroft_props[idx] == "":
+		return
+	var prop := ConcourseProp.new()
+	prop.kind = undercroft_props[idx]
+	prop.name = "Undercroft%s%d" % [prop.kind.capitalize(), idx]
+	match prop.kind:
+		"bench":  # against the end wall, facing the hall
+			prop.position = Vector3(e * (half_l - 0.6), 0, zc)
+			prop.rotation.y = -e * PI * 0.5
+		"planter":  # between the landing columns, under the deck
+			prop.position = Vector3(x_land + e * 1.8, 0, zc)
+		"lamp":  # under the stair slab, where it is already tall
+			prop.position = Vector3(x_land - e * 1.0, 0, zc)
+	add_child(prop)
+
 
 ## How far from the landing's inner edge (along the flight) the flight is hollowed out: up to where
 ## the stair slab's underside is still `undercroft_height` above the floor. Beyond that the flight is
@@ -302,6 +332,15 @@ func _rail(a: Vector3, b: Vector3, section: float) -> void:
 	var length := dir.length()
 	var rot := Basis(Quaternion(Vector3.RIGHT, dir / length))
 	_add(_stone, (a + b) * 0.5, Vector3(length + section * 0.5, section, section), rot)
+
+
+## A deck slab: warm stone below, a thin walking surface on top. `center` is the middle of the slab's
+## thickness (size.y); `rot` tilts it (arched bridge pieces).
+func _add_deck(center: Vector3, size: Vector3, rot := Basis.IDENTITY) -> void:
+	var up := rot * Vector3.UP
+	var slab := maxf(size.y - DECK_SURFACE, 0.01)
+	_add(_under, center - up * (DECK_SURFACE * 0.5), Vector3(size.x, slab, size.z), rot)
+	_add(_decks, center + up * (size.y * 0.5 - DECK_SURFACE * 0.5), Vector3(size.x, DECK_SURFACE, size.z), rot)
 
 
 func _add(list: Array[Transform3D], center: Vector3, size: Vector3, rot := Basis.IDENTITY) -> void:

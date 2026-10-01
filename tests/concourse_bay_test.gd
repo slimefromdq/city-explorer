@@ -136,11 +136,14 @@ func _hall_shots(hall: ConcourseHall) -> Array:
 	var tight_x: float = hall.bridge_distance + hall.bridge_width * 0.5  # bridge edge nearest the landing
 	var tight_top: float = _stair_top_at(hall, tight_x, half)
 	var u: float = outer_z / inner_z
-	var underside: float = deck_y + hall.bridge_arch_rise * (1.0 - u * u) - hall.mezzanine_thickness - 0.6
+	var underside: float = deck_y + hall.bridge_arch_rise * (1.0 - u * u) - hall.bridge_thickness - ConcourseMezzanine.GIRDER_HEIGHT
 	print("headroom check: tread top %.2f m, bridge underside over the flight's outer edge %.2f m, clearance %.2f m (standing %.1f m, jumping %.1f m)" % [tight_top, underside, underside - tight_top, PlayerScale.HEIGHT, PlayerScale.HEIGHT + PlayerScale.JUMP_HEIGHT])
 	var foot_tread_x: float = foot_x + 1.2  # a few treads up from the bottom
 	var x_land: float = half - hall.mezzanine_depth
 	var uc_far_x: float = x_land - _undercroft_open_run(hall)  # where the hollow part of the flight ends, nearest the hall centre
+	var kiosk: ConcourseKiosk = hall.get_node_or_null("Generated/WallNegZ/Kiosk%d" % (hall.kiosk_bays[0] if hall.kiosk_bays.size() > 0 else 2))
+	var board_cy: float = (kiosk.board_bottom + kiosk.board_height * 0.5) if kiosk != null else 4.5
+	var board_z: float = -half_w + (kiosk.pier_depth + 0.35 if kiosk != null else 1.3)
 	var kiosk_x: float = ((hall.kiosk_bays[0] if hall.kiosk_bays.size() > 0 else 2) - (hall.hall_bays - 1) * 0.5) * bay.bay_width  # first kiosk bay on the -Z wall
 	return [
 		# 1. at the near entrance, looking down the hall; the capsule stands a few metres ahead
@@ -166,9 +169,14 @@ func _hall_shots(hall: ConcourseHall) -> Array:
 		# extra: just inside the undercroft's low end, looking in toward the landing; the capsule is further in
 		_shot("undercroft_looking_in", Vector3(uc_far_x + 0.8, EYE_HEIGHT, (za + outer_z) * 0.5), Vector3(x_land + 1.5, 3.5, (za + outer_z) * 0.5), Vector3(x_land - 1.5, 0, (za + outer_z) * 0.5)),
 		# extra: the -Z wall's kiosk: the capsule stands in front of the counter
-		_shot("kiosk_counter", Vector3(kiosk_x + 2.5, EYE_HEIGHT, -half_w + 7.5), Vector3(kiosk_x, 2.0, -half_w), Vector3(kiosk_x - 0.5, 0, -half_w + 2.6)),
+		_shot("kiosk_counter", Vector3(kiosk_x + 2.5, EYE_HEIGHT, -half_w + 7.5), Vector3(kiosk_x, 3.0, -half_w), Vector3(kiosk_x - 0.5, 0, -half_w + 2.6)),
 		# extra: the same kiosk's board from the opposite balcony (the booth blocks the floor-level line across), ~28 m away
-		_shot("kiosk_board_from_across", Vector3(kiosk_x + 6.0, deck_y + EYE_HEIGHT, half_w - 1.5), Vector3(kiosk_x, 3.7, -half_w), Vector3(kiosk_x - 0.5, 0, -half_w + 2.6)),
+		_shot("kiosk_board_from_across", Vector3(kiosk_x + 6.0, deck_y + EYE_HEIGHT, half_w - 1.5), Vector3(kiosk_x, board_cy, -half_w), Vector3(kiosk_x - 0.5, 0, -half_w + 2.6)),
+		# extra: standing in the corridor between the flights at the +X end, looking at both undercrofts (bench left/right, planter opposite)
+		_shot("undercroft_pair", Vector3(x_land - 9.0, EYE_HEIGHT, 0), Vector3(half, 2.5, 0), Vector3(x_land - 4.0, 0, 0), false, Vector3.UP, 95.0),
+		# extra (new): from mid-hall, looking toward the +X end's undercroft and across to the DEPARTURES board on the -Z wall,
+		# to check the board is visible and readable from far across the hall; the capsule is in the foreground for scale
+		_shot("mid_hall_board_and_undercroft", Vector3(half * 0.45, EYE_HEIGHT, 1.0), Vector3(0.0, board_cy - 0.6, board_z), Vector3(half * 0.45 - 1.5, 0, -2.5), false, Vector3.UP, 85.0),
 		# extras kept from earlier passes: the clock up close, and the view back from the far end
 		_shot("landmark_clock", Vector3(-8.0, EYE_HEIGHT, 6.0), Vector3(0, clock_y, 0), Vector3(-5.5, 0, 3.5)),
 		_shot("far_end_looking_back", Vector3(half - 2.0, EYE_HEIGHT, 0), Vector3(-half, wall_h * 0.4, 0), Vector3(half - 7.0, 0, 1.0)),
