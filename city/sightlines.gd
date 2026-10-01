@@ -18,6 +18,7 @@ const LANDMARK_BOX := 36.0  # other landmarks are treated as a box this wide whe
 
 var clearance: float
 var half_width: float
+var roof_extra: float  # roof gardens and parapets: every roof is treated as this much taller
 var target_id: String
 var target_position: Vector2
 var tower_height: float
@@ -34,6 +35,7 @@ func _init(city: Dictionary, terrain) -> void:
 	var cfg: Dictionary = city["sightlines"]
 	clearance = float(cfg["clearance"])
 	half_width = float(cfg["corridor_half_width"])
+	roof_extra = float(city["greenery"]["roof_garden_height"])
 	target_id = cfg["target"]
 	for lm in city["landmarks"]:
 		if lm["id"] == target_id:
@@ -113,4 +115,4 @@ func _roof_y(b: Dictionary) -> float:
 	var v: Vector2 = (b["u"] as Vector2).orthogonal()
 	for corner in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:
 		low = minf(low, _terrain.height_at(b["center"] + b["u"] * corner.x * b["size"].x * 0.5 + v * corner.y * b["size"].y * 0.5))
-	return low + float(b["height"])
+	return low + float(b["height"]) + roof_extra

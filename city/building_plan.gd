@@ -68,7 +68,7 @@ func _init(city: Dictionary, lot_plan, terrain = null, sightlines = null) -> voi
 		var lowered_here := false
 		if sightlines != null and terrain != null:
 			# Keep the roof under the line of sight to the tower (measured from the lowest ground under it).
-			var allowed: float = sightlines.ceiling_over(fit["center"], fit["u"], fit["size"] * 0.5) - base_elevation(fit["center"], fit["u"], fit["size"], terrain)
+			var allowed: float = sightlines.ceiling_over(fit["center"], fit["u"], fit["size"] * 0.5) - base_elevation(fit["center"], fit["u"], fit["size"], terrain) - sightlines.roof_extra
 			if allowed < height:
 				var allowed_floors := int(floor(allowed / float(rules["floor_height"])))
 				if allowed_floors < int(rules["min_floors"]):

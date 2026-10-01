@@ -10,7 +10,8 @@
 #      Hills are NOT squeezed by the coast: squeezing a tall hill into a shore ramp makes
 #      cliffs no road can climb. Instead the data keeps hills inland, so they have already
 #      faded out at the shore (the validator checks this).
-#   3. The river and the harbour basin are carved out below sea level.
+#   3. The river and the harbour basin are carved out below sea level, and so are the
+#      ponds listed in the data (a small bowl with a soft rim).
 # Water itself is NOT modelled here: it is one flat plane at sea level, so
 # "lower than sea level" simply means "wet".
 extends RefCounted
@@ -32,6 +33,7 @@ var _land: PackedVector2Array
 var _river: Array
 var _basin: PackedVector2Array
 var _hills: Array  # each: {center: Vector2, radius: float, height: float}
+var _ponds: Array  # each: {center: Vector2, radius: float, depth: float}
 
 
 func _init(city: Dictionary) -> void:
@@ -46,6 +48,8 @@ func _init(city: Dictionary) -> void:
 	_land = CityData.land_polygon(city)
 	_river = city["river"]["path"]
 	_basin = CityData.to_points(city["harbour"]["basin"])
+	for pond in t.get("ponds", []):
+		_ponds.append({"center": Vector2(pond["center"][0], pond["center"][1]), "radius": float(pond["radius"]), "depth": float(pond["depth"])})
 	for h in t["hills"]:
 		_hills.append({
 			"center": Vector2(h["center"][0], h["center"][1]),
@@ -64,7 +68,12 @@ func height_at(p: Vector2) -> float:
 	# Carve water downward only (min), so the sea floor is never raised by the river rule.
 	var clearance := Geo2D.water_clearance(p, _river, _basin)  # negative = inside the water
 	var wet := 1.0 - _smooth(0.0, _bank_width, clearance)
-	return minf(ground, lerpf(ground, sea_level - _river_depth, wet))
+	var carved := minf(ground, lerpf(ground, sea_level - _river_depth, wet))
+	for pond in _ponds:
+		# a bowl: full depth in the middle 60%, easing up to ground level at the rim
+		var closeness := 1.0 - _smooth(0.6, 1.0, p.distance_to(pond["center"]) / float(pond["radius"]))
+		carved = minf(carved, lerpf(carved, sea_level - float(pond["depth"]), closeness))
+	return carved
 
 
 # Height the hills add at p (zero outside every hill's radius).

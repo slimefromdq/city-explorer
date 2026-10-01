@@ -5,17 +5,16 @@
 # the data, so changing the height in the JSON changes the structure. Each landmark
 # stands at its data position, turned by its data "yaw", on the lowest ground under
 # its footprint.
-#   tower             a steel lattice tower: four leaning legs, two platforms, a tapering
-#                     needle and a beacon (the one tower the whole city is organised around)
+#   tower             the glass skyscraper everything is organised around (see TowerBuilder)
 #   observation_wheel an upright ring on an A-frame, with spokes and cabins
 #   basilica          a stone nave with a domed crossing and a tall bell tower
 extends RefCounted
 
 const BuildingPlan := preload("res://city/building_plan.gd")
+const TowerBuilder := preload("res://city/tower_builder.gd")
 
 const STEEL := Color(0.30, 0.27, 0.25)
 const PLATFORM := Color(0.58, 0.52, 0.46)
-const BEACON := Color(1.0, 0.25, 0.2)
 const WHEEL_FRAME := Color(0.85, 0.85, 0.88)
 const CABIN := Color(0.25, 0.55, 0.78)
 const STONE := Color(0.90, 0.86, 0.76)
@@ -30,7 +29,7 @@ static func build_all(city: Dictionary, terrain) -> Node3D:
 	for lm in city["landmarks"]:
 		var shape := Node3D.new()
 		match lm["kind"]:
-			"tower": _tower(shape, lm)
+			"tower": shape.add_child(TowerBuilder.build(lm))
 			"observation_wheel": _wheel(shape, lm)
 			"basilica": _basilica(shape, lm)
 			_:
@@ -58,52 +57,6 @@ static func ground_footprint(lm: Dictionary) -> Dictionary:
 		"basilica":
 			return {"half": Vector2(11.0, 8.0)}
 	return {"half": Vector2(5.0, 5.0)}
-
-
-# ---- tower -------------------------------------------------------------------
-
-static func _tower(parent: Node3D, lm: Dictionary) -> void:
-	var h := float(lm["height"])
-	var w := float(lm["base_width"])
-	var y1 := h * 0.30  # first platform
-	var y2 := h * 0.62  # second platform
-	var y3 := h * 0.93  # where the needle ends and the antenna starts
-	# four legs leaning inwards from the corners of the base to the first platform
-	for sx in [-1.0, 1.0]:
-		for sz in [-1.0, 1.0]:
-			var bottom := Vector3(sx * w * 0.5, 0.0, sz * w * 0.5)
-			var top := Vector3(sx * w * 0.17, y1, sz * w * 0.17)
-			_beam(parent, bottom, top, w * 0.10, STEEL)
-	_box(parent, Vector3(w * 0.52, h * 0.016, w * 0.52), Vector3(0.0, y1, 0.0), PLATFORM)
-	_frustum(parent, w * 0.17, w * 0.10, y1, y2, STEEL)
-	_box(parent, Vector3(w * 0.34, h * 0.014, w * 0.34), Vector3(0.0, y2, 0.0), PLATFORM)
-	_frustum(parent, w * 0.09, w * 0.02, y2, y3, STEEL)
-	var antenna := CylinderMesh.new()
-	antenna.top_radius = 0.25
-	antenna.bottom_radius = 0.8
-	antenna.height = h - y3
-	antenna.radial_segments = 8
-	_mesh(parent, antenna, Vector3(0.0, (y3 + h) * 0.5, 0.0), STEEL)
-	var lamp := SphereMesh.new()
-	lamp.radius = 2.4
-	lamp.height = 4.8
-	var lamp_node := _mesh(parent, lamp, Vector3(0.0, h, 0.0), BEACON)
-	var lamp_mat := lamp_node.material_override as StandardMaterial3D
-	lamp_mat.emission_enabled = true
-	lamp_mat.emission = BEACON
-	lamp_mat.emission_energy_multiplier = 2.0
-
-
-# A square-sectioned tapering block (a 4-sided cone cut off at both ends).
-static func _frustum(parent: Node3D, half_bottom: float, half_top: float, y_from: float, y_to: float, color: Color) -> void:
-	var mesh := CylinderMesh.new()
-	mesh.radial_segments = 4
-	mesh.rings = 1
-	mesh.bottom_radius = half_bottom * sqrt(2.0)  # a 4-sided "cylinder" is measured corner to centre
-	mesh.top_radius = half_top * sqrt(2.0)
-	mesh.height = y_to - y_from
-	var node := _mesh(parent, mesh, Vector3(0.0, (y_from + y_to) * 0.5, 0.0), color)
-	node.rotation.y = deg_to_rad(45.0)  # turn the diamond into a square aligned with the axes
 
 
 # ---- observation wheel -------------------------------------------------------
