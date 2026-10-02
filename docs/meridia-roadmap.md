@@ -69,7 +69,7 @@ These are visual observations, not proof of traversal quality or performance.
 - Give the harbour recognizable warehouse and waterfront activity.
 - Validate all added geometry against lot boundaries and entrance reservations.
 
-### 4. Landscape and presentation
+### 4. Landscape and presentation — initial polish delivered
 
 - Remove the offshore rectangular seam without hiding land or stair openings.
 - Refine creek banks, path joins, planting composition, and waterfront edges.
@@ -84,6 +84,30 @@ These are visual observations, not proof of traversal quality or performance.
 - Review district and pedestrian views before calling the map complete.
 
 ## Delivery log
+
+- **2026-10-01: landscape and library arrival.** Ground and outer seabed now use
+  the same vertex colors and shader, removing the rectangular offshore seam.
+  Creek/lake terrain uses a stitched two-metre detail patch while the rest keeps
+  its eight-metre grid (91,392 vertices, about 21% more than the original grid).
+  Removed the duplicate park lawn mesh that crossed the finely sampled banks.
+  Garden patches sit below paths; footbridge decks meet paths with a two-centimetre
+  offset rather than a conspicuous step.
+- The library has a wide street approach, two stair flights and a rest landing.
+  Its retaining wall has a real stair opening; narrower reading rooms leave space
+  for the terrace arrival. The stair clears the hillside across its full width,
+  has protective side barriers, and uses one continuous collision surface through
+  the landing. The actual Walker reached the upper landing and returned to the
+  street without jumping. This is an exterior arrival, not an accessible civic
+  interior or a connected extension of Meridia Walk.
+- Validation and generation smoke checks passed. Architecture bounds, terrain
+  patch coverage/stitching, library traversal and the full promenade regression
+  were checked. Twenty-three repeatable viewer screenshots now cover the library
+  arrival and park water as well as the existing district/station views.
+- Actual Forward+ rendering measurements are saved in
+  [the performance report](meridia-performance.md) and
+  [raw results](meridia-performance.json). The station has the highest measured
+  draw-call count; batch its repeated detail before adding more interior objects.
+  Remaining landscape work includes waterfront furniture and planting composition.
 
 - Initial review and district reference incorporated. No district layout changes.
 - **2026-10-01: facade pass.** One shared shader/material per building group adds
@@ -213,9 +237,41 @@ godot --path . res://walk/StationWalk.tscn
 godot --path . --script res://tools/capture_meridia.gd
 godot --headless --fixed-fps 60 --path . --script res://tests/discovery_walk_test.gd
 godot --headless --path . --script res://tests/architecture_test.gd
+godot --headless --path . --script res://tests/terrain_detail_test.gd
+godot --headless --fixed-fps 60 --path . --script res://tests/library_access_test.gd
+godot --path . --script res://tools/profile_meridia.gd
 ```
 
-The capture tool writes twenty 1600 × 900 images to `tests/out/meridia` (ignored by
+The capture tool writes twenty-three 1600 × 900 images to `tests/out/meridia` (ignored by
 Git). Set `OUT` to choose another output directory. It uses the viewer scene's
 actual lighting and suppresses only the camera-control help overlay. Set `ONLY`
 to a comma-separated list of capture names to render selected views.
+
+## Landscape review
+
+Ocean appearance before the seabed shader correction:
+
+![Offshore seam before correction](images/meridia-landscape-before.png)
+
+Matching overview after correction:
+
+![Consistent ocean appearance](images/meridia-landscape-after.png)
+
+Creek banks without the overlapping lawn mesh:
+
+![Refined park water and bridge join](images/meridia-park-banks.png)
+
+Library arrival from the street:
+
+![Library arrival stair and terrace](images/meridia-library-arrival.png)
+
+## Proposed completion scope
+
+Finish Meridia as a city exploration vertical slice: Central Station, the trains,
+and the signed station–bridge–tower–park journey, with civic exteriors visible from
+that journey. The library arrival is an additional isolated traversal test area;
+its district still needs connected ground collision before walking there from the
+station. Prioritize station batching, a museum approach and a return-loop design
+before adding full-city collision, civic interiors, harbour traversal or combat.
+This scope is a recommendation for the next completion gate, not a claim that the
+entire city is playable.

@@ -30,6 +30,16 @@ func capture() -> void:
 	]
 	var walk = scene.get_node("CityGenerator").discovery_walk
 	var gen = scene.get_node("CityGenerator")
+	var arrival = gen.get_node("CivicAccess/LibraryArrival")
+	var start: Vector3 = arrival.transform * arrival.get_meta("arrival_start")
+	var end: Vector3 = arrival.transform * arrival.get_meta("arrival_end")
+	shots.append(["21_library_arrival", start + Vector3(18, 15, 18), end + Vector3.UP * 3])
+	shots.append(["22_library_steps", start + Vector3.UP * 1.62, end + Vector3.UP * 1.62])
+	for bridge in gen.greenery_plan.footbridges:
+		var p: Vector2 = (bridge["from"] + bridge["to"]) * 0.5
+		var y: float = gen.terrain.height_at(p, false)
+		shots.append(["23_park_water", Vector3(p.x + 30, y + 18, p.y + 30), Vector3(p.x, y, p.y)])
+		break
 	var civic_index := 16
 	for site in gen.architecture_plan.civic:
 		var b: Dictionary = site["building"]

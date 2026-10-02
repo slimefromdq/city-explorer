@@ -80,6 +80,7 @@ func _ready() -> void:
 	architecture_plan = ArchitecturePlan.new(building_plan, greenery_plan, city, terrain, sightlines)
 	add_child(BuildingBuilder.build(architecture_plan, terrain))
 	add_child(ArchitectureBuilder.build(architecture_plan, terrain))
+	add_child(preload("res://city/civic_access_builder.gd").build(architecture_plan, terrain, roads))
 	harbour_plan = HarbourPlan.new(city, terrain)
 	add_child(HarbourBuilder.build(harbour_plan, terrain))
 	add_child(LandmarkBuilder.build_all(city, terrain))
@@ -115,10 +116,10 @@ func _make_ground() -> MeshInstance3D:
 	var area := Rect2(Vector2(-SEA_MARGIN, -SEA_MARGIN), map_size + Vector2.ONE * SEA_MARGIN * 2.0)
 	var node := MeshInstance3D.new()
 	node.name = "Ground"
-	node.mesh = TerrainBuilder.build(terrain, area, float(city["terrain"]["mesh_cell_size"]))
-	var mat := StandardMaterial3D.new()
-	mat.vertex_color_use_as_albedo = true
-	mat.roughness = 1.0
+	var cell := float(city["terrain"]["mesh_cell_size"])
+	node.mesh = TerrainBuilder.build(terrain, area, cell, TerrainBuilder.detail_region(city, cell), minf(cell, 2.0))
+	var mat := ShaderMaterial.new()
+	mat.shader = preload("res://city/hole_surface.gdshader")
 	node.material_override = mat
 	return node
 
@@ -130,11 +131,21 @@ func _make_deep_sea_floor() -> MeshInstance3D:
 	plane.size = map_size + Vector2.ONE * WATER_REACH * 2.0
 	var node := MeshInstance3D.new()
 	node.name = "DeepSeaFloor"
-	node.mesh = plane
+	# Match the terrain's vertex colors and shader, including when the station
+	# is disabled. Different color conversion made the mesh boundary visible.
+	var arrays := plane.surface_get_arrays(0)
+	var colors := PackedColorArray()
+	colors.resize(arrays[Mesh.ARRAY_VERTEX].size())
+	colors.fill(TerrainBuilder.SEABED)
+	arrays[Mesh.ARRAY_COLOR] = colors
+	var seabed := ArrayMesh.new()
+	seabed.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	node.mesh = seabed
 	node.position = Vector3(map_size.x * 0.5, terrain.sea_level - float(city["terrain"]["sea_depth"]) - 0.2, map_size.y * 0.5)
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = TerrainBuilder.SEABED
-	mat.roughness = 1.0
+	# Ground is replaced with HoleSurface by SurfaceHoles. Use the same shader
+	# here too: StandardMaterial converts vertex colors differently in Forward+.
+	var mat := ShaderMaterial.new()
+	mat.shader = preload("res://city/hole_surface.gdshader")
 	node.material_override = mat
 	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return node

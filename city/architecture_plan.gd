@@ -120,13 +120,23 @@ func _civic(b: Dictionary, city: Dictionary) -> void:
 				var front: Vector2 = b["center"] + Vector2(-axis.y, axis.x) * sign * s.y * 0.46
 				var beam_ceiling: float = _sightlines.ceiling_over(front, axis, s * Vector2(0.96, 0.07) * 0.5)
 				h = minf(h, (beam_ceiling - b["base_y"] - 2.35) / 0.55)
-	_add(b, "box", Vector3(0, (1.5 - foundation_depth) * 0.5, 0), Vector3(s.x, foundation_depth + 1.5, s.y - 0.04 if foundation == "terrace" else s.y), STONE)
+	if b["site_kind"] == "library" and foundation == "terrace":
+		# Leave an opening through the retaining wall for the arrival stair.
+		for sign in [-1.0, 1.0]:
+			_add(b, "box", Vector3(sign * (s.x * 0.25 + 2.5), (1.5 - foundation_depth) * 0.5, 0), Vector3(s.x * 0.5 - 5, foundation_depth + 1.5, s.y - 0.04), STONE)
+		_add(b, "box", Vector3(0, (1.5 - foundation_depth) * 0.5, -s.y * 0.09), Vector3(10, foundation_depth + 1.5, s.y * 0.82 - 0.04), STONE)
+	else:
+		_add(b, "box", Vector3(0, (1.5 - foundation_depth) * 0.5, 0), Vector3(s.x, foundation_depth + 1.5, s.y - 0.04 if foundation == "terrace" else s.y), STONE)
 	if foundation == "terrace":
 		# Stone courses break up the exposed retaining face on the downhill side.
 		for i in ceili(foundation_depth / 3.4):
 			var y := -i * 3.4
 			for sign in [-1.0, 1.0]:
-				_add(b, "box", Vector3(0, y, sign * (s.y * 0.5 - 0.01)), Vector3(s.x, 0.18, 0.02), STONE.darkened(0.18))
+				if b["site_kind"] == "library" and sign > 0:
+					for side in [-1.0, 1.0]:
+						_add(b, "box", Vector3(side * (s.x * 0.25 + 2.5), y, sign * (s.y * 0.5 - 0.01)), Vector3(s.x * 0.5 - 5, 0.18, 0.02), STONE.darkened(0.18))
+				else:
+					_add(b, "box", Vector3(0, y, sign * (s.y * 0.5 - 0.01)), Vector3(s.x, 0.18, 0.02), STONE.darkened(0.18))
 	match b["site_kind"]:
 		"museum":
 			# A copper rotunda between two stone galleries; a park-facing colonnade.
@@ -140,10 +150,10 @@ func _civic(b: Dictionary, city: Dictionary) -> void:
 			_colonnade(b, h * 0.38, LIGHT_STONE)
 		"library":
 			# Long reading-room wings, rhythmic glazing, a raised central entrance.
-			_add(b, "box", Vector3(0, h * 0.38, 0), Vector3(s.x * 0.97, h * 0.76, s.y * 0.80), STONE)
-			_add(b, "gable", Vector3(0, h * 0.84, 0), Vector3(s.x * 0.96, h * 0.16, s.y * 0.78), TILE)
-			_add(b, "box", Vector3(0, h * 0.82, 0), Vector3(s.x * 0.26, h * 0.16, s.y * 0.84), LIGHT_STONE)
-			_add(b, "gable", Vector3(0, h * 0.95, 0), Vector3(s.x * 0.28, h * 0.10, s.y * 0.84), LIGHT_STONE)
+			_add(b, "box", Vector3(0, h * 0.38, 0), Vector3(s.x * 0.97, h * 0.76, s.y * 0.60), STONE)
+			_add(b, "gable", Vector3(0, h * 0.84, 0), Vector3(s.x * 0.96, h * 0.16, s.y * 0.58), TILE)
+			_add(b, "box", Vector3(0, h * 0.82, 0), Vector3(s.x * 0.26, h * 0.16, s.y * 0.64), LIGHT_STONE)
+			_add(b, "gable", Vector3(0, h * 0.95, 0), Vector3(s.x * 0.28, h * 0.10, s.y * 0.64), LIGHT_STONE)
 			_colonnade(b, h * 0.55, LIGHT_STONE)
 		"performance_hall":
 			# Three folded copper roof volumes above a glazed foyer.
@@ -157,20 +167,22 @@ func _civic(b: Dictionary, city: Dictionary) -> void:
 	for sign in [-1.0, 1.0]:
 		for i in bays:
 			var x := (i - (bays - 1) * 0.5) * s.x * 0.90 / bays
-			_add(b, "box", Vector3(x, h * 0.28, sign * s.y * 0.405), Vector3(s.x * 0.90 / bays * 0.68, h * 0.36, s.y * 0.015), GLASS)
+			_add(b, "box", Vector3(x, h * 0.28, sign * s.y * (0.305 if b["site_kind"] == "library" else 0.405)), Vector3(s.x * 0.90 / bays * 0.68, h * 0.36, s.y * 0.015), GLASS)
 		# Entrance portal sits inside the plinth, not across a sidewalk or path.
-		_add(b, "box", Vector3(0, 2.8, sign * s.y * 0.455), Vector3(minf(8.0, s.x * 0.20), 3.6, s.y * 0.02), DARK)
-		_add(b, "box", Vector3(0, 6, sign * s.y * 0.49), Vector3(minf(22.0, s.x * 0.40), 1.6, s.y * 0.015), DARK)
+		_add(b, "box", Vector3(0, 2.8, sign * s.y * (0.33 if b["site_kind"] == "library" else 0.455)), Vector3(minf(8.0, s.x * 0.20), 3.6, s.y * 0.02), DARK)
+		_add(b, "box", Vector3(0, 6, sign * s.y * (0.375 if b["site_kind"] == "library" else 0.49)), Vector3(minf(22.0, s.x * 0.40), 1.6, s.y * 0.015), DARK)
 	civic.append({"building": b, "name": title, "first": first, "count": parts.size() - first})
 
 func _colonnade(b: Dictionary, tall: float, color: Color) -> void:
 	var s: Vector2 = b["size"]
 	var bays := maxi(4, floori(s.x / 8.0))
 	for sign in [-1.0, 1.0]:
-		var z: float = sign * s.y * 0.46
+		var z: float = sign * s.y * (0.35 if b["site_kind"] == "library" else 0.46)
 		_add(b, "box", Vector3(0, tall + 1.9, z), Vector3(s.x * 0.96, 0.8, s.y * 0.07), color)
 		for i in bays + 1:
 			var x := -s.x * 0.45 + s.x * 0.90 * i / bays
+			if b["site_kind"] == "library" and absf(x) < 5:
+				continue
 			_add(b, "box", Vector3(x, (tall + 1.5) * 0.5, z), Vector3(0.65, tall + 1.5, 0.65), color)
 
 func _add(b: Dictionary, kind: String, center: Vector3, size: Vector3, color: Color) -> void:

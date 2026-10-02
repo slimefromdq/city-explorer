@@ -15,6 +15,7 @@ const CityData := preload("res://city/city_data.gd")
 const COURT := Vector2(28.0, 15.0)   # a standard basketball court (m)
 const KEY := Vector2(5.8, 4.9)       # the painted area under each hoop (m)
 const LIFT := 0.20                   # above the park lawn (0.12) and below the paths (0.16 + their own height)
+const ZONE_LIFT := 0.12             # below the footpaths, so blossom walks stay visible
 const STRIPE := 7.0                  # width of one mown stripe (m)
 
 const PETALS := Color(0.90, 0.74, 0.80)
@@ -37,7 +38,7 @@ static func build(city: Dictionary, greenery_plan, terrain) -> Node3D:
 		var poly := CityData.to_points(zone["polygon"])
 		match zone["kind"]:
 			"cherry_garden":
-				FlatPatch.add(root, poly, terrain, PETALS, LIFT)
+				FlatPatch.add(root, poly, terrain, PETALS, ZONE_LIFT)
 			"open_field":
 				_field(root, poly, terrain)
 			"basketball_court":
@@ -64,7 +65,7 @@ static func _field(parent: Node3D, poly: PackedVector2Array, terrain) -> void:
 		var to := minf(from + STRIPE, half.y)
 		var strip := PackedVector2Array([c + u * -half.x + v * from, c + u * half.x + v * from, c + u * half.x + v * to, c + u * -half.x + v * to])
 		for piece in Geometry2D.intersect_polygons(poly, strip):
-			FlatPatch.add(parent, piece, terrain, FIELD_A if i % 2 == 0 else FIELD_B, LIFT)
+			FlatPatch.add(parent, piece, terrain, FIELD_A if i % 2 == 0 else FIELD_B, ZONE_LIFT)
 
 
 # ---- basketball court ------------------------------------------------------------
@@ -121,7 +122,9 @@ static func _footbridge(parent: Node3D, bridge: Dictionary, terrain) -> void:
 	var width := float(bridge["width"])
 	var yaw := (b - a).angle()
 	var holder := Node3D.new()
-	holder.position = Vector3(centre.x, terrain.height_at(centre, false) + 0.2, centre.y)
+	# Top is 2 cm above the path, not a 21 cm step. The path ribbon continues
+	# underneath, so that small offset also avoids coplanar wood/path flicker.
+	holder.position = Vector3(centre.x, terrain.height_at(centre, false) + 0.16 + 0.02 - 0.175, centre.y)
 	holder.rotation.y = -yaw
 	parent.add_child(holder)
 	_box(holder, Vector3(length, 0.35, width), Vector3(0.0, 0.0, 0.0), WOOD)

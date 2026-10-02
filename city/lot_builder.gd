@@ -17,7 +17,6 @@ const TYPE_COLORS := {
 	"lowrise": Color(0.93, 0.87, 0.58),
 	"harbour": Color(0.50, 0.72, 0.84),
 }
-const PARK_COLOR := Color(0.38, 0.66, 0.32)  # park blocks (lawn) are drawn too, though they have no lots
 const SITE_COLORS := {
 	"station": Color(0.50, 0.48, 0.45),  # paving: the station complex stands on this lot
 	"library": Color(0.50, 0.30, 0.15),
@@ -31,12 +30,12 @@ static func build(plan, terrain) -> MeshInstance3D:
 	var verts := PackedVector3Array()
 	var colors := PackedColorArray()
 	var indices := PackedInt32Array()
-	var patches: Array = []  # {"polygon", "color"}: every lot, then the park lawns
+	var patches: Array = []  # {"polygon", "color"}: building lots and civic sites
 	for lot in plan.lots:
 		patches.append({"polygon": lot["polygon"], "color": _lot_color(lot)})
-	for block in plan.block_map.blocks:
-		if block["type"] == "park":
-			patches.append({"polygon": block["polygon"], "color": PARK_COLOR})
+	# The park lawn is the terrain itself. A second, differently triangulated
+	# lawn surface bridged the creek banks and produced jagged overlapping faces.
+	# Named gardens and courts keep their own patches in ParkBuilder.
 	for patch in patches:
 		var color: Color = patch["color"]
 		for poly in Geometry2D.offset_polygon(patch["polygon"], -DISPLAY_INSET):

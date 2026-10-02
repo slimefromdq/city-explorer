@@ -42,6 +42,18 @@ selects `cargo` or `ferry`. Harbour boxes form one additional shared batch;
 approach mesh that clears the sampled shoreline.
 These additions are exteriors; civic interiors and harbour collision are future work.
 
+`civic_access_builder.gd` adds the library's street approach, two stair flights,
+rest landing and matching collision. ArchitecturePlan leaves an opening through
+the front retaining wall and space in front of the reading rooms. A real capsule
+ascends and returns without jumping in `tests/library_access_test.gd`. The arrival
+has local ground collision; it is not yet connected to the station promenade.
+
+The creek/lake use a stitched two-metre ground patch within the coarser terrain.
+The park lawn is rendered by that terrain, rather than an overlapping lot mesh.
+Ground and deep seabed share the same shader/color path to prevent an offshore
+rectangle. `tests/terrain_detail_test.gd` checks coverage and boundary stitching.
+See `docs/meridia-performance.md` for the measured viewer rendering budget.
+
 City validation checks architecture bounds and the terrace's absolute sightline
 height. `tests/architecture_test.gd` also checks determinism, planted-roof support,
 sign mounting, roof winding, and separation of the station's two stair systems.

@@ -1,0 +1,64 @@
+{
+	"date": "2026-10-01",
+	"renderer": "Forward+",
+	"warmup_frames": 60,
+	"cpu": "12th Gen Intel(R) Core(TM) i7-12700",
+	"engine": "4.7.2-stable (official)",
+	"generation_ms": 5020,
+	"gpu": "NVIDIA GeForce RTX 3080",
+	"msaa": 2,
+	"resolution": [
+		1600,
+		900
+	],
+	"sample_frames": 180,
+	"shadow_map": 4096,
+	"views": [
+		{
+			"draw_calls_mean": 7147.0,
+			"frame_ms_median": 4.06,
+			"frame_ms_p95": 4.852,
+			"name": "overview",
+			"render_cpu_ms_median": 2.68300008773804,
+			"render_gpu_ms_median": 1.73699998855591,
+			"video_memory_mib": 385.570571899414
+		},
+		{
+			"draw_calls_mean": 2128.0,
+			"frame_ms_median": 1.58,
+			"frame_ms_p95": 2.019,
+			"name": "skyline",
+			"render_cpu_ms_median": 0.716000020503998,
+			"render_gpu_ms_median": 1.23300004005432,
+			"video_memory_mib": 385.570571899414
+		},
+		{
+			"draw_calls_mean": 10925.0,
+			"frame_ms_median": 5.079,
+			"frame_ms_p95": 5.878,
+			"name": "station",
+			"render_cpu_ms_median": 3.46099996566772,
+			"render_gpu_ms_median": 1.80900001525879,
+			"video_memory_mib": 388.320571899414
+		},
+		{
+			"draw_calls_mean": 4383.0,
+			"frame_ms_median": 2.017,
+			"frame_ms_p95": 2.489,
+			"name": "park",
+			"render_cpu_ms_median": 1.35099995136261,
+			"render_gpu_ms_median": 1.44799995422363,
+			"video_memory_mib": 388.320571899414
+		},
+		{
+			"draw_calls_mean": 7490.0,
+			"frame_ms_median": 4.822,
+			"frame_ms_p95": 5.43,
+			"name": "street",
+			"render_cpu_ms_median": 3.07100009918213,
+			"render_gpu_ms_median": 1.4889999628067,
+			"video_memory_mib": 388.320571899414
+		}
+	],
+	"vsync": "disabled"
+}

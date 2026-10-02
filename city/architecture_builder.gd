@@ -50,7 +50,7 @@ static func build(plan, terrain) -> Node3D:
 		root.add_child(holder)
 		var b: Dictionary = site["building"]
 		for sign in [-1, 1]:
-			Greybox.label(holder, String(site["name"]).to_upper(), Vector3(0, 6, sign * b["size"].y * 0.498), 0.0 if sign > 0 else PI, 0.60, Color(0.96, 0.91, 0.75))
+			Greybox.label(holder, String(site["name"]).to_upper(), Vector3(0, 6, sign * b["size"].y * (0.385 if b["site_kind"] == "library" else 0.498)), 0.0 if sign > 0 else PI, 0.60, Color(0.96, 0.91, 0.75))
 	return root
 
 static func building_frame(b: Dictionary, terrain) -> Transform3D:
