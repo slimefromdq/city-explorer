@@ -21,6 +21,17 @@ static func build(plan, buildings: Array, trees: Array, terrain, holes: Array[Re
 	var paving := _ribbon(root, "Promenade", plan.samples, plan.width, 0.16, STONE, body)
 	paving.set_meta("length_metres", plan.length)
 	_ribbon(root, "StationCrossing", plan.approach_samples, plan.width, 0.16, STONE, body)
+	for spur in plan.spurs:
+		var branch: PackedVector2Array = spur["points"]
+		for i in branch.size() - 1:
+			TerrainApron.build(root, "SpurShoulder_%s_%d" % [spur["id"], i], terrain, Rect2(branch[i], Vector2.ZERO).expand(branch[i + 1]).grow(6), holes, true)
+		_ribbon(root, "Spur_%s" % spur["id"], spur["samples"], plan.width, 0.16, STONE, body)
+		var accent: PackedVector3Array = spur["samples"].duplicate()
+		for i in accent.size():
+			accent[i] += Vector3.UP * 0.008
+		_ribbon(root, "SpurInlay_%s" % spur["id"], accent, 0.13, 0, ACCENT, null)
+		if not spur["sign"].is_empty():
+			_sign(root, body, spur["sign"], plan)
 	# A narrow teal inlay runs along the promenade, connecting the decision signs.
 	var line := PackedVector3Array()
 	for p in plan.samples:
@@ -107,6 +118,10 @@ static func _obstacles(body: StaticBody3D, plan, buildings: Array, trees: Array,
 	# Nearby walls and trunks are solid, so leaving the path cannot pass through
 	# the visible environment. This does not add collision to distant city blocks.
 	for b in buildings:
+		if b.get("site_kind", "") == "museum":
+			# CivicAccess follows its galleries, rotunda and open terrace instead
+			# of filling the whole reservation with one invisible solid box.
+			continue
 		if plan.distance_to(b["center"]) > b["size"].length() * 0.5 + 10.0:
 			continue
 		var base: float = BuildingPlan.base_elevation(b["center"], b["u"], b["size"], terrain)

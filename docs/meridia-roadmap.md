@@ -85,6 +85,23 @@ These are visual observations, not proof of traversal quality or performance.
 
 ## Delivery log
 
+- **2026-10-01: station batching and museum connection.** Grouped 360 static
+  station boxes into 49 batches, keeping material properties, light layers,
+  transforms and collision. Glass, signage and live departure boards remain
+  independent. The matching station profile shows 11,220 → 9,665 draw calls
+  (about 14% fewer), and median frame time of 5.17 → 4.83 ms on the RTX 3080.
+  Raw enabled/disabled profiles are linked from the performance report.
+- Added a signed 52 m museum spur from the park arrival, replacing the former
+  visual-only Museum Walk paving. It reaches an eight-step terrace approach and
+  the museum's entrance. Actual gallery/rotunda collision replaces the old
+  conservative reservation box near this destination. The central colonnade bay
+  is open and terrace edges have guardrails. Trees keep clear of the branch.
+- The player completed station → park → museum → park → station without jumping,
+  with benches and bridge barriers checked separately (559 simulated seconds).
+  All four train journeys, the station wings/balcony tour, architecture envelopes
+  and the real-renderer batch regression passed. This opens the exterior terrace;
+  civic interiors, the park loop and library connection remain later work.
+
 - **2026-10-01: landscape and library arrival.** Ground and outer seabed now use
   the same vertex colors and shader, removing the rectangular offshore seam.
   Creek/lake terrain uses a stitched two-metre detail patch while the rest keeps
@@ -240,9 +257,10 @@ godot --headless --path . --script res://tests/architecture_test.gd
 godot --headless --path . --script res://tests/terrain_detail_test.gd
 godot --headless --fixed-fps 60 --path . --script res://tests/library_access_test.gd
 godot --path . --script res://tools/profile_meridia.gd
+godot --path . --script res://tests/static_batch_test.gd
 ```
 
-The capture tool writes twenty-three 1600 × 900 images to `tests/out/meridia` (ignored by
+The capture tool writes twenty-five 1600 × 900 images to `tests/out/meridia` (ignored by
 Git). Set `OUT` to choose another output directory. It uses the viewer scene's
 actual lighting and suppresses only the camera-control help overlay. Set `ONLY`
 to a comma-separated list of capture names to render selected views.
@@ -271,7 +289,12 @@ Finish Meridia as a city exploration vertical slice: Central Station, the trains
 and the signed station–bridge–tower–park journey, with civic exteriors visible from
 that journey. The library arrival is an additional isolated traversal test area;
 its district still needs connected ground collision before walking there from the
-station. Prioritize station batching, a museum approach and a return-loop design
-before adding full-city collision, civic interiors, harbour traversal or combat.
+station. The museum approach and first station batching pass are now delivered.
+Prioritize a playable park return loop and a library connection before adding
+full-city collision, civic interiors, harbour traversal or combat.
 This scope is a recommendation for the next completion gate, not a claim that the
 entire city is playable.
+
+Museum terrace reached from the signed park branch:
+
+![Museum arrival from Meridia Walk](images/meridia-museum-arrival.png)

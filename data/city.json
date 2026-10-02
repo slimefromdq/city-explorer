@@ -279,6 +279,9 @@
 			{ "position": [873,320], "facing": [1,0] },
 			{ "position": [610,225], "facing": [0,1] },
 			{ "position": [525,290], "facing": [-1,0] }
+		],
+		"spurs": [
+			{ "id": "museum", "name": "Museum of Meridia", "replaces_path": "Museum Walk", "points": [[520,285], [549,285], [549,305], [552,305]], "sign": { "position": [522,289], "facing": [0,-1], "forward": "MUSEUM OF MERIDIA\nFront terrace  >", "back": "MERIDIA WALK\n<  Tower & station" } }
 		]
 	},
 

@@ -44,6 +44,7 @@ var _max_tree_height: float
 var _zones: Array = []   # {"id", "kind", "polygon"}: the named parts of the park
 var _creeks: Array = []  # {"path": Array, "polygon": PackedVector2Array (water), "bank": float}
 var _walk_points := PackedVector2Array()
+var _walk_paths: Array = []
 var _walk_clearance := 0.0
 
 
@@ -51,6 +52,10 @@ func _init(city: Dictionary, network, lot_plan, building_plan, sightlines, terra
 	_city = city
 	var walk: Dictionary = city.get("discovery_walk", {})
 	_walk_points = CityData.to_points(walk.get("points", []))
+	_walk_paths.append(_walk_points)
+	for spur in walk.get("spurs", []):
+		var points := CityData.to_points(spur.get("points", []))
+		_walk_paths.append(points)
 	_walk_clearance = float(walk.get("width", 4.0)) * 0.5 + 3.5
 	_network = network
 	_sightlines = sightlines
@@ -249,9 +254,10 @@ func _clear_of_pool(p: Vector2) -> bool:
 
 # A tree may not rise into a line of sight to the tower (the corridor is a ribbon around it).
 func _tree_allowed(p: Vector2) -> bool:
-	for i in _walk_points.size() - 1:
-		if p.distance_to(Geometry2D.get_closest_point_to_segment(p, _walk_points[i], _walk_points[i + 1])) < _walk_clearance:
-			return false
+	for path in _walk_paths:
+		for i in path.size() - 1:
+			if p.distance_to(Geometry2D.get_closest_point_to_segment(p, path[i], path[i + 1])) < _walk_clearance:
+				return false
 	var top: float = _terrain.height_at(p) + _max_tree_height
 	return top <= _sightlines.ceiling_over(p, Vector2.RIGHT, Vector2(1.5, 1.5))
 

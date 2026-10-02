@@ -31,6 +31,11 @@ func capture() -> void:
 	var walk = scene.get_node("CityGenerator").discovery_walk
 	var gen = scene.get_node("CityGenerator")
 	var arrival = gen.get_node("CivicAccess/LibraryArrival")
+	var museum = gen.get_node("CivicAccess/MuseumArrival")
+	var museum_start: Vector3 = museum.transform * museum.get_meta("arrival_start")
+	var museum_door: Vector3 = museum.transform * museum.get_meta("door_stop")
+	shots.append(["24_museum_arrival", museum_start + Vector3(-18, 12, 15), museum_door + Vector3.UP * 4])
+	shots.append(["25_museum_on_foot", museum_start + Vector3.UP * 1.62, museum_door + Vector3.UP * 2])
 	var start: Vector3 = arrival.transform * arrival.get_meta("arrival_start")
 	var end: Vector3 = arrival.transform * arrival.get_meta("arrival_end")
 	shots.append(["21_library_arrival", start + Vector3(18, 15, 18), end + Vector3.UP * 3])

@@ -16,6 +16,7 @@ var bridge: Dictionary = {}
 var stops: Array = []
 var signs: Array = []
 var rest_points: Array = []
+var spurs: Array = []
 var length := 0.0
 var errors: Array[String] = []
 var _terrain
@@ -66,6 +67,28 @@ func _init(city: Dictionary, terrain) -> void:
 	for stop in stops:
 		if int(stop.get("index", -1)) < 0 or int(stop.get("index", -1)) >= points.size():
 			errors.append("Walk stop has an invalid point index")
+	for entry_data in data.get("spurs", []):
+		var branch := CityData.to_points(entry_data.get("points", []))
+		if branch.size() < 2 or branch[0].distance_to(closest_point(branch[0])) > 0.1:
+			errors.append("Walk spur must connect to the main promenade")
+			continue
+		var branch_samples := PackedVector3Array()
+		var valid := true
+		for i in branch.size() - 1:
+			var steps := ceili(branch[i].distance_to(branch[i + 1]) / SAMPLE_STEP)
+			if steps < 1:
+				errors.append("Walk spur has duplicate adjacent points")
+				valid = false
+				break
+			for j in steps:
+				var p := branch[i].lerp(branch[i + 1], float(j) / steps)
+				branch_samples.append(Vector3(p.x, _terrain.height_at(p, false) + 0.16, p.y))
+		if valid:
+			var p := branch[branch.size() - 1]
+			branch_samples.append(Vector3(p.x, _terrain.height_at(p, false) + 0.16, p.y))
+			if absf(height_at(branch[0]) - branch_samples[0].y) > 0.05:
+				errors.append("Walk spur requires a level junction")
+			spurs.append({"id": entry_data["id"], "name": entry_data["name"], "points": branch, "samples": branch_samples, "sign": entry_data.get("sign", {})})
 
 func bridge_contains(p: Vector2) -> bool:
 	if bridge.is_empty():
@@ -101,7 +124,12 @@ func height_at(p: Vector2) -> float:
 	return _terrain.height_at(p, false) + lift
 
 func distance_to(p: Vector2) -> float:
-	return p.distance_to(closest_point(p))
+	var distance := p.distance_to(closest_point(p))
+	for spur in spurs:
+		var branch: PackedVector2Array = spur["points"]
+		for i in branch.size() - 1:
+			distance = minf(distance, p.distance_to(Geometry2D.get_closest_point_to_segment(p, branch[i], branch[i + 1])))
+	return distance
 
 func closest_point(p: Vector2) -> Vector2:
 	var nearest := INF
@@ -120,6 +148,8 @@ func validate(buildings: Array, city: Dictionary) -> Array[String]:
 	var land := CityData.land_polygon(city)
 	var checked_samples := samples.duplicate()
 	checked_samples.append_array(approach_samples)
+	for spur in spurs:
+		checked_samples.append_array(spur["samples"])
 	for sample in checked_samples:
 		var p := Vector2(sample.x, sample.z)
 		if not Geometry2D.is_point_in_polygon(p, land):

@@ -169,7 +169,8 @@ func _civic(b: Dictionary, city: Dictionary) -> void:
 			var x := (i - (bays - 1) * 0.5) * s.x * 0.90 / bays
 			_add(b, "box", Vector3(x, h * 0.28, sign * s.y * (0.305 if b["site_kind"] == "library" else 0.405)), Vector3(s.x * 0.90 / bays * 0.68, h * 0.36, s.y * 0.015), GLASS)
 		# Entrance portal sits inside the plinth, not across a sidewalk or path.
-		_add(b, "box", Vector3(0, 2.8, sign * s.y * (0.33 if b["site_kind"] == "library" else 0.455)), Vector3(minf(8.0, s.x * 0.20), 3.6, s.y * 0.02), DARK)
+		var door_depth := 0.33 if b["site_kind"] == "library" else (0.305 if b["site_kind"] == "museum" else 0.455)
+		_add(b, "box", Vector3(0, 2.8, sign * s.y * door_depth), Vector3(minf(8.0, s.x * 0.20), 3.6, s.y * 0.02), DARK)
 		_add(b, "box", Vector3(0, 6, sign * s.y * (0.375 if b["site_kind"] == "library" else 0.49)), Vector3(minf(22.0, s.x * 0.40), 1.6, s.y * 0.015), DARK)
 	civic.append({"building": b, "name": title, "first": first, "count": parts.size() - first})
 
@@ -181,7 +182,7 @@ func _colonnade(b: Dictionary, tall: float, color: Color) -> void:
 		_add(b, "box", Vector3(0, tall + 1.9, z), Vector3(s.x * 0.96, 0.8, s.y * 0.07), color)
 		for i in bays + 1:
 			var x := -s.x * 0.45 + s.x * 0.90 * i / bays
-			if b["site_kind"] == "library" and absf(x) < 5:
+			if b["site_kind"] in ["library", "museum"] and absf(x) < 5:
 				continue
 			_add(b, "box", Vector3(x, (tall + 1.5) * 0.5, z), Vector3(0.65, tall + 1.5, 0.65), color)
 

@@ -30,7 +30,10 @@ static func build(plan, building_plan, terrain, city: Dictionary) -> Node3D:
 	var roof_h := float(city["greenery"]["roof_garden_height"])
 	root.add_child(_green_boxes("RoofGardens", plan.roofs, by_id, terrain, roof_h, false))
 	root.add_child(_green_boxes("SkyGardens", plan.sky_gardens, by_id, terrain, BAND_HEIGHT, true))
-	root.add_child(_paths(plan.paths, terrain))
+	var replaced: Array = []
+	for spur in city.get("discovery_walk", {}).get("spurs", []):
+		replaced.append(spur.get("replaces_path", ""))
+	root.add_child(_paths(plan.paths, terrain, replaced))
 	return root
 
 
@@ -130,11 +133,14 @@ static func _green_boxes(label: String, items: Array, by_id: Dictionary, terrain
 
 # ---- footpaths ----------------------------------------------------------------------
 
-static func _paths(paths: Array, terrain) -> MeshInstance3D:
+static func _paths(paths: Array, terrain, replaced: Array = []) -> MeshInstance3D:
 	var verts := PackedVector3Array()
 	var normals := PackedVector3Array()
 	var indices := PackedInt32Array()
 	for path in paths:
+		# The playable spur owns this paving, avoiding coplanar path meshes.
+		if replaced.has(path["name"]):
+			continue
 		var pts := PackedVector3Array()
 		for p in path["points"]:
 			pts.append(Vector3(p.x, terrain.height_at(p, false) + PATH_LIFT, p.y))  # level over creeks (a footbridge carries it)

@@ -25,6 +25,8 @@ func build() -> void:
 	Forecourt.build(self)
 	platform_level.build(self)
 	Wayfinding.build(self, routes, hall, platform_level.river)
+	if OS.get_environment("STATION_UNBATCHED") != "1":
+		preload("res://station/static_box_batcher.gd").build(self)
 
 
 ## World-space (x, z) rectangles where the ground (and the lot patch, and the water plane) must be cut

@@ -21,6 +21,7 @@ func run() -> void:
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	RenderingServer.viewport_set_measure_render_time(root.get_viewport_rid(), true)
 	var report := {
+		"station_batches": scene.get_node("CityGenerator").station.get_meta("static_batch_stats", {}),
 		"date": "2026-10-01", "renderer": "Forward+", "warmup_frames": 60,
 		"engine": Engine.get_version_info()["string"],
 		"gpu": RenderingServer.get_video_adapter_name(),

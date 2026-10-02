@@ -1,6 +1,6 @@
 # Meridia rendering profile — 2026-10-01
 
-The current viewer has substantial rendering headroom on this machine. The station
+The initial landscape viewer profile has substantial rendering headroom on this machine. The station
 view has the highest CPU submission time and draw-call count, so batching repeated
 station geometry is the next useful optimization.
 
@@ -35,3 +35,35 @@ Run `godot --path . --script res://tools/profile_meridia.gd` with a rendering
 window. The default output is `tests/out/meridia-profile.json`; set `PROFILE_OUT`
 to save elsewhere. [Raw measurements](meridia-performance.json) include hardware,
 settings, generation time, memory and each camera sample.
+
+## Station batching comparison
+
+A subsequent pass grouped 360 static station boxes into 49 spatial/material
+batches. It preserves full material properties, lighting layers, shadow modes,
+world transforms and existing collision. Transparent surfaces, text and live
+departure kiosks keep their original rendering. Existing meshes already batched
+by the concourse remain as they were. Hidden source nodes remain available for
+inspection; this pass reduces draw submissions rather than scene-node count.
+
+The same five views were measured with batching disabled and enabled, using the
+settings above. Both runs include the museum arrival added in this pass.
+
+| View | Draw calls before | Draw calls after | Median frame before (ms) | Median frame after (ms) |
+| --- | ---: | ---: | ---: | ---: |
+| Overview | 7,345 | 6,412 | 4.12 | 3.72 |
+| Skyline | 2,520 | 2,520 | 1.58 | 1.60 |
+| Station | 11,220 | 9,665 | 5.17 | 4.83 |
+| Park | 4,678 | 4,270 | 2.09 | 2.04 |
+| Street | 7,494 | 6,291 | 3.79 | 3.38 |
+
+The station view draws about 14% fewer calls. Its median CPU render time falls
+from 3.51 to 3.21 ms, while P95 frame time changes only slightly, from 5.68 to
+5.65 ms. The unchanged skyline view illustrates ordinary timing noise. This is
+a useful first reduction, not evidence that all station rendering is optimized.
+Further work should inspect custom arch meshes and shadow submissions.
+
+[Unbatched measurements](meridia-performance-unbatched.json) and
+[batched measurements](meridia-performance-batched.json) retain the full samples.
+Set `STATION_UNBATCHED=1` for comparison; default rendering uses batching.
+`tests/static_batch_test.gd` requires a rendering window to verify MultiMesh
+transforms, equivalent/different materials, layers, glass and live-board exclusions.

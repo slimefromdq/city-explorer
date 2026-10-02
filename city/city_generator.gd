@@ -80,7 +80,7 @@ func _ready() -> void:
 	architecture_plan = ArchitecturePlan.new(building_plan, greenery_plan, city, terrain, sightlines)
 	add_child(BuildingBuilder.build(architecture_plan, terrain))
 	add_child(ArchitectureBuilder.build(architecture_plan, terrain))
-	add_child(preload("res://city/civic_access_builder.gd").build(architecture_plan, terrain, roads))
+	add_child(preload("res://city/civic_access_builder.gd").build(architecture_plan, terrain, roads, city))
 	harbour_plan = HarbourPlan.new(city, terrain)
 	add_child(HarbourBuilder.build(harbour_plan, terrain))
 	add_child(LandmarkBuilder.build_all(city, terrain))

@@ -66,6 +66,17 @@ Meridian Mall to the tower's west forecourt, then north of the museum to the lak
 The route is about 1.13 km (roughly four minutes at walking speed). It has decision
 signs, five bench/lamp rest points, and bridge barriers. Trains remain available.
 
+At the park arrival, follow the museum sign and teal branch to the front terrace.
+`discovery_walk.spurs` owns branch points and signage; `replaces_path` prevents
+duplicate paving over an existing park path. The museum's steps and gallery/rotunda
+collision are built by `civic_access_builder.gd`. The regression walks this branch
+and returns to the station without jumping. The museum interior remains closed.
+
+Central Station batches static boxes through `station/static_box_batcher.gd`.
+Batch groups preserve material values, lighting layers, shadows and local spatial
+cells. Collision and live kiosks are independent. Set `STATION_UNBATCHED=1` when
+profiling before/after rendering; see `docs/meridia-performance.md` for results.
+
 `data/city.json` → `discovery_walk` owns the route, crossing approach, stop indices,
 signs, and furniture. `discovery_walk_plan.gd` calculates bridge/ground elevations;
 `discovery_walk_builder.gd` draws the promenade and matching collision. Dry shoulders

@@ -36,6 +36,13 @@ func run() -> void:
 		quit(1)
 		return
 	print("  ok   blocked mall shortcut rejected")
+	var detached: Dictionary = scene.city.city.duplicate(true)
+	detached["discovery_walk"]["spurs"][0]["points"][0] = [400, 200]
+	if WalkPlan.new(detached, scene.city.terrain).validate(scene.city.building_plan.buildings, detached).is_empty():
+		_fail("Validator accepted a detached museum spur")
+		quit(1)
+		return
+	print("  ok   detached museum spur rejected")
 	for i in 30:
 		await physics_frame
 	if not await _go("crossing approach", plan.approach, false):
@@ -49,6 +56,26 @@ func run() -> void:
 			quit(1)
 			return
 	print("  ok   station -> bridge -> tower -> park without jumping")
+	for spur in plan.spurs:
+		var branch: PackedVector2Array = spur["points"]
+		for i in range(1, branch.size()):
+			if not await _go("museum spur %d" % i, branch[i], false):
+				quit(1)
+				return
+		var arrival: Node3D = scene.city.get_node("CivicAccess/MuseumArrival")
+		var door: Vector3 = arrival.transform * arrival.get_meta("door_stop")
+		if not await _go("museum front terrace", Vector2(door.x, door.z), false):
+			quit(1)
+			return
+		if absf(walker.global_position.y - door.y) > 0.15:
+			_fail("Museum arrival did not reach the terrace elevation")
+			quit(1)
+			return
+		print("  ok   museum entrance reached from station without jumping")
+		for i in range(branch.size() - 1, -1, -1):
+			if not await _go("museum return %d" % i, branch[i], false):
+				quit(1)
+				return
 	for i in range(plan.points.size() - 2, -1, -1):
 		if not await _go("return checkpoint %d" % i, plan.points[i], true):
 			quit(1)

@@ -3,11 +3,14 @@ extends RefCounted
 ## collision. The front retaining wall opening is reserved by ArchitecturePlan.
 const ArchitectureBuilder := preload("res://city/architecture_builder.gd")
 
-static func build(plan, terrain, roads) -> Node3D:
+static func build(plan, terrain, roads, city: Dictionary = {}) -> Node3D:
 	var root := Node3D.new()
 	root.name = "CivicAccess"
 	for site in plan.civic:
 		var b: Dictionary = site["building"]
+		if b["site_kind"] == "museum":
+			_museum(root, site, plan, terrain, city)
+			continue
 		if b["site_kind"] != "library" or not b.has("base_y"):
 			continue
 		var holder := Node3D.new()
@@ -106,6 +109,56 @@ static func build(plan, terrain, roads) -> Node3D:
 		holder.set_meta("arrival_end", end)
 		holder.set_meta("arrival_mid", mid)
 	return root
+
+static func _museum(root: Node3D, site: Dictionary, plan, terrain, city: Dictionary) -> void:
+	var route := PackedVector2Array()
+	for spur in city.get("discovery_walk", {}).get("spurs", []):
+		if spur["id"] == "museum":
+			route = preload("res://city/city_data.gd").to_points(spur["points"])
+	if route.is_empty():
+		return
+	var b: Dictionary = site["building"]
+	var holder := Node3D.new()
+	holder.name = "MuseumArrival"
+	holder.transform = ArchitectureBuilder.building_frame(b, terrain)
+	root.add_child(holder)
+	var p := route[route.size() - 1]
+	var start: Vector3 = holder.transform.affine_inverse() * Vector3(p.x, terrain.height_at(p, false) + 0.16, p.y)
+	var end := Vector3(start.x, 1.5, b["size"].y * 0.5 + 0.12)
+	var run := start.z - end.z
+	var rise := end.y - start.y
+	var steps := maxi(1, ceili(rise / 0.18))
+	var col := Greybox.body(holder)
+	var stone := Greybox.mat(Color(0.78, 0.73, 0.62))
+	var metal := Greybox.mat(Color(0.18, 0.26, 0.28))
+	StairFlight.build(holder, start, Vector3.FORWARD, 5, steps, -rise / steps, run / steps, start.y - 2, stone)
+	Greybox.box(holder, Vector3(5, 0.15, 0.7), end + Vector3(0, -0.075, -0.35), stone)
+	var surface := ArrayMesh.new()
+	surface.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, preload("res://city/ribbon_mesh.gd").build(PackedVector3Array([start, end, end + Vector3.FORWARD * 0.7]), 5, 0))
+	var cs := CollisionShape3D.new()
+	cs.shape = surface.create_trimesh_shape()
+	col.add_child(cs)
+	for x in [-2.35, 2.35]:
+		_sloping_rail(holder, col, start + Vector3(x, 0, 0), end + Vector3(x, 0, 0), metal)
+	for i in range(site["first"], site["first"] + site["count"]):
+		var part: Dictionary = plan.parts[i]
+		if part["color"] == plan.DARK or part["color"] == plan.GLASS:
+			continue
+		if part["kind"] == "box":
+			Greybox.col_box(col, part["size"], part["center"])
+		elif part["kind"] == "cylinder":
+			var cylinder := CollisionShape3D.new()
+			var shape := CylinderShape3D.new()
+			shape.radius = part["size"].x * 0.5
+			shape.height = part["size"].y
+			cylinder.shape = shape
+			cylinder.position = part["center"]
+			col.add_child(cylinder)
+	for side in [-1.0, 1.0]:
+		Greybox.railing(holder, Vector3(side * 2.5, 1.5, end.z), Vector3(side * (b["size"].x * 0.5 - 0.2), 1.5, end.z), metal, col)
+	holder.set_meta("arrival_start", start)
+	holder.set_meta("arrival_end", end)
+	holder.set_meta("door_stop", Vector3(0, 1.5, b["size"].y * 0.305 + 0.8))
 
 static func _sloping_rail(holder: Node3D, col: StaticBody3D, a: Vector3, b: Vector3, material: Material) -> void:
 	var forward := (b - a).normalized()
