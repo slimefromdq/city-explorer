@@ -42,7 +42,16 @@ func run() -> void:
 	walker.velocity = Vector3.ZERO
 	for i in 30:
 		await physics_frame
-	for destination in [end, street]:
+	var interior: Node3D = scene.city.get_node("LibraryInterior")
+	var tour: PackedVector3Array = interior.get_meta("tour_points")
+	var destinations: Array[Vector3] = [end]
+	for point in tour:
+		destinations.append(point)
+	for i in range(tour.size() - 2, -1, -1):
+		destinations.append(tour[i])
+	destinations.append(end)
+	destinations.append(street)
+	for destination in destinations:
 		var target: Vector3 = arrival.transform * destination
 		for frame in 2400:
 			var delta := Vector3(target.x - walker.global_position.x, 0, target.z - walker.global_position.z)
@@ -59,6 +68,16 @@ func run() -> void:
 			push_error("Library traversal reached wrong elevation: %s vs %s" % [walker.global_position, target])
 			quit(1)
 			return
-		print("[PASS] library arrival traversed without jumping: ", walker.global_position)
+		print("[PASS] library arrival/interior traversed without jumping: ", walker.global_position)
+	var hall: Node3D = interior.get_node("ReadingHall")
+	var space := walker.get_world_3d().direct_space_state
+	# Shelf and table collision must match their visible furnishing.
+	for segment in [[Vector3(-12, 2.5, 5.5), Vector3(-16, 2.5, 5.5)], [Vector3(12, 2.28, 2.5), Vector3(12, 2.28, 5.5)]]:
+		var hit := space.intersect_ray(PhysicsRayQueryParameters3D.create(hall.global_transform * segment[0], hall.global_transform * segment[1], 1))
+		if hit.is_empty() or hit["collider"].name != "FurnitureCollision":
+			push_error("Library furniture lacks matching collision")
+			quit(1)
+			return
+	print("[PASS] library shelves and tables block the capsule layer")
 	print("library_access_test: OK")
 	quit()

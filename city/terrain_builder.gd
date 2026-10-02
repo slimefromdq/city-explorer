@@ -5,6 +5,7 @@
 # vertex spacing (mesh_cell_size in the JSON) is the only quality knob.
 # Map (x, y) becomes 3D (x, height, z).
 extends RefCounted
+const TerrainHeight := preload("res://city/terrain_height.gd")
 
 const GRASS := Color(0.42, 0.58, 0.32)
 const ROCK := Color(0.52, 0.48, 0.42)
@@ -37,7 +38,10 @@ static func build(terrain, area: Rect2, cell: float, detail := Rect2(), detail_c
 			var run_z := cell * (mini(j + 1, rows) - maxi(j - 1, 0))
 			var n := Vector3(-hx / run_x, 1.0, -hz / run_z).normalized()
 			normals.append(n)
-			colors.append(_color(h, n, terrain.sea_level))
+			var color := _color(h, n, terrain.sea_level)
+			if terrain is TerrainHeight and h > terrain.sea_level:
+				color = park_color(terrain, Vector2(verts[-1].x, verts[-1].z), color)
+			colors.append(color)
 
 	# Godot treats clockwise triangles (seen from above) as front-facing.
 	var indices := PackedInt32Array()
@@ -69,6 +73,19 @@ static func build(terrain, area: Rect2, cell: float, detail := Rect2(), detail_c
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	return mesh
+
+## Paint the actual ground vertices: no second lawn surface can intersect it.
+static func park_color(terrain, p: Vector2, fallback: Color) -> Color:
+	for zone in terrain.park_colors:
+		if not Geometry2D.is_point_in_polygon(p, zone["polygon"]):
+			continue
+		if zone["kind"] == "cherry_garden":
+			return Color(0.90, 0.74, 0.80)
+		var rect: Dictionary = zone["rect"]
+		var u: Vector2 = rect["u"]
+		var stripe := floori(((p - rect["center"]).dot(u.orthogonal()) + rect["half"].y) / 7.0)
+		return Color(0.50, 0.78, 0.38) if stripe % 2 == 0 else Color(0.43, 0.71, 0.33)
+	return fallback
 
 static func detail_region(city: Dictionary, cell: float) -> Rect2:
 	var box := Rect2()

@@ -400,3 +400,30 @@ on the RTX 3080. The package and its source commit finish the exploration slice;
 future interiors or full-city collision are separate work.
 
 See [release guide](meridia-release.md) for controls, packaging and verification.
+
+## Library interior and lawn repair — 2026-10-02
+
+The lawn stripes and cherry garden used large corner-sampled polygons over the
+rolling terrain. Their color now lives on the actual terrain vertices, removing
+intersecting faces while keeping the mowing pattern and blossom garden tint.
+
+Meridian Library opens through both central portals into a public library and
+learning institute. A reception desk, two rows of book stacks, reading tables,
+city archive displays and a separate seminar room furnish the existing footprint.
+Recessed windows use transparent glazing; timber ceiling ribs and warm pendants
+mark the hall rhythm. Teal runners and a suspended direction board organize the
+main aisles. Shell, glazing, tables and shelves have collision; terrace guardrails
+protect the rear and sides. Repeated books and furniture use static box batches.
+
+Validation, architecture bounds/determinism, generated-city smoke and terrain
+stitching checks passed. The real Walker toured the stacks, reading wing, seminar
+room and both entrances, then returned down the stairs without jumping. Shelf
+and table collision checks passed. The full connected station/park/library walk
+also passed (1,030 simulated seconds). Forward+ captures of the hall, collections,
+seminar room, arrival and lawn were visually inspected.
+
+![Library reading hall](images/meridia-library-reading.png)
+
+![Library collections](images/meridia-library-collections.png)
+
+![Park lawn follows the terrain](images/meridia-park-lawn.png)

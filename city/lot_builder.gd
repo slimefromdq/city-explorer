@@ -35,7 +35,7 @@ static func build(plan, terrain) -> MeshInstance3D:
 		patches.append({"polygon": lot["polygon"], "color": _lot_color(lot)})
 	# The park lawn is the terrain itself. A second, differently triangulated
 	# lawn surface bridged the creek banks and produced jagged overlapping faces.
-	# Named gardens and courts keep their own patches in ParkBuilder.
+	# Named lawns/gardens use terrain colors; courts keep their paved apron.
 	for patch in patches:
 		var color: Color = patch["color"]
 		for poly in Geometry2D.offset_polygon(patch["polygon"], -DISPLAY_INSET):

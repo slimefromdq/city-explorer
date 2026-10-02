@@ -35,9 +35,15 @@ var _basin: PackedVector2Array
 var _hills: Array  # each: {center: Vector2, radius: float, height: float}
 var _ponds: Array  # each: {center: Vector2, radius: float, depth: float}
 var _creeks: Array  # each: {path: Array, depth: float, bank: float, box: Rect2 (where it can matter)}
+var park_colors: Array = []
 
 
 func _init(city: Dictionary) -> void:
+	for zone in city.get("greenery", {}).get("park_zones", []):
+		if zone["kind"] in ["open_field", "cherry_garden"]:
+			var poly := CityData.to_points(zone["polygon"])
+			var rect := Geo2D.min_area_rect(poly)
+			park_colors.append({"kind": zone["kind"], "polygon": poly, "rect": rect})
 	var t: Dictionary = city["terrain"]
 	sea_level = float(t["sea_level"])
 	_base = float(t["base_height"])

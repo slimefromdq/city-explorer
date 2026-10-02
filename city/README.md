@@ -40,7 +40,7 @@ container stacks and a cargo gantry, plus ferry shelters. `harbour.piers[].use`
 selects `cargo` or `ferry`. Harbour boxes form one additional shared batch;
 `harbour_builder.gd` joins both piers to the nearest coastal road with a shared
 approach mesh that clears the sampled shoreline.
-These additions are exteriors; civic interiors and harbour collision are future work.
+The museum and concert hall remain exteriors; harbour collision is future work.
 
 `civic_access_builder.gd` adds the library's street approach, two stair flights,
 rest landing and matching collision. ArchitecturePlan leaves an opening through
@@ -110,7 +110,7 @@ dry-land coverage, building clearance and grades below 20%; the generator also
 checks that its endpoint matches the civic approach. Trees reserve clearance for
 this branch. Civic wall collision preserves the open stair entrance. The connected
 walking regression reaches the library terrace and returns through the park to
-the station without jumping. Civic interiors remain closed.
+the station without jumping. The library opens into a furnished civic interior.
 
 Central Station batches static boxes through `station/static_box_batcher.gd`.
 Batch groups preserve material values, lighting layers, shadows and local spatial
@@ -146,3 +146,16 @@ directions without jumps, rejects a mall shortcut, and tests benches and barrier
 - Layout is data; rendering is generated; every random choice is seeded per object.
 - Building height = district type + distance from the core, plus small seeded variation.
 - Nothing is placed on a road, in the water or over a line of sight to the tower.
+
+## Meridian Library and Institute
+
+The existing library terrace opens through both central portals into a public
+reading hall, information desk, book stacks, city archive displays and a seminar
+room for public lectures and workshops. `library_interior_builder.gd` builds the
+furniture and matching collision; repeated books and furniture use static box
+batches. Windows occupy openings in the shell and use transparent glazing.
+The library access regression tours both wings and the seminar room, then returns
+to the street without jumping and checks shelf/table collision.
+
+Lawn stripes and the cherry garden color are now painted on the actual terrain
+vertices. They follow every terrain triangle with no second surface to clip.

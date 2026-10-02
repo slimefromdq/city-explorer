@@ -41,6 +41,10 @@ func capture() -> void:
 	var lake_center := Vector3(lake[0], 3, lake[1])
 	shots.append(["28_lake_loop", lake_center + Vector3(-40, 100, 130), lake_center])
 	var arrival = gen.get_node("CivicAccess/LibraryArrival")
+	var hall: Node3D = gen.get_node("LibraryInterior/ReadingHall")
+	for shot in [["31_library_reading", Vector3(1, 3.15, 8), Vector3(32, 3, 0)], ["32_library_collections", Vector3(-5, 3.15, 0), Vector3(-46, 3, -5.5)], ["33_library_seminar", Vector3(58, 3.15, 0), Vector3(74, 3.5, 0)]]:
+		shots.append([shot[0], hall.transform * shot[1], hall.transform * shot[2]])
+	shots.append(["34_park_lawn", Vector3(380, 40, 510), Vector3(380, 3, 426)])
 	var library = gen.library_walk
 	var bend: Vector2 = library.points[2]
 	var bend_world := Vector3(bend.x, library.height_at(bend), bend.y)

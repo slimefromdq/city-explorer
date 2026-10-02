@@ -8,13 +8,16 @@ static func build(plan, terrain) -> Node3D:
 	root.name = "Architecture"
 	var groups := {}
 	for part in plan.parts:
-		if not groups.has(part["kind"]):
-			groups[part["kind"]] = []
-		groups[part["kind"]].append(part)
+		var key: String = part["kind"]
+		if part["building"].get("site_kind", "") == "library" and part["color"] == plan.GLASS:
+			key = "library_glass"
+		if not groups.has(key):
+			groups[key] = []
+		groups[key].append(part)
 	for kind in groups:
 		var mesh: Mesh
 		match kind:
-			"box": mesh = BoxMesh.new()
+			"box", "library_glass": mesh = BoxMesh.new()
 			"cylinder":
 				var cylinder := CylinderMesh.new()
 				cylinder.top_radius = 0.5
@@ -38,10 +41,16 @@ static func build(plan, terrain) -> Node3D:
 		var mat := StandardMaterial3D.new()
 		mat.vertex_color_use_as_albedo = true
 		mat.roughness = 0.65 if kind != "box" else 0.8
+		if kind == "library_glass":
+			mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			mat.albedo_color = Color(0.78, 0.90, 0.95, 0.22)
+			mat.roughness = 0.25
 		var node := MultiMeshInstance3D.new()
 		node.name = "Architecture_%s" % kind
 		node.multimesh = mm
 		node.material_override = mat
+		if kind == "library_glass":
+			node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		root.add_child(node)
 	for site in plan.civic:
 		var holder := Node3D.new()

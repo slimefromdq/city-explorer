@@ -77,11 +77,15 @@ static func build(plan, terrain, roads, city: Dictionary = {}) -> Node3D:
 			Greybox.railing(holder, end + Vector3(x, 0, 0), end + Vector3(x, 0, -top_depth), metal, col)
 		for sign in [-1.0, 1.0]:
 			Greybox.railing(holder, Vector3(sign * 5, 1.5, half - 0.15), Vector3(sign * (b["size"].x * 0.5 - 0.15), 1.5, half - 0.15), metal, col)
+		var terrace_x: float = b["size"].x * 0.5 - 0.15
+		Greybox.railing(holder, Vector3(-terrace_x, 1.5, -half + 0.15), Vector3(terrace_x, 1.5, -half + 0.15), metal, col)
+		for side in [-1.0, 1.0]:
+			Greybox.railing(holder, Vector3(side * terrace_x, 1.5, -half + 0.15), Vector3(side * terrace_x, 1.5, half - 0.15), metal, col)
 		# Terrace and reading-room collision follow the rendered boxes, including
 		# the three-piece retaining foundation; the stair opening stays clear.
 		for i in range(site["first"], site["first"] + site["count"]):
 			var part: Dictionary = plan.parts[i]
-			if part["kind"] == "box" and part["size"].y > 0.7 and part["color"] != plan.DARK and part["color"] != plan.GLASS:
+			if part["kind"] == "box" and part["color"] != plan.DARK:
 				Greybox.col_box(col, part["size"], part["center"])
 		var empty: Array[Rect2] = []
 		TerrainApron.build(root, "LibraryStreetApron", terrain, Rect2(Vector2(start_world.x - 12, start_world.z - 2), Vector2(24, 16)), empty, true)

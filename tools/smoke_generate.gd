@@ -95,7 +95,15 @@ func _init() -> void:
 	var signs: MultiMeshInstance3D = gen.get_node_or_null("Signs")
 	_expect(signs != null and signs.multimesh.instance_count == gen.sign_plan.signs.size() and signs.multimesh.instance_count > 400, "the neon signs are drawn (%d)" % (signs.multimesh.instance_count if signs != null else 0))
 	var park: Node3D = gen.get_node_or_null("ParkFeatures")
-	_expect(park != null and park.get_child_count() >= 10, "generator built the park features: zones, courts, footbridges (%d parts)" % (park.get_child_count() if park != null else 0))
+	_expect(park != null and park.get_child_count() == 3 + gen.greenery_plan.footbridges.size(), "park renders courts and bridges without overlapping lawn meshes")
+	var lawn_colors := {}
+	var ground_arrays := ground.mesh.surface_get_arrays(0)
+	for i in ground_arrays[Mesh.ARRAY_VERTEX].size():
+		var p: Vector3 = ground_arrays[Mesh.ARRAY_VERTEX][i]
+		if p.x > 338 and p.x < 424 and p.z > 394 and p.z < 484:
+			lawn_colors[ground_arrays[Mesh.ARRAY_COLOR][i].to_html()] = true
+	_expect(lawn_colors.size() == 2, "both mowing colors are on the ground surface")
+	_expect(gen.has_node("LibraryInterior/ReadingHall") and gen.get_node("LibraryInterior").get_meta("static_batch_stats")["boxes"] > 2500, "library reading hall and batched collections are built")
 	_expect(gen.greenery_plan.footbridges.size() >= 1, "the creek has %d footbridges" % gen.greenery_plan.footbridges.size())
 	_expect(gen.park_walk != null and gen.park_walk.validate(gen.building_plan.buildings, gen.city).is_empty() and gen.get_node_or_null("ParkWalk") != null, "generator built the validated playable park loop")
 	_expect(gen.library_walk != null and gen.library_walk.validate(gen.building_plan.buildings, gen.city).is_empty() and gen.get_node_or_null("LibraryWalk") != null, "generator built the connected library walk")

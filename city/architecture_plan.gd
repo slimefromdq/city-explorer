@@ -150,7 +150,7 @@ func _civic(b: Dictionary, city: Dictionary) -> void:
 			_colonnade(b, h * 0.38, LIGHT_STONE)
 		"library":
 			# Long reading-room wings, rhythmic glazing, a raised central entrance.
-			_add(b, "box", Vector3(0, h * 0.38, 0), Vector3(s.x * 0.97, h * 0.76, s.y * 0.60), STONE)
+			_library_shell(b, h)
 			_add(b, "gable", Vector3(0, h * 0.84, 0), Vector3(s.x * 0.96, h * 0.16, s.y * 0.58), TILE)
 			_add(b, "box", Vector3(0, h * 0.82, 0), Vector3(s.x * 0.26, h * 0.16, s.y * 0.64), LIGHT_STONE)
 			_add(b, "gable", Vector3(0, h * 0.95, 0), Vector3(s.x * 0.28, h * 0.10, s.y * 0.64), LIGHT_STONE)
@@ -166,13 +166,42 @@ func _civic(b: Dictionary, city: Dictionary) -> void:
 	var bays := maxi(3, floori(s.x / 7.0))
 	for sign in [-1.0, 1.0]:
 		for i in bays:
+			if b["site_kind"] == "library":
+				continue # Library windows are openings in its hollow shell.
 			var x := (i - (bays - 1) * 0.5) * s.x * 0.90 / bays
 			_add(b, "box", Vector3(x, h * 0.28, sign * s.y * (0.305 if b["site_kind"] == "library" else 0.405)), Vector3(s.x * 0.90 / bays * 0.68, h * 0.36, s.y * 0.015), GLASS)
 		# Entrance portal sits inside the plinth, not across a sidewalk or path.
 		var door_depth := 0.33 if b["site_kind"] == "library" else (0.305 if b["site_kind"] == "museum" else 0.455)
-		_add(b, "box", Vector3(0, 2.8, sign * s.y * door_depth), Vector3(minf(8.0, s.x * 0.20), 3.6, s.y * 0.02), DARK)
+		if b["site_kind"] != "library":
+			_add(b, "box", Vector3(0, 2.8, sign * s.y * door_depth), Vector3(minf(8.0, s.x * 0.20), 3.6, s.y * 0.02), DARK)
 		_add(b, "box", Vector3(0, 6, sign * s.y * (0.375 if b["site_kind"] == "library" else 0.49)), Vector3(minf(22.0, s.x * 0.40), 1.6, s.y * 0.015), DARK)
 	civic.append({"building": b, "name": title, "first": first, "count": parts.size() - first})
+
+func _library_shell(b: Dictionary, h: float) -> void:
+	var s: Vector2 = b["size"]
+	var half_x := s.x * 0.485
+	var half_z := s.y * 0.30
+	var ceiling := h * 0.76
+	b["interior_ceiling"] = ceiling - 0.3
+	_add(b, "box", Vector3(0, ceiling - 0.15, 0), Vector3(s.x * 0.97, 0.30, s.y * 0.60), LIGHT_STONE)
+	for side in [-1.0, 1.0]:
+		_add(b, "box", Vector3(side * (half_x - 0.25), (ceiling + 1.5) * 0.5, 0), Vector3(0.5, ceiling - 1.5, s.y * 0.60), STONE)
+	# Both portals have a six-metre clear opening. Each wing has real window
+	# recesses, glazing and stone piers instead of glass pasted on a solid box.
+	var wing := half_x - 3.0
+	var bays := maxi(2, floori(wing / 7.0))
+	var bay := wing / bays
+	var window_top := minf(6.8, ceiling - 0.6)
+	for front in [-1.0, 1.0]:
+		var z: float = front * (half_z - 0.25)
+		_add(b, "box", Vector3(0, (ceiling + 5.4) * 0.5, z), Vector3(6, ceiling - 5.4, 0.5), STONE)
+		for side in [-1.0, 1.0]:
+			for i in bays:
+				var x: float = side * (3.0 + (i + 0.5) * bay)
+				_add(b, "box", Vector3(x, 1.95, z), Vector3(bay, 0.9, 0.5), STONE)
+				_add(b, "box", Vector3(x, (ceiling + window_top) * 0.5, z), Vector3(bay, ceiling - window_top, 0.5), STONE)
+				_add(b, "box", Vector3(x - side * (bay - 0.65) * 0.5, (window_top + 2.4) * 0.5, z), Vector3(0.65, window_top - 2.4, 0.5), STONE)
+				_add(b, "box", Vector3(x + side * 0.325, (window_top + 2.4) * 0.5, z), Vector3(bay - 0.65, window_top - 2.4, 0.08), GLASS)
 
 func _colonnade(b: Dictionary, tall: float, color: Color) -> void:
 	var s: Vector2 = b["size"]

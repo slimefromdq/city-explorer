@@ -3,24 +3,18 @@
 # One job: turn the park zones in city.json into 3D, and the footbridges the greenery plan
 # found into decks. Everything is placed from the data (zone polygons, court centres and
 # directions) and rests on the ground at its spot.
-#   cherry_garden     petal-pink ground (the blossom trees themselves come from the greenery layer)
-#   open_field        a lawn mown in alternating stripes; left treeless on purpose
+#   cherry_garden / open_field: color lives on the terrain, avoiding overlapping faces.
+#   Trees themselves come from the greenery layer.
 #   basketball_court  a paved apron with marked courts (28 x 15 m) and a hoop at each end
 extends RefCounted
 
 const FlatPatch := preload("res://city/flat_patch.gd")
-const Geo2D := preload("res://city/geo2d.gd")
 const CityData := preload("res://city/city_data.gd")
 
 const COURT := Vector2(28.0, 15.0)   # a standard basketball court (m)
 const KEY := Vector2(5.8, 4.9)       # the painted area under each hoop (m)
-const LIFT := 0.20                   # above the park lawn (0.12) and below the paths (0.16 + their own height)
-const ZONE_LIFT := 0.12             # below the footpaths, so blossom walks stay visible
-const STRIPE := 7.0                  # width of one mown stripe (m)
+const LIFT := 0.20
 
-const PETALS := Color(0.90, 0.74, 0.80)
-const FIELD_A := Color(0.50, 0.78, 0.38)
-const FIELD_B := Color(0.43, 0.71, 0.33)
 const APRON := Color(0.52, 0.54, 0.58)
 const COURT_BLUE := Color(0.18, 0.36, 0.62)
 const KEY_RED := Color(0.72, 0.26, 0.22)
@@ -38,9 +32,9 @@ static func build(city: Dictionary, greenery_plan, terrain) -> Node3D:
 		var poly := CityData.to_points(zone["polygon"])
 		match zone["kind"]:
 			"cherry_garden":
-				FlatPatch.add(root, poly, terrain, PETALS, ZONE_LIFT)
+				pass # Color is on the terrain mesh, not overlapping polygons.
 			"open_field":
-				_field(root, poly, terrain)
+				pass
 			"basketball_court":
 				FlatPatch.add(root, poly, terrain, APRON, LIFT)
 				for court in zone["courts"]:
@@ -48,24 +42,6 @@ static func build(city: Dictionary, greenery_plan, terrain) -> Node3D:
 	for bridge in greenery_plan.footbridges:
 		_footbridge(root, bridge, terrain, city.get("discovery_walk", {}).get("park_paths", []).has(bridge["path"]))
 	return root
-
-
-# ---- open field ------------------------------------------------------------------
-
-# Stripes run along the field's long side: each stripe is a slice of the field polygon.
-static func _field(parent: Node3D, poly: PackedVector2Array, terrain) -> void:
-	var rect := Geo2D.min_area_rect(poly)
-	var u: Vector2 = rect["u"]
-	var v := u.orthogonal()
-	var c: Vector2 = rect["center"]
-	var half: Vector2 = rect["half"]
-	var count := int(ceil(half.y * 2.0 / STRIPE))
-	for i in count:
-		var from := -half.y + i * STRIPE
-		var to := minf(from + STRIPE, half.y)
-		var strip := PackedVector2Array([c + u * -half.x + v * from, c + u * half.x + v * from, c + u * half.x + v * to, c + u * -half.x + v * to])
-		for piece in Geometry2D.intersect_polygons(poly, strip):
-			FlatPatch.add(parent, piece, terrain, FIELD_A if i % 2 == 0 else FIELD_B, ZONE_LIFT)
 
 
 # ---- basketball court ------------------------------------------------------------
