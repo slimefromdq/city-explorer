@@ -30,7 +30,7 @@ var roofs: Array = []
 var sky_gardens: Array = []
 # Each path: {"name": String, "width": float, "points": PackedVector2Array}
 var paths: Array = []
-# Each footbridge: {"from": Vector2, "to": Vector2, "width": float, "path": String}: planned automatically
+# Each footbridge: {"from", "to", "points", "width", "path"}: planned automatically
 # wherever a footpath crosses a creek (the creek plus its banks), so the path stays level over the water.
 var footbridges: Array = []
 
@@ -96,8 +96,8 @@ func _plan_paths(g: Dictionary) -> void:
 		paths.append({"name": path["name"], "width": float(path["width"]), "points": dense})
 
 
-# A footbridge wherever a path crosses a creek (measured to the top of its banks, plus a metre
-# each side to land on firm ground).
+# Follow the path across each creek, extending beyond the banks far enough to
+# support the full path width and player capsule on firm ground.
 func _plan_footbridges() -> void:
 	for path in paths:
 		for creek in _creeks:
@@ -107,8 +107,13 @@ func _plan_footbridges() -> void:
 						continue
 					var a := piece[0]
 					var b := piece[piece.size() - 1]
-					var dir := (b - a).normalized()
-					footbridges.append({"from": a - dir, "to": b + dir, "width": float(path["width"]) + 1.5, "path": path["name"]})
+					# An oblique bank can meet the edge of a wide path before its
+					# centreline. Cover that edge plus the capsule, with a dry landing.
+					var landing := float(path["width"]) * 0.5 + PlayerScale.RADIUS + 1.5
+					var bridge_points: PackedVector2Array = piece.duplicate()
+					bridge_points.insert(0, a - (piece[1] - a).normalized() * landing)
+					bridge_points.append(b + (b - piece[piece.size() - 2]).normalized() * landing)
+					footbridges.append({"from": bridge_points[0], "to": bridge_points[bridge_points.size() - 1], "points": bridge_points, "width": float(path["width"]) + 1.5, "path": path["name"]})
 
 
 # ---- trees -----------------------------------------------------------------------

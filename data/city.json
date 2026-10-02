@@ -255,6 +255,8 @@
 		"name": "Meridia Walk",
 		"note": "A pedestrian promenade from the station's street-level apron, over Core Bridge, around Meridian Mall to the tower's west forecourt, then via the north side of the museum to the park lake. Points are [x,z]. All additions stay within this corridor; this is not full-city collision.",
 		"width": 4,
+		"park_paths": ["Pond Loop"],
+		"park_signs": [{ "position": [529,290], "facing": [-1,0], "forward": "LAKESIDE LOOP\nFollow the teal lake trail", "back": "MERIDIA WALK\nMuseum, tower & station" }],
 		"bridge": "b_920",
 		"approach": [938,850],
 		"points": [[886,850], [910,850], [910,740], [910,710.1], [910,561.4], [910,438], [846,438], [846,374], [878,374], [878,325], [878,285], [650,285], [650,230], [610,230], [545,235], [535,262], [520,285]],

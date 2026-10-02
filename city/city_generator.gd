@@ -57,6 +57,7 @@ var transit  # TransitSystem: shuttle lines, tunnels, trains
 var discovery_walk  # shared promenade plan, including its actual bridge elevations
 var architecture_plan  # roof families and civic exteriors inside planned envelopes
 var harbour_plan
+var park_walk
 
 
 func _ready() -> void:
@@ -110,6 +111,12 @@ func _ready() -> void:
 		walk_holes.append_array(station.hole_rects())
 		walk_holes.append_array(transit.hole_rects_ground())
 	add_child(DiscoveryWalkBuilder.build(discovery_walk, DiscoveryWalkPlan.solid_obstacles(building_plan.buildings, city), greenery_plan.trees, terrain, walk_holes))
+	park_walk = preload("res://city/park_walk_plan.gd").new(city, greenery_plan, terrain, discovery_walk)
+	var park_errors: Array = park_walk.validate(building_plan.buildings, city)
+	if park_errors.is_empty():
+		add_child(preload("res://city/park_walk_builder.gd").build(park_walk, terrain, greenery_plan.trees))
+	else:
+		push_error("Park walk invalid: %s" % [park_errors])
 
 
 func _make_ground() -> MeshInstance3D:

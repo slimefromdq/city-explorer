@@ -46,7 +46,7 @@ static func build(city: Dictionary, greenery_plan, terrain) -> Node3D:
 				for court in zone["courts"]:
 					_court(root, Vector2(court["center"][0], court["center"][1]), deg_to_rad(float(court["yaw"])), terrain)
 	for bridge in greenery_plan.footbridges:
-		_footbridge(root, bridge, terrain)
+		_footbridge(root, bridge, terrain, city.get("discovery_walk", {}).get("park_paths", []).has(bridge["path"]))
 	return root
 
 
@@ -114,22 +114,38 @@ static func _hoop(parent: Node3D, side: float, half_length: float) -> void:
 # ---- footbridges -----------------------------------------------------------------
 
 # A wooden deck with a handrail each side, level with the ground at both banks.
-static func _footbridge(parent: Node3D, bridge: Dictionary, terrain) -> void:
+static func _footbridge(parent: Node3D, bridge: Dictionary, terrain, walkable := false) -> void:
 	var a: Vector2 = bridge["from"]
 	var b: Vector2 = bridge["to"]
 	var centre := (a + b) * 0.5
-	var length := a.distance_to(b)
 	var width := float(bridge["width"])
-	var yaw := (b - a).angle()
 	var holder := Node3D.new()
-	# Top is 2 cm above the path, not a 21 cm step. The path ribbon continues
-	# underneath, so that small offset also avoids coplanar wood/path flicker.
-	holder.position = Vector3(centre.x, terrain.height_at(centre, false) + 0.16 + 0.02 - 0.175, centre.y)
-	holder.rotation.y = -yaw
+	holder.name = "Footbridge"
 	parent.add_child(holder)
-	_box(holder, Vector3(length, 0.35, width), Vector3(0.0, 0.0, 0.0), WOOD)
+	# Follow the clipped path through bends instead of shortcutting its corner
+	# with one straight box. Top remains 2 cm above the adjoining park paving.
+	var points := PackedVector3Array()
+	var top: float = terrain.height_at(centre, false) + 0.18
+	for p in bridge["points"]:
+		points.append(Vector3(p.x, top, p.y))
+	var col := Greybox.body(holder, "BridgeCollision") if walkable else null
+	_bridge_ribbon(holder, points, width, 0.35, WOOD, col)
 	for side in [-1.0, 1.0]:
-		_box(holder, Vector3(length, 0.9, 0.12), Vector3(0.0, 0.62, side * (width * 0.5 - 0.06)), WOOD.darkened(0.2))
+		var rail := PackedVector3Array()
+		for i in points.size():
+			var forward := (points[mini(i + 1, points.size() - 1)] - points[maxi(i - 1, 0)]).normalized()
+			var across := forward.cross(Vector3.UP)
+			rail.append(points[i] + across * side * (width * 0.5 - 0.06) + Vector3.UP * 0.9)
+		_bridge_ribbon(holder, rail, 0.12, 0.9, WOOD.darkened(0.2), col)
+
+static func _bridge_ribbon(parent: Node3D, points: PackedVector3Array, width: float, depth: float, color: Color, col: StaticBody3D) -> void:
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, preload("res://city/ribbon_mesh.gd").build(points, width, depth))
+	_part(parent, mesh, Vector3.ZERO, color, 0.85)
+	if col != null:
+		var cs := CollisionShape3D.new()
+		cs.shape = mesh.create_trimesh_shape()
+		col.add_child(cs)
 
 
 # ---- helpers ---------------------------------------------------------------------

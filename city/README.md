@@ -72,6 +72,16 @@ duplicate paving over an existing park path. The museum's steps and gallery/rotu
 collision are built by `civic_access_builder.gd`. The regression walks this branch
 and returns to the station without jumping. The museum interior remains closed.
 
+The park arrival also connects to the 436 m Pond Loop. Follow its teal inlay around
+the lake and across two wooden footbridges. `discovery_walk.park_paths` selects
+existing greenery paths for traversal; `park_signs` supplies wayfinding.
+`park_walk_plan.gd` validates the connection and full-width water crossings;
+`park_walk_builder.gd` adds matching path collision, dry shoulders and nearby trunks.
+Footbridge decks and rails follow the path bends, with identical visible and
+collision meshes. Shoulders stop at water. The walking regression completes the
+museum branch and lake loop in both directions before returning to the station,
+checks both bridge barriers, and rejects missing bridges and an invisible lake floor.
+
 Central Station batches static boxes through `station/static_box_batcher.gd`.
 Batch groups preserve material values, lighting layers, shadows and local spatial
 cells. Collision and live kiosks are independent. Set `STATION_UNBATCHED=1` when
@@ -81,7 +91,7 @@ profiling before/after rendering; see `docs/meridia-performance.md` for results.
 signs, and furniture. `discovery_walk_plan.gd` calculates bridge/ground elevations;
 `discovery_walk_builder.gd` draws the promenade and matching collision. Dry shoulders
 support stepping off the path; nearby walls and trunks are solid. Collision coverage
-is limited to this corridor and the existing station areas.
+is limited to this corridor, the Pond Loop and the existing station areas.
 
 City validation checks for water crossings, blocked building/civic footprints,
 and steep grades. `tests/discovery_walk_test.gd` walks the real capsule in both

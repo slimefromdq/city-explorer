@@ -76,6 +76,25 @@ func run() -> void:
 			if not await _go("museum return %d" % i, branch[i], false):
 				quit(1)
 				return
+	var park = scene.city.park_walk
+	var park_problems: Array = park.validate(scene.city.building_plan.buildings, scene.city.city)
+	if not park_problems.is_empty() or park.paths.size() != 1 or park.bridges.size() != 2:
+		_fail("Invalid park loop: %s" % [park_problems])
+		quit(1)
+		return
+	# A real walk from the museum branch into the full loop and back to its
+	# junction, in both directions; no teleports between route checkpoints.
+	for path in park.paths:
+		var points: PackedVector2Array = path["points"]
+		for i in range(1, points.size()):
+			if not await _go("lake loop clockwise %d" % i, points[i], true, park):
+				quit(1)
+				return
+		for i in range(points.size() - 2, -1, -1):
+			if not await _go("lake loop counterclockwise %d" % i, points[i], true, park):
+				quit(1)
+				return
+	print("  ok   complete lake loop in both directions without jumping")
 	for i in range(plan.points.size() - 2, -1, -1):
 		if not await _go("return checkpoint %d" % i, plan.points[i], true):
 			quit(1)
@@ -113,10 +132,41 @@ func run() -> void:
 		else:
 			print("  ok   bridge barrier retains capsule on side ", side)
 	walker.wish = Vector3.ZERO
+	for bridge in park.bridges:
+		var points: PackedVector2Array = bridge["points"]
+		var middle := points.size() / 2
+		var p := points[middle]
+		var across := (points[middle + 1] - points[middle - 1]).normalized().orthogonal()
+		for side in [-1.0, 1.0]:
+			walker.global_position = Vector3(p.x, park.height_at(p) + 0.05, p.y)
+			walker.velocity = Vector3.ZERO
+			walker.wish = Vector3(across.x, 0, across.y) * side
+			for frame in 180:
+				await physics_frame
+			if not park.bridge_at(Vector2(walker.global_position.x, walker.global_position.z)).is_empty() and absf(walker.global_position.y - park.height_at(p)) < 0.15:
+				print("  ok   park bridge rail retains capsule on side ", side)
+			else:
+				_fail("Park bridge rail failed at %s" % walker.global_position)
+		walker.wish = Vector3.ZERO
+	# Removing both bridge reservations must invalidate the wet crossing.
+	var saved: Array = scene.city.greenery_plan.footbridges
+	scene.city.greenery_plan.footbridges = []
+	var unsafe = preload("res://city/park_walk_plan.gd").new(scene.city.city, scene.city.greenery_plan, scene.city.terrain, plan)
+	scene.city.greenery_plan.footbridges = saved
+	if unsafe.validate(scene.city.building_plan.buildings, scene.city.city).is_empty():
+		_fail("Park validator accepted a wet loop without bridges")
+	else:
+		print("  ok   park validator rejects missing footbridges")
+	var lake: Array = scene.city.city["terrain"]["ponds"][0]["center"]
+	var ray := PhysicsRayQueryParameters3D.create(Vector3(lake[0], 6, lake[1]), Vector3(lake[0], -0.05, lake[1]))
+	if not scene.get_world_3d().direct_space_state.intersect_ray(ray).is_empty():
+		_fail("An invisible floor crosses the lake centre")
+	else:
+		print("  ok   lake centre has no invisible walking floor")
 	print("discovery_walk_test: %s (%.0f simulated seconds)" % ["OK" if failures == 0 else "FAILED", elapsed])
 	quit(1 if failures > 0 else 0)
 
-func _go(label: String, target: Vector2, check_height: bool) -> bool:
+func _go(label: String, target: Vector2, check_height: bool, surface = null) -> bool:
 	var start := elapsed
 	var last := walker.global_position
 	var last_check := elapsed
@@ -129,7 +179,8 @@ func _go(label: String, target: Vector2, check_height: bool) -> bool:
 		walker.wish = delta.normalized()
 		await physics_frame
 		elapsed += 1.0 / 60.0
-		if check_height and absf(walker.global_position.y - scene.city.discovery_walk.height_at(Vector2(walker.global_position.x, walker.global_position.z))) > 0.45:
+		var provider = scene.city.discovery_walk if surface == null else surface
+		if check_height and absf(walker.global_position.y - provider.height_at(Vector2(walker.global_position.x, walker.global_position.z))) > 0.45:
 			_fail("Fell or left the walking surface during %s at %s" % [label, walker.global_position])
 			return false
 		if elapsed - last_check >= 2.0:

@@ -97,6 +97,7 @@ func _init() -> void:
 	var park: Node3D = gen.get_node_or_null("ParkFeatures")
 	_expect(park != null and park.get_child_count() >= 10, "generator built the park features: zones, courts, footbridges (%d parts)" % (park.get_child_count() if park != null else 0))
 	_expect(gen.greenery_plan.footbridges.size() >= 1, "the creek has %d footbridges" % gen.greenery_plan.footbridges.size())
+	_expect(gen.park_walk != null and gen.park_walk.validate(gen.building_plan.buildings, gen.city).is_empty() and gen.get_node_or_null("ParkWalk") != null, "generator built the validated playable park loop")
 	_expect(gen.terrain.height_at(Vector2(450, 285)) < gen.terrain.sea_level - 1.0 and gen.terrain.height_at(Vector2(456, 338)) < gen.terrain.sea_level - 1.0, "the lake and the creek are carved below sea level")
 	var cam: Camera3D = view.get_node("FlyCamera")
 	_expect(cam.position.y > 100.0, "camera was framed above the city")

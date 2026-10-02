@@ -30,6 +30,16 @@ func capture() -> void:
 	]
 	var walk = scene.get_node("CityGenerator").discovery_walk
 	var gen = scene.get_node("CityGenerator")
+	var bridge_index := 26
+	for bridge in gen.park_walk.bridges:
+		var points: PackedVector2Array = bridge["points"]
+		var start := points[0]
+		var target := points[points.size() / 2]
+		shots.append(["%02d_lake_bridge" % bridge_index, Vector3(start.x, gen.park_walk.height_at(start) + 1.62, start.y), Vector3(target.x, gen.park_walk.height_at(target) + 1.5, target.y)])
+		bridge_index += 1
+	var lake: Array = gen.city["terrain"]["ponds"][0]["center"]
+	var lake_center := Vector3(lake[0], 3, lake[1])
+	shots.append(["28_lake_loop", lake_center + Vector3(-40, 100, 130), lake_center])
 	var arrival = gen.get_node("CivicAccess/LibraryArrival")
 	var museum = gen.get_node("CivicAccess/MuseumArrival")
 	var museum_start: Vector3 = museum.transform * museum.get_meta("arrival_start")

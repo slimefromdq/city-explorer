@@ -83,6 +83,10 @@ func _check_architecture(city: Dictionary) -> void:
 	_expect(architecture.families.size() >= 5, "district architecture uses %d roof families" % architecture.families.size())
 	var harbour := HarbourPlan.new(city, terrain)
 	_expect(harbour.validate().is_empty(), "harbour architecture stays inside pier reservations: %s" % [harbour.validate()])
+	var walk := DiscoveryWalkPlan.new(city, terrain)
+	var park = preload("res://city/park_walk_plan.gd").new(city, planting, terrain, walk)
+	var park_problems: Array = park.validate(buildings.buildings, city)
+	_expect(park_problems.is_empty(), "park loop connects safely, with full-width bridge coverage: %s" % [park_problems])
 
 func _check_discovery_walk(city: Dictionary) -> void:
 	if not city.has("discovery_walk"):

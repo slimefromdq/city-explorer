@@ -260,7 +260,7 @@ godot --path . --script res://tools/profile_meridia.gd
 godot --path . --script res://tests/static_batch_test.gd
 ```
 
-The capture tool writes twenty-five 1600 × 900 images to `tests/out/meridia` (ignored by
+The capture tool writes twenty-eight 1600 × 900 images to `tests/out/meridia` (ignored by
 Git). Set `OUT` to choose another output directory. It uses the viewer scene's
 actual lighting and suppresses only the camera-control help overlay. Set `ONLY`
 to a comma-separated list of capture names to render selected views.
@@ -289,8 +289,8 @@ Finish Meridia as a city exploration vertical slice: Central Station, the trains
 and the signed station–bridge–tower–park journey, with civic exteriors visible from
 that journey. The library arrival is an additional isolated traversal test area;
 its district still needs connected ground collision before walking there from the
-station. The museum approach and first station batching pass are now delivered.
-Prioritize a playable park return loop and a library connection before adding
+station. The museum approach, first station batching pass and playable park loop
+are now delivered. Prioritize a library connection before adding
 full-city collision, civic interiors, harbour traversal or combat.
 This scope is a recommendation for the next completion gate, not a claim that the
 entire city is playable.
@@ -298,3 +298,21 @@ entire city is playable.
 Museum terrace reached from the signed park branch:
 
 ![Museum arrival from Meridia Walk](images/meridia-museum-arrival.png)
+
+## Playable lake loop — 2026-10-01
+
+The existing Pond Loop is now a connected 436 m walk from the promenade's park
+arrival, with a teal trail, a junction sign, dry shoulders and solid nearby trunks.
+Both footbridges follow the path bends and extend onto dry banks; their visible
+decks and guardrails also provide collision. Water crossings are checked across
+the full path width, including clearance for the player capsule.
+
+The walking regression completed station → museum → lake loop clockwise and
+counterclockwise → station without jumping (752 simulated seconds). Both bridge
+rails restrained the capsule. Removing the bridges made validation fail, and a
+physics ray confirmed there is no invisible floor across the lake. City validation
+and generated-scene smoke checks passed. Three new viewer captures were inspected.
+
+![Connected lake loop and footbridges](images/meridia-lake-loop.png)
+
+![Footbridge at walking height](images/meridia-lake-bridge.png)
