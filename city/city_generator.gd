@@ -11,6 +11,11 @@
 # Phase 6 layer: landmarks (tower, wheel, basilica); buildings keep the sightlines to the tower clear.
 # Phase 7 layers: the tower precinct, greenery (trees, roof gardens, paths) and neon signs.
 extends Node3D
+signal generation_progress(value: float, description: String)
+signal generation_finished
+var staged_loading := false
+var generated := false
+const MeshCache := preload("res://city/static_mesh_cache.gd")
 
 const CityData := preload("res://city/city_data.gd")
 const TerrainHeight := preload("res://city/terrain_height.gd")
@@ -62,6 +67,7 @@ var library_walk
 
 
 func _ready() -> void:
+	await _phase(0.05, "Shaping the coast and hills")
 	city = CityData.load_city()
 	if city.is_empty():
 		return
@@ -70,10 +76,12 @@ func _ready() -> void:
 	add_child(_make_ground())
 	add_child(_make_deep_sea_floor())
 	add_child(_make_water())
+	await _phase(0.20, "Laying out streets and districts")
 	roads = RoadNetwork.new(city)
-	add_child(RoadBuilder.build_roads(roads, terrain))
+	add_child(RoadBuilder.build_roads(roads, terrain, MeshCache.mesh("roads")))
 	plan = LotPlan.new(city, roads)
 	add_child(LotBuilder.build(plan, terrain))
+	await _phase(0.35, "Building the skyline and civic terraces")
 	sightlines = Sightlines.new(city, terrain)
 	var routes := RouteData.load_default()
 	var reserved: Array = TransitSystem.reserve_rects(routes) if with_station else []
@@ -86,6 +94,7 @@ func _ready() -> void:
 	harbour_plan = HarbourPlan.new(city, terrain)
 	add_child(HarbourBuilder.build(harbour_plan, terrain))
 	add_child(LandmarkBuilder.build_all(city, terrain))
+	await _phase(0.55, "Opening Central Station")
 	if with_station:
 		station = StationComplex.new()
 		station.position = StationLayout.HUB
@@ -95,6 +104,7 @@ func _ready() -> void:
 	add_child(ParkBuilder.build(city, greenery_plan, terrain))
 	sign_plan = SignPlan.new(city, roads, architecture_plan)
 	add_child(SignBuilder.build(sign_plan, building_plan, terrain))
+	await _phase(0.75, "Preparing trains and walking paths")
 	if station != null:
 		transit = TransitSystem.new()
 		transit.terrain = terrain
@@ -128,6 +138,15 @@ func _ready() -> void:
 		add_child(preload("res://city/library_walk_builder.gd").build(library_walk, building_plan.buildings, greenery_plan.trees, terrain))
 	else:
 		push_error("Library walk invalid: %s" % [library_errors])
+	generated = true
+	generation_progress.emit(1.0, "Ready to explore")
+	generation_finished.emit()
+
+func _phase(value: float, description: String) -> void:
+	generation_progress.emit(value, description)
+	if staged_loading:
+		await get_tree().process_frame
+		await get_tree().process_frame
 
 
 func _make_ground() -> MeshInstance3D:
@@ -135,7 +154,9 @@ func _make_ground() -> MeshInstance3D:
 	var node := MeshInstance3D.new()
 	node.name = "Ground"
 	var cell := float(city["terrain"]["mesh_cell_size"])
-	node.mesh = TerrainBuilder.build(terrain, area, cell, TerrainBuilder.detail_region(city, cell), minf(cell, 2.0))
+	node.mesh = MeshCache.mesh("ground")
+	if node.mesh == null:
+		node.mesh = TerrainBuilder.build(terrain, area, cell, TerrainBuilder.detail_region(city, cell), minf(cell, 2.0))
 	var mat := ShaderMaterial.new()
 	mat.shader = preload("res://city/hole_surface.gdshader")
 	node.material_override = mat

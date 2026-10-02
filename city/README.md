@@ -67,6 +67,10 @@ sign mounting, roof winding, and separation of the station's two stair systems.
 
 ## Meridia Walk
 
+For the finished exploration entry point, run `walk/Meridia.tscn`. It adds a
+launch screen, controls, staged loading and F1 return to the menu. See
+`docs/meridia-release.md` for the portable Windows package and completion checks.
+
 Open `walk/StationWalk.tscn` for the first-person exploration scene. Follow the
 teal inlay from Central Station's forecourt crossing over Core Bridge, around
 Meridian Mall to the tower's west forecourt, then north of the museum to the lake.

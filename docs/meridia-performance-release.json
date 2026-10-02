@@ -1,0 +1,113 @@
+{
+	"cpu": "12th Gen Intel(R) Core(TM) i7-12700",
+	"date": "2026-10-01",
+	"engine": "4.7.2-stable (official)",
+	"generation_ms": 4597,
+	"gpu": "NVIDIA GeForce RTX 3080",
+	"msaa": 2,
+	"renderer": "Forward+",
+	"resolution": [
+		1600,
+		900
+	],
+	"sample_frames": 180,
+	"shadow_map": 4096,
+	"station_batches": {
+		"batches": 49,
+		"boxes": 360
+	},
+	"views": [
+		{
+			"draw_calls_mean": 6450.0,
+			"frame_ms_median": 3.918,
+			"frame_ms_p95": 5.116,
+			"name": "overview",
+			"render_cpu_ms_median": 2.52800011634827,
+			"render_gpu_ms_median": 1.80999994277954,
+			"video_memory_mib": 385.95930480957
+		},
+		{
+			"draw_calls_mean": 2566.0,
+			"frame_ms_median": 1.664,
+			"frame_ms_p95": 1.938,
+			"name": "skyline",
+			"render_cpu_ms_median": 0.954999983310699,
+			"render_gpu_ms_median": 1.30799996852875,
+			"video_memory_mib": 387.33430480957
+		},
+		{
+			"draw_calls_mean": 9714.0,
+			"frame_ms_median": 4.82,
+			"frame_ms_p95": 6.748,
+			"name": "station",
+			"render_cpu_ms_median": 3.20099997520447,
+			"render_gpu_ms_median": 1.84500002861023,
+			"video_memory_mib": 387.33430480957
+		},
+		{
+			"draw_calls_mean": 4314.0,
+			"frame_ms_median": 2.064,
+			"frame_ms_p95": 2.509,
+			"name": "park",
+			"render_cpu_ms_median": 1.36500000953674,
+			"render_gpu_ms_median": 1.51600003242493,
+			"video_memory_mib": 387.33430480957
+		},
+		{
+			"draw_calls_mean": 6336.0,
+			"frame_ms_median": 3.226,
+			"frame_ms_p95": 3.615,
+			"name": "street",
+			"render_cpu_ms_median": 2.15000009536743,
+			"render_gpu_ms_median": 1.47399997711182,
+			"video_memory_mib": 387.33430480957
+		},
+		{
+			"draw_calls_mean": 1522.0,
+			"frame_ms_median": 1.344,
+			"frame_ms_p95": 1.54,
+			"name": "museum_walk",
+			"render_cpu_ms_median": 0.632000029087067,
+			"render_gpu_ms_median": 0.99099999666214,
+			"video_memory_mib": 387.33430480957
+		},
+		{
+			"draw_calls_mean": 329.0,
+			"frame_ms_median": 1.275,
+			"frame_ms_p95": 1.439,
+			"name": "library_walk",
+			"render_cpu_ms_median": 0.23199999332428,
+			"render_gpu_ms_median": 0.897000014781952,
+			"video_memory_mib": 387.33430480957
+		},
+		{
+			"draw_calls_mean": 1220.0,
+			"frame_ms_median": 1.292,
+			"frame_ms_p95": 1.509,
+			"name": "library_street",
+			"render_cpu_ms_median": 0.432000011205673,
+			"render_gpu_ms_median": 0.921000003814697,
+			"video_memory_mib": 387.33430480957
+		},
+		{
+			"draw_calls_mean": 1055.0,
+			"frame_ms_median": 1.287,
+			"frame_ms_p95": 1.518,
+			"name": "lake_bridge_8",
+			"render_cpu_ms_median": 0.474999994039536,
+			"render_gpu_ms_median": 0.921999990940094,
+			"video_memory_mib": 387.33430480957
+		},
+		{
+			"draw_calls_mean": 1802.0,
+			"frame_ms_median": 1.413,
+			"frame_ms_p95": 1.635,
+			"name": "lake_bridge_9",
+			"render_cpu_ms_median": 0.736000001430511,
+			"render_gpu_ms_median": 1.06099998950958,
+			"video_memory_mib": 387.33430480957
+		}
+	],
+	"vsync": "disabled",
+	"warmup_frames": 60
+}

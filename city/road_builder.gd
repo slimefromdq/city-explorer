@@ -26,7 +26,12 @@ const DECK_COLOR := Color(0.62, 0.61, 0.57)
 
 
 # One MeshInstance3D "Roads" with one surface per road kind (so each kind has its own colour).
-static func build_roads(network, terrain) -> MeshInstance3D:
+static func build_roads(network, terrain, cached: ArrayMesh = null) -> MeshInstance3D:
+	if cached != null:
+		var result := MeshInstance3D.new()
+		result.name = "Roads"
+		result.mesh = cached
+		return result
 	var mesh := ArrayMesh.new()
 	for kind in KINDS:
 		var combined := _empty_arrays()

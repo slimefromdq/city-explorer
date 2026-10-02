@@ -13,12 +13,20 @@ var ui: RideUI
 var route_guide: CanvasLayer
 var with_ui := true
 var sun: DirectionalLight3D
+var staged_loading := false
+var ready_to_explore := false
+signal exploration_ready
+signal loading_progress(value: float, description: String)
 
 
 func _ready() -> void:
 	_environment()
 	city = CITY_GEN.new()
+	city.staged_loading = staged_loading
+	city.generation_progress.connect(func(value: float, description: String): loading_progress.emit(value, description))
 	add_child(city)
+	if not city.generated:
+		await city.generation_finished
 	walker = Walker.new()
 	walker.position = SPAWN
 	walker.yaw = PI * 0.5
@@ -37,6 +45,8 @@ func _ready() -> void:
 		var layer := CanvasLayer.new()
 		layer.add_child(hint)
 		add_child(layer)
+	ready_to_explore = true
+	exploration_ready.emit()
 
 
 ## One sun for the whole scene: the hall has no light of its own, so its windows and skylight let in

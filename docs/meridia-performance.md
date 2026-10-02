@@ -101,3 +101,16 @@ multi-second synchronous startup task. Loading feedback and caching generated
 static content are the next performance priorities before expanding scope.
 [Raw connected-slice measurements](meridia-performance-connected.json) preserve
 startup time, hardware and all render timings.
+
+## Cached milestone
+
+The finished milestone ships compressed terrain and road meshes, with digest-based
+invalidation when layout, generating scripts or engine version change. Other layers
+remain generated. Cached mesh geometry was checked against fresh generation.
+
+The final run measured 4,597 ms of viewer construction, compared with 5,764 ms in
+the preceding connected-slice run: an observed reduction of about 20%. This is a
+single-machine comparison, not a guaranteed load time. Worst sampled P95 frame
+interval remained 6.75 ms. [Final raw measurements](meridia-performance-release.json)
+retain all ten views. The launch scene adds progress between generation stages;
+it does not make each stage asynchronous or remove startup stalls entirely.

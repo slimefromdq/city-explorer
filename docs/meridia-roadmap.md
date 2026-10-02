@@ -384,3 +384,19 @@ Before the hillside road repair:
 After the repair, with the same camera:
 
 ![Road following the hillside](images/meridia-library-trail.png)
+
+## Exploration milestone complete — 2026-10-01
+
+`walk/Meridia.tscn` is the launch entry point. It presents the skyline, controls,
+an Explore button and staged loading progress. A compressed terrain/road cache
+cuts repeated mesh construction; layout, script or engine changes invalidate it.
+F1 returns to the launch screen. The original prototype entry point is preserved.
+
+The connected walk, all four train journeys, station balcony tour, launch/return
+flow, scene generation and static-cache equivalence passed. A portable Windows
+runtime bundle was built and checked from its own project folder. Final viewer
+construction measured 4.60 seconds and worst sampled P95 frame time was 6.75 ms
+on the RTX 3080. The package and its source commit finish the exploration slice;
+future interiors or full-city collision are separate work.
+
+See [release guide](meridia-release.md) for controls, packaging and verification.
