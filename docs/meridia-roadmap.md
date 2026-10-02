@@ -258,6 +258,8 @@ godot --headless --path . --script res://tests/terrain_detail_test.gd
 godot --headless --fixed-fps 60 --path . --script res://tests/library_access_test.gd
 godot --path . --script res://tools/profile_meridia.gd
 godot --path . --script res://tests/static_batch_test.gd
+godot --headless --path . --script res://tests/route_guide_test.gd
+godot --path . --script res://tests/route_guide_test.gd
 ```
 
 The capture tool writes thirty 1600 × 900 images to `tests/out/meridia` (ignored by
@@ -336,3 +338,24 @@ reviewed at both overview and walking heights.
 ![Library connection from the park edge](images/meridia-library-connection.png)
 
 ![Teal trail approaching the library](images/meridia-library-trail.png)
+
+## Walking navigation — 2026-10-01
+
+StationWalk now includes an M-key route guide with the connected promenade,
+lake loop and both civic branches. Six numbered destinations match a side legend;
+the player marker tracks world position and facing direction even when reparented
+under a train. North remains at the top. The map is built from current route plans,
+city water/park geometry and civic arrival metadata, so it follows layout changes.
+It starts closed, ignores mouse input and preserves mouse capture. The existing
+train destination panel remains above it. Off-map travel is reported explicitly.
+
+The UI integration test passed in headless mode and with the real Vulkan renderer:
+M opens/closes the map, held-key repeat is ignored, spawn and library locations
+map correctly, world camera orientation survives reparenting, and the control
+tracks the project's resized canvas. Large and small window captures were reviewed.
+Generated-city smoke checks also passed. Walking geometry and collision are unchanged
+from the previous 1,030-second connected traversal milestone.
+
+![Walking route guide](images/meridia-route-guide.png)
+
+![Walking map at a smaller window size](images/meridia-route-guide-small.png)

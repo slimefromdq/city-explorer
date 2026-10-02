@@ -66,6 +66,15 @@ Meridian Mall to the tower's west forecourt, then north of the museum to the lak
 The route is about 1.13 km (roughly four minutes at walking speed). It has decision
 signs, five bench/lamp rest points, and bridge barriers. Trains remain available.
 
+Press **M** to open or close the walking map. It shows the connected promenade,
+lake loop and civic branches, six numbered destinations, and your live location
+and facing direction. North stays at the top. Its geometry comes from the generated
+route plans and civic arrival metadata; the map is limited to this connected slice.
+Travel outside its bounds reports that you are outside the map. The overlay scales
+with the viewport and leaves mouse capture and the train destination panel alone.
+`walk/route_guide.gd` owns the display. `tests/route_guide_test.gd` checks keyboard
+toggle/repeat handling, resized canvas bounds and global orientation after reparenting.
+
 At the park arrival, follow the museum sign and teal branch to the front terrace.
 `discovery_walk.spurs` owns branch points and signage; `replaces_path` prevents
 duplicate paving over an existing park path. The museum's steps and gallery/rotunda

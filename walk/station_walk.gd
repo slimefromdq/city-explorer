@@ -10,6 +10,7 @@ const SPAWN := Vector3(962.0, 3.2, 850.0)
 var city: Node3D
 var walker: Walker
 var ui: RideUI
+var route_guide: CanvasLayer
 var with_ui := true
 var sun: DirectionalLight3D
 
@@ -26,9 +27,12 @@ func _ready() -> void:
 		ui = RideUI.new()
 		add_child(ui)
 		ui.bind(city.transit, walker)
+		route_guide = preload("res://walk/route_guide.gd").new()
+		add_child(route_guide)
+		route_guide.bind(city, walker)
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		var hint := Label.new()
-		hint.text = "WASD move   Shift run   Space jump   Esc release mouse\nTake a train, or follow the teal Meridia Walk: Core Bridge > Meridian Tower > Central Park"
+		hint.text = "WASD move   Shift run   Space jump   Esc release mouse   M walking map\nFollow the teal Meridia Walk to the tower & lake; take the gold map branches to civic terraces."
 		hint.position = Vector2(12, 10)
 		var layer := CanvasLayer.new()
 		layer.add_child(hint)
