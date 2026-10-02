@@ -2,8 +2,8 @@ class_name Walker
 extends CharacterBody3D
 ## First-person walker for the station and the city: a capsule of the reference player's size
 ## (PlayerScale), WASD + mouse look + Space to jump, Shift to run. The city has collision only where the
-## station needs it, so this is meant for the station, its plazas, the platforms, the trains and the
-## destination entrances.
+## station and Meridia Walk need it: the plazas, platforms, trains, destination entrances and
+## the marked bridge/tower/park promenade.
 ##
 ## On a train: when the train leaves with the player aboard the walker is reparented to the carriage and
 ## walks inside it without physics (clamped to the aisle); on arrival it goes back to normal.

@@ -39,14 +39,14 @@ func _init(city: Dictionary, network, building_plan) -> void:
 			_grid[cell].append(p)
 	for b in building_plan.buildings:
 		var count := int(counts.get(b["group"], 0))
-		if b["group"] == "civic" or count == 0 or float(b["height"]) < low + 3.0:
+		if b["group"] == "civic" or count == 0 or float(b.get("render_height", b["height"])) < low + 3.0:
 			continue
 		var road := _nearest_road_point(b["center"])
 		if road == Vector2.INF:
 			continue
 		var rng := RandomNumberGenerator.new()
 		rng.seed = hash("%d:signs:%s" % [int(city["meta"]["seed"]), b["id"]])
-		_sign_the_building(b, road, count, low, minf(high, float(b["height"]) - 3.0), rng)
+		_sign_the_building(b, road, count, low, minf(high, float(b.get("render_height", b["height"])) - 3.0), rng)
 
 
 func _sign_the_building(b: Dictionary, road: Vector2, count: int, low: float, high: float, rng: RandomNumberGenerator) -> void:
@@ -70,7 +70,7 @@ func _sign_the_building(b: Dictionary, road: Vector2, count: int, low: float, hi
 		var slack := maxf(wall_width * 0.5 - width * 0.5 - 0.5, 0.0)
 		var along := (rng.randf() * 2.0 - 1.0) * slack
 		var y := low + band * k + rng.randf() * maxf(band - tall, 0.0)
-		y = minf(y, float(b["height"]) - 0.5 - tall)  # keep the whole sign below the roofline
+		y = minf(y, float(b.get("render_height", b["height"])) - 0.5 - tall)  # keep signs on walls below pitched roofs/crowns
 		if y < low:
 			continue  # no room for a sign of this size at shop height on this building
 		signs.append({

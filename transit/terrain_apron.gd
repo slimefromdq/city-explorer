@@ -9,7 +9,7 @@ const ROAD_LIFT := 0.15
 const CELL := 2.0
 
 
-static func build(parent: Node3D, apron_name: String, terrain, area: Rect2, holes: Array[Rect2]) -> StaticBody3D:
+static func build(parent: Node3D, apron_name: String, terrain, area: Rect2, holes: Array[Rect2], dry_only := false) -> StaticBody3D:
 	var nx := int(ceil(area.size.x / CELL))
 	var nz := int(ceil(area.size.y / CELL))
 	var heights: Array = []
@@ -26,6 +26,10 @@ static func build(parent: Node3D, apron_name: String, terrain, area: Rect2, hole
 			var z0 := area.position.y + j * CELL
 			var cell := Rect2(x0, z0, CELL, CELL)
 			var skip := false
+			if dry_only:
+				for corner in [cell.position, Vector2(cell.end.x, cell.position.y), cell.end, Vector2(cell.position.x, cell.end.y)]:
+					if terrain.height_at(corner) < terrain.sea_level:
+						skip = true
 			for h in holes:
 				if h.intersects(cell):
 					skip = true

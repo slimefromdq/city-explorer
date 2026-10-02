@@ -32,6 +32,7 @@ var bridge_width := 3.5
 var bridge_distance := 8.5   # each bridge's centre, measured from the hall centre along X
 var bridge_arch_rise := 3.0  # how far the middle of a bridge is raised above the balcony level
 var stair_width := 4.0
+var stair_min_offset := 0.0  # integration clearance from floor openings and their guardrails
 var step_height := 0.2      # target riser; adjusted so a whole number of risers reaches `height`
 var step_depth := 0.3       # tread
 var undercroft_enabled := true
@@ -121,7 +122,7 @@ func _check_undercroft() -> void:
 func _check_stair_headroom(half_l: float, inner_z: float) -> void:
 	var slope := (height / maxi(2, ceili(height / step_height))) / step_depth
 	var land_x := half_l - depth
-	var outer_z := minf(entrance_width * 0.5 + STAIR_GAP + stair_width, inner_z)
+	var outer_z := minf(maxf(entrance_width * 0.5 + STAIR_GAP, stair_min_offset) + stair_width, inner_z)
 	var underside := _bridge_top(outer_z, inner_z) - bridge_thickness - GIRDER_HEIGHT
 	for edge in [absf(bridge_distance) - bridge_width * 0.5, absf(bridge_distance) + bridge_width * 0.5]:
 		var run_from_landing: float = land_x - edge
@@ -227,7 +228,7 @@ func _arched_balustrade(x: float, zs: Array[float], inner_z: float) -> void:
 ## One flight at end `e` (+1 = +X end), side `s` (+1 = +Z side). It rises toward the
 ## end wall; the landing at the top joins the balcony strip on the same side.
 func _build_flight(e: int, s: int, half_l: float, half_w: float, inner_z: float) -> void:
-	var za := entrance_width * 0.5 + STAIR_GAP
+	var za := maxf(entrance_width * 0.5 + STAIR_GAP, stair_min_offset)
 	var zb := za + stair_width
 	if zb > inner_z:
 		push_warning("ConcourseMezzanine: stair_width does not fit between the entrance and the balcony; reduce it.")

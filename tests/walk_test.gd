@@ -44,7 +44,9 @@ func _tour() -> void:
 	await _go("axis", F(20.0, 0.0))
 	# the three wings, in through their doors from the hall (the long-wall strip |z| ~ 12.5 is free under the balconies)
 	await _go("between the wells", F(12.0, 0.0))
-	await _go("beside the booth", F(8.0, -1.0))
+	# Align on the hall axis before turning: a diagonal towards z=-1 can
+	# graze the stairwell floor cutout when the prior checkpoint ends off-centre.
+	await _go("beside the booth", F(8.0, 0.0), 0.3)
 	await _go("north side of the hall", F(8.0, -8.5))
 	await _go("north wall strip", F(12.0, -12.5))
 	await _go("waiting room, along the wall", F(-20.0, -12.5))
@@ -58,7 +60,7 @@ func _tour() -> void:
 	await _go("back out of the door", F(20.0, -12.8), 0.4)
 	await _go("north wall strip", F(12.0, -12.5))
 	await _go("north side of the hall", F(8.0, -8.5))
-	await _go("beside the booth", F(8.0, 1.0))
+	await _go("beside the booth", F(8.0, 0.0), 0.3)
 	await _go("south side of the hall", F(8.0, 8.5))
 	await _go("south wall strip", F(12.0, 12.5))
 	await _go("shop arcade door", F(12.0, 14.8))

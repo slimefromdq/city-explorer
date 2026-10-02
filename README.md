@@ -1,5 +1,9 @@
 # City Explorer - Gunslinger prototype (Godot 4.7.2)
 
+**Meridia V2:** the second map lives in `city/city_view.tscn`. See the
+[completion roadmap and visual review](docs/meridia-roadmap.md),
+[city guide](city/README.md), and [station guide](station/README.md).
+
 One gunslinger, a large vertical city (~590 x 430 m, 35 cells, up to 170 m tall
 landmarks) and a test bench for making movement, parkour and combat feel right
 before anything else gets built.

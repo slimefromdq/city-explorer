@@ -116,9 +116,27 @@ func _chamber(node: Node3D, col: StaticBody3D) -> void:
 	# lights strips in the roof (emissive), and a few plain lights
 	var strip := Greybox.mat(Color(1.0, 0.97, 0.88), 0.5, 1.6)
 	for z in [-5.0, 5.0]:
-		Greybox.box(node, Vector3(60.0, 0.05, 0.4), Vector3(0, CEIL_UNDER - 0.03, z), strip)
+		# The ceiling is cut at each shaft; its light strips must have the same cuts.
+		for interval in _light_intervals(z, 0.4):
+			Greybox.box(node, Vector3(interval.y - interval.x, 0.05, 0.4), Vector3((interval.x + interval.y) * 0.5, CEIL_UNDER - 0.03, z), strip)
 	for s in [-1, 1]:
 		Greybox.box(node, Vector3(60.0, 0.05, 0.3), Vector3(0, CEIL_UNDER - 0.03, s * 11.45), strip)
+
+func _light_intervals(z: float, width: float) -> Array[Vector2]:
+	var cuts: Array[Rect2] = []
+	for hole in holes:
+		if z + width * 0.5 >= hole.position.y and z - width * 0.5 <= hole.end.y:
+			cuts.append(hole.grow(0.05))
+	cuts.sort_custom(func(a, b): return a.position.x < b.position.x)
+	var spans: Array[Vector2] = []
+	var cursor := -30.0
+	for cut in cuts:
+		if cut.position.x > cursor:
+			spans.append(Vector2(cursor, cut.position.x))
+		cursor = maxf(cursor, cut.end.x)
+	if cursor < 30.0:
+		spans.append(Vector2(cursor, 30.0))
+	return spans
 
 
 ## A slab (top y1, bottom y0) over `area`, cut into cells at every hole edge; cells inside a hole are left out.

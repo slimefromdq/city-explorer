@@ -630,6 +630,9 @@ func _build_mezzanine(root: Node3D, dims: Dictionary) -> void:
 	mz.bridge_distance = bridge_distance
 	mz.bridge_arch_rise = bridge_arch_rise
 	mz.stair_width = stair_width
+	# Keep the balcony flights outside platform shaft walls and hall-level rails.
+	for hole in floor_holes:
+		mz.stair_min_offset = maxf(mz.stair_min_offset, maxf(absf(hole.position.y), absf(hole.end.y)) + 0.6)
 	mz.step_height = step_height
 	mz.step_depth = step_depth
 	mz.undercroft_enabled = undercroft_enabled

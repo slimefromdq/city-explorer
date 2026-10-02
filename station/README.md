@@ -41,7 +41,9 @@ ambient term, which Godot does not occlude; the underground materials are dark f
 Hall floor (with the stairwell holes), piers, kiosks, props, mezzanine (one ramp per flight, a wedge
 under the solid part, balustrade walls), the shell, forecourt, platforms, stairs, tunnels, the trains
 (an `AnimatableBody3D` the line service moves) and a terrain apron (a trimesh of the height function,
-at road level, with holes at stairwells) round the hub and each entrance. The rest of the city has none.
+at road level, with holes at stairwells) round the hub and each entrance. Meridia Walk adds collision
+along a marked station → Core Bridge → tower → park corridor, with dry shoulders and nearby walls/trunks.
+Other city areas still have no general collision.
 Stair collision is always a ramp along the nosing line (a 0.2 m riser stops a 0.25 m-radius capsule).
 
 ## Tests

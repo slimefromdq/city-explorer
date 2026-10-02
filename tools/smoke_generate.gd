@@ -59,8 +59,18 @@ func _init() -> void:
 			instances += (group as MultiMeshInstance3D).multimesh.instance_count
 		for b in gen.building_plan.buildings:  # (a headless run keeps no instance transforms, so read the plan)
 			tallest = maxf(tallest, b["height"])
-		_expect(instances == gen.building_plan.buildings.size() and instances > 300, "MultiMeshes draw all %d planned buildings" % instances)
+		_expect(instances + gen.architecture_plan.civic.size() == gen.building_plan.buildings.size() and instances > 300, "MultiMeshes draw %d ordinary bodies plus %d civic exteriors" % [instances, gen.architecture_plan.civic.size()])
 		_expect(tallest > 100.0, "the skyline reaches %.0f m" % tallest)
+	var architecture: Node3D = gen.get_node_or_null("Architecture")
+	_expect(architecture != null and gen.architecture_plan.validate().is_empty(), "architecture built inside validated envelopes")
+	if architecture != null:
+		var part_count := 0
+		for node in architecture.get_children():
+			if node is MultiMeshInstance3D:
+				part_count += node.multimesh.instance_count
+		_expect(part_count == gen.architecture_plan.parts.size() and part_count > 100, "all %d architecture parts are rendered in shape batches" % part_count)
+	var harbour: Node3D = gen.get_node_or_null("Harbour")
+	_expect(harbour != null and gen.harbour_plan.validate().is_empty(), "cargo and ferry pier architecture built inside reservations")
 	var landmarks: Node3D = gen.get_node_or_null("Landmarks")
 	_expect(landmarks != null and landmarks.get_child_count() == 3, "generator built the three landmarks")
 	if landmarks != null:

@@ -28,7 +28,7 @@ func _ready() -> void:
 		ui.bind(city.transit, walker)
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		var hint := Label.new()
-		hint.text = "WASD move   Shift run   Space jump   Esc release mouse   - walk into the station and take a train"
+		hint.text = "WASD move   Shift run   Space jump   Esc release mouse\nTake a train, or follow the teal Meridia Walk: Core Bridge > Meridian Tower > Central Park"
 		hint.position = Vector2(12, 10)
 		var layer := CanvasLayer.new()
 		layer.add_child(hint)

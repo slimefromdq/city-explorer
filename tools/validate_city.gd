@@ -19,6 +19,9 @@ const Sightlines := preload("res://city/sightlines.gd")
 const LandmarkBuilder := preload("res://city/landmark_builder.gd")
 const GreeneryPlan := preload("res://city/greenery_plan.gd")
 const SignPlan := preload("res://city/sign_plan.gd")
+const DiscoveryWalkPlan := preload("res://city/discovery_walk_plan.gd")
+const ArchitecturePlan := preload("res://city/architecture_plan.gd")
+const HarbourPlan := preload("res://city/harbour_plan.gd")
 
 const DISTRICT_TYPES := ["core", "midrise", "lowrise", "harbour", "park", "financial"]
 const LANDMARK_RIVER_MARGIN := 25.0  # landmark must stand at least this far from the water (m)
@@ -63,7 +66,40 @@ func _init() -> void:
 	_check_greenery(city)
 	_check_park(city)
 	_check_signs(city)
+	_check_discovery_walk(city)
+	_check_architecture(city)
 	_finish()
+
+func _check_architecture(city: Dictionary) -> void:
+	var terrain := TerrainHeight.new(city)
+	var roads := RoadNetwork.new(city)
+	var lots := LotPlan.new(city, roads)
+	var views := Sightlines.new(city, terrain)
+	var buildings := BuildingPlan.new(city, lots, terrain, views, TransitSystem.reserve_rects(RouteData.load_default()))
+	var planting := GreeneryPlan.new(city, roads, lots, buildings, views, terrain, TransitSystem.reserve_rects(RouteData.load_default()))
+	var architecture := ArchitecturePlan.new(buildings, planting, city, terrain, views)
+	_expect(architecture.validate().is_empty(), "architecture stays within building footprints and roof sightline allowance: %s" % [architecture.validate()])
+	_expect(architecture.civic.size() == 3, "museum, library and concert hall have distinct civic exteriors")
+	_expect(architecture.families.size() >= 5, "district architecture uses %d roof families" % architecture.families.size())
+	var harbour := HarbourPlan.new(city, terrain)
+	_expect(harbour.validate().is_empty(), "harbour architecture stays inside pier reservations: %s" % [harbour.validate()])
+
+func _check_discovery_walk(city: Dictionary) -> void:
+	if not city.has("discovery_walk"):
+		return
+	var terrain := TerrainHeight.new(city)
+	var network := RoadNetwork.new(city)
+	var lots := LotPlan.new(city, network)
+	var buildings := BuildingPlan.new(city, lots, terrain, Sightlines.new(city, terrain), TransitSystem.reserve_rects(RouteData.load_default()))
+	var walk := DiscoveryWalkPlan.new(city, terrain)
+	var problems := walk.validate(buildings.buildings, city)
+	_expect(problems.is_empty(), "discovery walk stays on land/bridge and clear of buildings: %s" % [problems])
+	var gentle := true
+	for i in walk.samples.size() - 1:
+		var a := walk.samples[i]
+		var b := walk.samples[i + 1]
+		gentle = gentle and absf(b.y - a.y) / Vector2(b.x - a.x, b.z - a.z).length() <= 0.20
+	_expect(gentle, "discovery walk has no grade above 20%")
 
 
 func _check_meta(city: Dictionary) -> void:
@@ -1324,10 +1360,12 @@ func _check_signs(city: Dictionary) -> void:
 	var terrain := TerrainHeight.new(city)
 	var sightlines := Sightlines.new(city, terrain)
 	var building_plan := BuildingPlan.new(city, lot_plan, terrain, sightlines)
-	var plan := SignPlan.new(city, network, building_plan)
+	var planting := GreeneryPlan.new(city, network, lot_plan, building_plan, sightlines, terrain)
+	var architecture := ArchitecturePlan.new(building_plan, planting, city)
+	var plan := SignPlan.new(city, network, architecture)
 	var g: Dictionary = city["greenery"]
 	var by_id := {}
-	for b in building_plan.buildings:
+	for b in architecture.buildings:
 		by_id[b["id"]] = b
 	var lots_by_id := {}
 	for lot in lot_plan.lots:
@@ -1352,7 +1390,7 @@ func _check_signs(city: Dictionary) -> void:
 		var on_y_face := absf(absf(local.y) - half.y) < 0.05 and absf(local.x) <= half.x + 0.05
 		if not (on_x_face or on_y_face):
 			off_wall += 1
-		if float(s["above_base"]) < low - 0.01 or float(s["above_base"]) + float(s["size"].y) > float(b["height"]):
+		if float(s["above_base"]) < low - 0.01 or float(s["above_base"]) + float(s["size"].y) > float(b["render_height"]):
 			wrong_height += 1
 		# the sign must not poke out of the lot (so it cannot reach the road)
 		var tip: Vector2 = s["pos"] + (s["normal"] as Vector2) * float(s["size"].z)
@@ -1371,7 +1409,7 @@ func _check_signs(city: Dictionary) -> void:
 	for s in plan.signs:
 		groups[by_id[s["building"]]["group"]] = true
 	_expect(groups.has("midrise") and groups.has("core") and groups.has("harbour") and groups.has("lowrise"), "signs appear in every district type that should have them")
-	var again := SignPlan.new(city, RoadNetwork.new(city), building_plan)
+	var again := SignPlan.new(city, RoadNetwork.new(city), architecture)
 	var same := again.signs.size() == plan.signs.size()
 	if same:
 		for i in plan.signs.size():

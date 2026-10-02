@@ -14,6 +14,56 @@ result every time.
 
 (The repo's `main.tscn` is the older gunslinger prototype and is untouched.)
 
+## Completion roadmap
+
+See [`docs/meridia-roadmap.md`](../docs/meridia-roadmap.md) for the visual review,
+district direction, prioritized milestones, and delivery log. Ordinary buildings
+use `district_facade.gdshader` with one material and MultiMesh per group: windows
+are measured in local metres, with different glass/masonry/cladding treatments.
+
+## Silhouettes and civic architecture
+
+`architecture_plan.gd` gives ordinary buildings deterministic crown/roof families:
+stepped and lantern tower crowns, tile/slate pitches, flat garden parapets, and
+sawtooth warehouse roofs with loading bays. Crown space is carved from the original
+height envelope. Planted roofs retain full support; parapets stay below the existing
+roof allowance. Signs use the reduced wall height so none float across a roof slope.
+
+The same plan replaces three civic placeholders with a museum rotunda/colonnade,
+library reading-room wings and central pediment, and a concert hall with folded
+copper roofs. The library's `sites[].foundation = "terrace"` sets a datum above the
+sampled hillside; its upper rooms adjust to preserve the west-shore tower view.
+`architecture_builder.gd` batches parts into four shared primitive meshes.
+
+`harbour_plan.gd` develops the existing pier reservations with deck slabs/piles,
+container stacks and a cargo gantry, plus ferry shelters. `harbour.piers[].use`
+selects `cargo` or `ferry`. Harbour boxes form one additional shared batch;
+`harbour_builder.gd` joins both piers to the nearest coastal road with a shared
+approach mesh that clears the sampled shoreline.
+These additions are exteriors; civic interiors and harbour collision are future work.
+
+City validation checks architecture bounds and the terrace's absolute sightline
+height. `tests/architecture_test.gd` also checks determinism, planted-roof support,
+sign mounting, roof winding, and separation of the station's two stair systems.
+
+## Meridia Walk
+
+Open `walk/StationWalk.tscn` for the first-person exploration scene. Follow the
+teal inlay from Central Station's forecourt crossing over Core Bridge, around
+Meridian Mall to the tower's west forecourt, then north of the museum to the lake.
+The route is about 1.13 km (roughly four minutes at walking speed). It has decision
+signs, five bench/lamp rest points, and bridge barriers. Trains remain available.
+
+`data/city.json` → `discovery_walk` owns the route, crossing approach, stop indices,
+signs, and furniture. `discovery_walk_plan.gd` calculates bridge/ground elevations;
+`discovery_walk_builder.gd` draws the promenade and matching collision. Dry shoulders
+support stepping off the path; nearby walls and trunks are solid. Collision coverage
+is limited to this corridor and the existing station areas.
+
+City validation checks for water crossings, blocked building/civic footprints,
+and steep grades. `tests/discovery_walk_test.gd` walks the real capsule in both
+directions without jumps, rejects a mall shortcut, and tests benches and barriers.
+
 ## Layers, in the order they are built
 | Phase | Layer | Main scripts |
 |---|---|---|

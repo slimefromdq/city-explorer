@@ -67,8 +67,8 @@
 		"name": "Meridia Harbour",
 		"basin": [[1440, 650], [1500, 580], [1600, 560], [1600, 960], [1500, 920], [1440, 800]],
 		"piers": [
-			{ "id": "pier_1", "name": "Container Pier", "width": 18, "from": [1520, 935], "to": [1520, 790] },
-			{ "id": "pier_2", "name": "Ferry Pier", "width": 18, "from": [1580, 960], "to": [1580, 780] }
+			{ "id": "pier_1", "name": "Container Pier", "use": "cargo", "width": 18, "from": [1520, 935], "to": [1520, 790] },
+			{ "id": "pier_2", "name": "Ferry Pier", "use": "ferry", "width": 18, "from": [1580, 960], "to": [1580, 780] }
 		]
 	},
 
@@ -130,7 +130,7 @@
 			"polygon": [[660, 780], [920, 780], [920, 920], [660, 920]]
 		},
 		{
-			"id": "library", "name": "Meridian Library", "kind": "library",
+			"id": "library", "name": "Meridian Library", "kind": "library", "foundation": "terrace",
 			"polygon": [[135, 445], [295, 445], [295, 487], [135, 487]]
 		},
 		{
@@ -250,6 +250,37 @@
 		{ "id": "meridia_eye", "name": "Meridia Eye", "kind": "observation_wheel", "district": "harbour", "position": [1278, 885], "height": 90, "yaw": 0 },
 		{ "id": "hill_basilica", "name": "Basilica of Saint Meridia", "kind": "basilica", "district": "outer_quarters", "position": [199, 804], "height": 70, "yaw": 90 }
 	],
+
+	"discovery_walk": {
+		"name": "Meridia Walk",
+		"note": "A pedestrian promenade from the station's street-level apron, over Core Bridge, around Meridian Mall to the tower's west forecourt, then via the north side of the museum to the park lake. Points are [x,z]. All additions stay within this corridor; this is not full-city collision.",
+		"width": 4,
+		"bridge": "b_920",
+		"approach": [938,850],
+		"points": [[886,850], [910,850], [910,740], [910,710.1], [910,561.4], [910,438], [846,438], [846,374], [878,374], [878,325], [878,285], [650,285], [650,230], [610,230], [545,235], [535,262], [520,285]],
+		"stops": [
+			{ "index": 0, "name": "Central Station", "caption": "Start at the forecourt crossing" },
+			{ "index": 3, "name": "Core Bridge", "caption": "River Han-Seine and the Midtown skyline" },
+			{ "index": 9, "name": "Meridian Tower", "caption": "The city's 320 m landmark" },
+			{ "index": 16, "name": "Central Park", "caption": "Lake, blossom grove and Museum of Meridia" }
+		],
+		"signs": [
+			{ "position": [903,844], "facing": [1,0], "forward": "MERIDIA WALK\nTower & Central Park  >", "back": "CENTRAL STATION\nForecourt & trains  >" },
+			{ "position": [905,735], "facing": [0,1], "forward": "CORE BRIDGE\nMeridian Tower  straight ahead", "back": "CENTRAL STATION\nContinue along Meridia Walk" },
+			{ "position": [903,442], "facing": [0,1], "forward": "MERIDIAN TOWER\n<  Around the mall", "back": "CENTRAL STATION\nCore Bridge  >" },
+			{ "position": [872,369], "facing": [0,1], "forward": "MERIDIAN TOWER\nWest forecourt  straight ahead", "back": "CENTRAL STATION\n<  Mall & Core Bridge" },
+			{ "position": [876,280], "facing": [0,1], "forward": "CENTRAL PARK\n<  Museum & lake", "back": "MERIDIAN TOWER\nWest forecourt  straight ahead" },
+			{ "position": [645,278], "facing": [1,0], "forward": "CENTRAL PARK\nNorth around the museum  >", "back": "MERIDIAN TOWER\nMidtown & station  straight ahead" },
+			{ "position": [530,278], "facing": [0,-1], "forward": "CENTRAL PARK\nLake walk & blossom garden", "back": "MERIDIA WALK\nTower & station  >" }
+		],
+		"rest_points": [
+			{ "position": [905,790], "facing": [1,0] },
+			{ "position": [841,425], "facing": [1,0] },
+			{ "position": [873,320], "facing": [1,0] },
+			{ "position": [610,225], "facing": [0,1] },
+			{ "position": [525,290], "facing": [-1,0] }
+		]
+	},
 
 	"metro": {
 		"note": "One metro system. Path points are [x, y, h]: h = height above ground in metres (negative = underground, positive = above ground on a viaduct). The stretch between points of different h is a ramp; its steepness is limited by max_grade.",
