@@ -54,6 +54,13 @@ Ground and deep seabed share the same shader/color path to prevent an offshore
 rectangle. `tests/terrain_detail_test.gd` checks coverage and boundary stitching.
 See `docs/meridia-performance.md` for the measured viewer rendering budget.
 
+Road surfaces sample terrain across their width at intervals of at most 2 m,
+instead of holding both edges at the centreline height. This keeps hillside ground
+from cutting through the road. Shared bend sections and one surface per road kind
+are preserved; normals come from adjacent mesh vertices. Bridge decks retain their
+existing arch geometry. `tests/road_drape_test.gd` checks a curved hillside's edge
+clearance, footprint, winding and normals.
+
 City validation checks architecture bounds and the terrace's absolute sightline
 height. `tests/architecture_test.gd` also checks determinism, planted-roof support,
 sign mounting, roof winding, and separation of the station's two stair systems.

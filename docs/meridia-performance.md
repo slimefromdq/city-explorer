@@ -67,3 +67,37 @@ Further work should inspect custom arch meshes and shadow submissions.
 Set `STATION_UNBATCHED=1` for comparison; default rendering uses batching.
 `tests/static_batch_test.gd` requires a rendering window to verify MultiMesh
 transforms, equivalent/different materials, layers, glass and live-board exclusions.
+
+## Connected slice review — 2026-10-01
+
+The latest run includes the playable lake loop, library branch and hillside road
+repair. Roads now sample across their width; they retain one surface per road kind.
+The profiler adds five walking-height views derived from the civic arrival and
+park bridge plans. The hardware, 1600 × 900 resolution, Forward+ renderer, disabled
+VSync and 60/180 warmup/sample frame counts match the earlier measurements.
+
+| View | Median frame (ms) | P95 frame (ms) | Mean draw calls |
+| --- | ---: | ---: | ---: |
+| Overview | 3.81 | 4.31 | 6,450 |
+| Skyline | 1.68 | 1.95 | 2,566 |
+| Station | 5.75 | 6.85 | 9,714 |
+| Park | 2.58 | 2.91 | 4,314 |
+| Street | 4.05 | 4.54 | 6,336 |
+| Museum approach | 1.35 | 1.58 | 1,522 |
+| Library stairs | 1.31 | 1.48 | 329 |
+| Library street | 1.29 | 1.52 | 1,220 |
+| Lake bridge 1 | 1.29 | 1.50 | 1,055 |
+| Lake bridge 2 | 1.41 | 1.64 | 1,802 |
+
+All ten sampled P95 frame intervals remain below 16.67 ms on this RTX 3080.
+Station rendering remains the heaviest view. This run's station CPU render median
+is 3.71 ms and GPU render median is 1.85 ms; frame time is higher than the previous
+batching sample, so this is not a claimed speed improvement. Short fixed-camera
+viewer measurements exclude walking physics, train interaction and the walking-map
+overlay. They do not establish minimum hardware requirements.
+
+Video memory is approximately 386–387 MiB. Runtime city construction remains a
+multi-second synchronous startup task. Loading feedback and caching generated
+static content are the next performance priorities before expanding scope.
+[Raw connected-slice measurements](meridia-performance-connected.json) preserve
+startup time, hardware and all render timings.

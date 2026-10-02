@@ -37,6 +37,23 @@ func run() -> void:
 		["park", Vector3(250, 160, 510), Vector3(500, 10, 270)],
 		["street", Vector3(920, 5.5, 850), Vector3(780, 9, 850)]
 	]
+	var gen = scene.get_node("CityGenerator")
+	var museum: Node3D = gen.get_node("CivicAccess/MuseumArrival")
+	var museum_start: Vector3 = museum.transform * museum.get_meta("arrival_start")
+	var museum_door: Vector3 = museum.transform * museum.get_meta("door_stop")
+	shots.append(["museum_walk", museum_start + Vector3.UP * 1.62, museum_door + Vector3.UP * 2])
+	var library: Node3D = gen.get_node("CivicAccess/LibraryArrival")
+	var start: Vector3 = library.transform * library.get_meta("street_start")
+	var end: Vector3 = library.transform * library.get_meta("arrival_end")
+	shots.append(["library_walk", start + Vector3.UP * 1.62, end + Vector3.UP * 1.62])
+	var bend: Vector2 = gen.library_walk.points[2]
+	var target: Vector2 = gen.library_walk.points[3]
+	shots.append(["library_street", Vector3(bend.x, gen.library_walk.height_at(bend) + 1.62, bend.y), Vector3(target.x, gen.library_walk.height_at(target) + 1.62, target.y)])
+	for bridge in gen.park_walk.bridges:
+		var points: PackedVector2Array = bridge["points"]
+		var p := points[0]
+		var q := points[points.size() / 2]
+		shots.append(["lake_bridge_%d" % shots.size(), Vector3(p.x, gen.park_walk.height_at(p) + 1.62, p.y), Vector3(q.x, gen.park_walk.height_at(q) + 1.5, q.y)])
 	for shot in shots:
 		cam.position = shot[1]
 		cam.look_at(shot[2])

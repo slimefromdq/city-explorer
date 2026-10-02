@@ -260,6 +260,7 @@ godot --path . --script res://tools/profile_meridia.gd
 godot --path . --script res://tests/static_batch_test.gd
 godot --headless --path . --script res://tests/route_guide_test.gd
 godot --path . --script res://tests/route_guide_test.gd
+godot --headless --path . --script res://tests/road_drape_test.gd
 ```
 
 The capture tool writes thirty 1600 × 900 images to `tests/out/meridia` (ignored by
@@ -359,3 +360,27 @@ from the previous 1,030-second connected traversal milestone.
 ![Walking route guide](images/meridia-route-guide.png)
 
 ![Walking map at a smaller window size](images/meridia-route-guide-small.png)
+
+## Visual and rendering review — 2026-10-01
+
+The walking-height library screenshot exposed triangular terrain strips cutting
+through the road. Road ribbons previously held both edges at centreline elevation,
+so an uphill edge could be buried. Road surfaces now sample terrain across their
+width at intervals of at most 2 m. The original footprint, shared bend sections and
+surface batching are preserved. Normals use the resulting mesh, avoiding extra
+terrain samples. Bridge arches and walking collision are unchanged.
+
+The road regression checks uphill edge and triangle clearance on a curved slope,
+the original footprint through a bend, upward winding and unit normals. It and
+generated-city smoke checks passed. Updated overview and walking-height library
+captures were inspected. The expanded ten-view GPU profile has a worst sampled
+P95 frame time of 6.85 ms on the RTX 3080; see `meridia-performance.md` for scope
+and raw timings. Startup still needs loading feedback and static-content caching.
+
+Before the hillside road repair:
+
+![Terrain clipping through the hillside road](images/meridia-road-clipping-before.png)
+
+After the repair, with the same camera:
+
+![Road following the hillside](images/meridia-library-trail.png)
