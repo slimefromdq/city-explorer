@@ -41,6 +41,11 @@ func capture() -> void:
 	var lake_center := Vector3(lake[0], 3, lake[1])
 	shots.append(["28_lake_loop", lake_center + Vector3(-40, 100, 130), lake_center])
 	var arrival = gen.get_node("CivicAccess/LibraryArrival")
+	var library = gen.library_walk
+	var bend: Vector2 = library.points[2]
+	var bend_world := Vector3(bend.x, library.height_at(bend), bend.y)
+	shots.append(["29_library_connection", bend_world + Vector3(50, 60, 60), Vector3(270, 12, 470)])
+	shots.append(["30_library_trail", bend_world + Vector3(0, 1.62, 0), Vector3(235, library.height_at(Vector2(235, 500)) + 1.62, 500)])
 	var museum = gen.get_node("CivicAccess/MuseumArrival")
 	var museum_start: Vector3 = museum.transform * museum.get_meta("arrival_start")
 	var museum_door: Vector3 = museum.transform * museum.get_meta("door_stop")

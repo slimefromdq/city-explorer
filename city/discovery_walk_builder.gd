@@ -118,8 +118,8 @@ static func _obstacles(body: StaticBody3D, plan, buildings: Array, trees: Array,
 	# Nearby walls and trunks are solid, so leaving the path cannot pass through
 	# the visible environment. This does not add collision to distant city blocks.
 	for b in buildings:
-		if b.get("site_kind", "") == "museum":
-			# CivicAccess follows its galleries, rotunda and open terrace instead
+		if b.get("site_kind", "") in ["museum", "library"]:
+			# CivicAccess follows civic walls, stairs and open terraces instead
 			# of filling the whole reservation with one invisible solid box.
 			continue
 		if plan.distance_to(b["center"]) > b["size"].length() * 0.5 + 10.0:

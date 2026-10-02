@@ -260,7 +260,7 @@ godot --path . --script res://tools/profile_meridia.gd
 godot --path . --script res://tests/static_batch_test.gd
 ```
 
-The capture tool writes twenty-eight 1600 × 900 images to `tests/out/meridia` (ignored by
+The capture tool writes thirty 1600 × 900 images to `tests/out/meridia` (ignored by
 Git). Set `OUT` to choose another output directory. It uses the viewer scene's
 actual lighting and suppresses only the camera-control help overlay. Set `ONLY`
 to a comma-separated list of capture names to render selected views.
@@ -287,11 +287,10 @@ Library arrival from the street:
 
 Finish Meridia as a city exploration vertical slice: Central Station, the trains,
 and the signed station–bridge–tower–park journey, with civic exteriors visible from
-that journey. The library arrival is an additional isolated traversal test area;
-its district still needs connected ground collision before walking there from the
-station. The museum approach, first station batching pass and playable park loop
-are now delivered. Prioritize a library connection before adding
-full-city collision, civic interiors, harbour traversal or combat.
+that journey. The museum terrace, lake loop and library terrace now connect to
+the station. The first station batching pass is also delivered. Prioritize a
+completion review of this connected slice, with navigation and visual polish,
+before adding full-city collision, civic interiors, harbour traversal or combat.
 This scope is a recommendation for the next completion gate, not a claim that the
 entire city is playable.
 
@@ -316,3 +315,24 @@ and generated-scene smoke checks passed. Three new viewer captures were inspecte
 ![Connected lake loop and footbridges](images/meridia-lake-loop.png)
 
 ![Footbridge at walking height](images/meridia-lake-bridge.png)
+
+## Connected library branch — 2026-10-01
+
+A signed 380 m promenade now leaves the lake loop's west bank, follows the park
+edge and climbs the library street. Teal inlay continues to the existing graded
+arrival apron; both stair flights lead to the front terrace. Dry shoulders and
+nearby wall/trunk collision support the route. The library's existing civic
+collision keeps the stair opening clear instead of sealing the reservation with
+a solid box. This completes the recommended station–park–civic exterior route.
+
+City validation checks full-width dry-land coverage, building clearance, a level
+park junction and grades below 20%. The generator checks the endpoint against the
+actual civic street approach. The walking regression visits the museum, loops the
+lake in both directions, climbs the library terrace and returns to the station
+without jumping (1,030 simulated seconds). A detached library route is rejected.
+City validation and generated-scene smoke checks passed. Viewer screenshots were
+reviewed at both overview and walking heights.
+
+![Library connection from the park edge](images/meridia-library-connection.png)
+
+![Teal trail approaching the library](images/meridia-library-trail.png)

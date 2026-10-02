@@ -95,6 +95,58 @@ func run() -> void:
 				quit(1)
 				return
 	print("  ok   complete lake loop in both directions without jumping")
+	# Reach the west-bank branch along the loop, then climb the library's two
+	# flights and return. Keep the actual capsule connected to the station route.
+	var lake_points: PackedVector2Array = park.paths[0]["points"]
+	var library = scene.city.library_walk
+	var detached_library: Dictionary = scene.city.city.duplicate(true)
+	detached_library["discovery_walk"]["library_walk"]["points"][0] = [350,285]
+	var bad_library = preload("res://city/library_walk_plan.gd").new(detached_library, scene.city.terrain, park)
+	if bad_library.validate(scene.city.building_plan.buildings, detached_library).is_empty():
+		_fail("Validator accepted a detached library connection")
+		quit(1)
+		return
+	print("  ok   detached library connection rejected")
+	if library.validate(scene.city.building_plan.buildings, scene.city.city).size() > 0 or scene.city.get_node_or_null("LibraryWalk") == null:
+		_fail("Invalid library connection")
+		quit(1)
+		return
+	var junction := -1
+	for i in lake_points.size():
+		if lake_points[i].distance_to(library.points[0]) < 0.01:
+			junction = i
+			break
+	if junction < 0:
+		_fail("Library junction is not a park checkpoint")
+		quit(1)
+		return
+	for i in range(1, junction + 1):
+		if not await _go("library park approach %d" % i, lake_points[i], true, park):
+			quit(1)
+			return
+	for i in range(1, library.points.size()):
+		if not await _go("library route %d" % i, library.points[i], true, library):
+			quit(1)
+			return
+	var library_arrival: Node3D = scene.city.get_node("CivicAccess/LibraryArrival")
+	var library_top: Vector3 = library_arrival.transform * library_arrival.get_meta("arrival_end")
+	if not await _go("library front terrace", Vector2(library_top.x, library_top.z), false) or absf(walker.global_position.y - library_top.y) > 0.25:
+		_fail("Library terrace was not reached from station")
+		quit(1)
+		return
+	var street: Vector3 = library_arrival.transform * library_arrival.get_meta("street_start")
+	if not await _go("library stair return", Vector2(street.x, street.z), false):
+		quit(1)
+		return
+	for i in range(library.points.size() - 2, -1, -1):
+		if not await _go("library route return %d" % i, library.points[i], true, library):
+			quit(1)
+			return
+	for i in range(junction - 1, -1, -1):
+		if not await _go("library park return %d" % i, lake_points[i], true, park):
+			quit(1)
+			return
+	print("  ok   station -> library terrace -> park without jumping")
 	for i in range(plan.points.size() - 2, -1, -1):
 		if not await _go("return checkpoint %d" % i, plan.points[i], true):
 			quit(1)

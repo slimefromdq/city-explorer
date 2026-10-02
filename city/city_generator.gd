@@ -58,6 +58,7 @@ var discovery_walk  # shared promenade plan, including its actual bridge elevati
 var architecture_plan  # roof families and civic exteriors inside planned envelopes
 var harbour_plan
 var park_walk
+var library_walk
 
 
 func _ready() -> void:
@@ -117,6 +118,16 @@ func _ready() -> void:
 		add_child(preload("res://city/park_walk_builder.gd").build(park_walk, terrain, greenery_plan.trees))
 	else:
 		push_error("Park walk invalid: %s" % [park_errors])
+	library_walk = preload("res://city/library_walk_plan.gd").new(city, terrain, park_walk)
+	var library_errors: Array = library_walk.validate(building_plan.buildings, city)
+	var arrival: Node3D = get_node("CivicAccess/LibraryArrival")
+	var endpoint: Vector3 = arrival.transform * arrival.get_meta("street_start")
+	if library_walk.samples.is_empty() or library_walk.samples[library_walk.samples.size() - 1].distance_to(endpoint) > 0.05:
+		library_errors.append("Library walk must meet the civic street approach")
+	if library_errors.is_empty():
+		add_child(preload("res://city/library_walk_builder.gd").build(library_walk, building_plan.buildings, greenery_plan.trees, terrain))
+	else:
+		push_error("Library walk invalid: %s" % [library_errors])
 
 
 func _make_ground() -> MeshInstance3D:

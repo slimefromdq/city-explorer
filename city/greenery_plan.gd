@@ -53,6 +53,7 @@ func _init(city: Dictionary, network, lot_plan, building_plan, sightlines, terra
 	var walk: Dictionary = city.get("discovery_walk", {})
 	_walk_points = CityData.to_points(walk.get("points", []))
 	_walk_paths.append(_walk_points)
+	_walk_paths.append(CityData.to_points(walk.get("library_walk", {}).get("points", [])))
 	for spur in walk.get("spurs", []):
 		var points := CityData.to_points(spur.get("points", []))
 		_walk_paths.append(points)

@@ -256,6 +256,14 @@
 		"note": "A pedestrian promenade from the station's street-level apron, over Core Bridge, around Meridian Mall to the tower's west forecourt, then via the north side of the museum to the park lake. Points are [x,z]. All additions stay within this corridor; this is not full-city collision.",
 		"width": 4,
 		"park_paths": ["Pond Loop"],
+		"library_walk": {
+			"points": [[380,285], [350,285], [350,500], [235,500], [215,503]],
+			"signs": [
+				{ "position": [376,280], "facing": [1,0], "forward": "MERIDIAN LIBRARY\nWest park edge  >", "back": "LAKESIDE LOOP\nMuseum & station  >" },
+				{ "position": [355,495], "facing": [0,-1], "forward": "MERIDIAN LIBRARY\n<  Terrace & reading rooms", "back": "CENTRAL PARK\nLake, museum & station" },
+				{ "position": [230,495], "facing": [1,0], "forward": "MERIDIAN LIBRARY\nFront terrace  >", "back": "CENTRAL PARK\nFollow the teal trail" }
+			]
+		},
 		"park_signs": [{ "position": [529,290], "facing": [-1,0], "forward": "LAKESIDE LOOP\nFollow the teal lake trail", "back": "MERIDIA WALK\nMuseum, tower & station" }],
 		"bridge": "b_920",
 		"approach": [938,850],

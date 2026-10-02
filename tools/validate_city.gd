@@ -87,6 +87,9 @@ func _check_architecture(city: Dictionary) -> void:
 	var park = preload("res://city/park_walk_plan.gd").new(city, planting, terrain, walk)
 	var park_problems: Array = park.validate(buildings.buildings, city)
 	_expect(park_problems.is_empty(), "park loop connects safely, with full-width bridge coverage: %s" % [park_problems])
+	var library = preload("res://city/library_walk_plan.gd").new(city, terrain, park)
+	var library_problems: Array = library.validate(buildings.buildings, city)
+	_expect(library_problems.is_empty(), "library walk connects on dry land with clear footprints and grades: %s" % [library_problems])
 
 func _check_discovery_walk(city: Dictionary) -> void:
 	if not city.has("discovery_walk"):

@@ -82,6 +82,16 @@ collision meshes. Shoulders stop at water. The walking regression completes the
 museum branch and lake loop in both directions before returning to the station,
 checks both bridge barriers, and rejects missing bridges and an invisible lake floor.
 
+At the loop's west bank, the signed library branch follows the park edge and then
+the street to Meridian Library. This adds about 380 m to reach its existing graded
+street approach and two stair flights. `discovery_walk.library_walk` owns its
+points and signs. `library_walk_plan.gd` checks the level park junction, full-width
+dry-land coverage, building clearance and grades below 20%; the generator also
+checks that its endpoint matches the civic approach. Trees reserve clearance for
+this branch. Civic wall collision preserves the open stair entrance. The connected
+walking regression reaches the library terrace and returns through the park to
+the station without jumping. Civic interiors remain closed.
+
 Central Station batches static boxes through `station/static_box_batcher.gd`.
 Batch groups preserve material values, lighting layers, shadows and local spatial
 cells. Collision and live kiosks are independent. Set `STATION_UNBATCHED=1` when
@@ -91,7 +101,7 @@ profiling before/after rendering; see `docs/meridia-performance.md` for results.
 signs, and furniture. `discovery_walk_plan.gd` calculates bridge/ground elevations;
 `discovery_walk_builder.gd` draws the promenade and matching collision. Dry shoulders
 support stepping off the path; nearby walls and trunks are solid. Collision coverage
-is limited to this corridor, the Pond Loop and the existing station areas.
+is limited to this corridor, the Pond Loop, the library branch and existing station areas.
 
 City validation checks for water crossings, blocked building/civic footprints,
 and steep grades. `tests/discovery_walk_test.gd` walks the real capsule in both
