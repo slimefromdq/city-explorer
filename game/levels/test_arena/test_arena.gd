@@ -28,7 +28,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func _add_help() -> void:
 	var layer := CanvasLayer.new()
 	var label := Label.new()
-	label.text = "WASD move   Shift sprint   Space jump (hold = higher; on a wall in the air = wall kick)   C / Ctrl crouch\nRun into a ledge in the air to mantle   F5 respawn   F3 debug overlay   Esc free mouse"
+	label.text = "WASD move   Shift sprint   Space jump (hold = higher; on a wall in the air = wall kick)   C / Ctrl crouch   E sigil leap (aim with the camera)\nRun into a ledge in the air to mantle   F5 respawn   F3 debug overlay   Esc free mouse"
 	label.add_theme_font_size_override(&"font_size", 15)
 	label.add_theme_color_override(&"font_outline_color", Color.BLACK)
 	label.add_theme_constant_override(&"outline_size", 5)

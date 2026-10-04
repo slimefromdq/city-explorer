@@ -10,12 +10,18 @@ extends Node3D
 
 var _parts := Node3D.new()
 var _crouched := false
+var _accent_mat: StandardMaterial3D
+var _charge := 0.0
 
 
 func _ready() -> void:
 	add_child(_parts)
 	var body_mat := _mat(body_color)
 	var accent_mat := _mat(accent_color)
+	accent_mat.emission_enabled = true
+	accent_mat.emission = accent_color
+	accent_mat.emission_energy_multiplier = 0.0
+	_accent_mat = accent_mat
 	var torso := MeshInstance3D.new()
 	var cap := CapsuleMesh.new()
 	cap.radius = 0.28
@@ -56,7 +62,19 @@ func set_crouched(on: bool) -> void:
 	if on == _crouched:
 		return
 	_crouched = on
-	_parts.scale = Vector3(1.0, 0.62, 1.0) if on else Vector3.ONE
+	var pulse := 1.0 + 0.08 * _charge
+	_parts.scale = Vector3(pulse, (0.62 if on else 1.0) * pulse, pulse)
+
+
+## 0..1 glow on the accent parts. Used as the visible tell while the sigil leap
+## winds up (ramps to 1), and held at 1 during the launch.
+func set_charge(k: float) -> void:
+	if is_equal_approx(k, _charge):
+		return
+	_charge = k
+	_accent_mat.emission_energy_multiplier = k * 6.0
+	var pulse := 1.0 + 0.08 * k
+	_parts.scale = Vector3(pulse, (0.62 if _crouched else 1.0) * pulse, pulse)
 
 
 func _mat(c: Color) -> StandardMaterial3D:

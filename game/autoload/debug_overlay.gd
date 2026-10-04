@@ -49,7 +49,12 @@ func _on_movement_event(hero: Node3D, type: int, data: Dictionary) -> void:
 	var extra := ""
 	for k in data:
 		var v = data[k]
-		extra += "  %s=%s" % [k, ("%.1f" % v) if v is float else str(v)]
+		if v is float:
+			extra += "  %s=%.1f" % [k, v]
+		elif v is Vector3:
+			extra += "  %s=(%.2f, %.2f, %.2f)" % [k, v.x, v.y, v.z]
+		else:
+			extra += "  %s=%s" % [k, str(v)]
 	_push("%7.2fs  %s%s" % [_now(), MoveEvent.name_of(type), extra])
 
 
@@ -87,7 +92,12 @@ func _process(_dt: float) -> void:
 	lines.append("grounded   %s     crouched %s" % [_yn(m.on_floor), _yn(m.crouched)])
 	lines.append("jump       coyote %.2f   buffer %.2f" % [m.coyote_left, m.jump_buffer_left])
 	lines.append("wall       %s   kicks used %d/%d" % ["touching" if m.wall_left > 0.0 else "-", m.wall_kicks_used, t.wall_kicks_per_air])
-	lines.append("dash       not built yet (M1b)")
+	var dash_phase := ""
+	if h.states.current_name == &"DashStartup":
+		dash_phase = "   STARTUP %.2f/%.2f s" % [h.states.time_in_state, t.dash_startup]
+	elif h.states.current_name == &"DashLaunch":
+		dash_phase = "   LAUNCH"
+	lines.append("dash       charges %.2f/%d   cooldown %.2f%s" % [m.dash_pool.charges, t.dash_charges, m.dash_cd_left, dash_phase])
 	lines.append("roll       not built yet (M1c)")
 	lines.append("block      not built yet (M1c)")
 	lines.append("")

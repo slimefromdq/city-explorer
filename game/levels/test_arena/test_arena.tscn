@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3]
+[gd_scene load_steps=16 format=3]
 
 [ext_resource type="Script" path="res://game/levels/test_arena/test_arena.gd" id="script"]
 [ext_resource type="Shader" path="res://game/levels/test_arena/arena_grid.gdshader" id="shader"]
@@ -68,6 +68,12 @@ shader_parameter/line_strength = 0.35
 render_priority = 0
 shader = ExtResource("shader")
 shader_parameter/tint = Color(0.55, 0.55, 0.8, 1)
+shader_parameter/line_strength = 0.35
+
+[sub_resource type="ShaderMaterial" id="mat_dash"]
+render_priority = 0
+shader = ExtResource("shader")
+shader_parameter/tint = Color(0.35, 0.8, 0.85, 1)
 shader_parameter/line_strength = 0.35
 
 [node name="TestArena" type="Node3D"]
@@ -309,6 +315,90 @@ size = Vector3(3, 7, 3)
 [node name="Tier4" type="CSGBox3D" parent="Geometry/Tower"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 41, 4.25, -34)
 size = Vector3(1.5, 9.5, 1.5)
+
+[node name="DashLane" type="CSGCombiner3D" parent="Geometry"]
+material_override = SubResource("mat_dash")
+use_collision = true
+
+[node name="Tick_0" type="CSGBox3D" parent="Geometry/DashLane"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 0.015, -6)
+size = Vector3(6, 0.03, 0.12)
+
+[node name="Tick_1" type="CSGBox3D" parent="Geometry/DashLane"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 0.015, -4)
+size = Vector3(6, 0.03, 0.12)
+
+[node name="Tick_2" type="CSGBox3D" parent="Geometry/DashLane"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 0.015, -2)
+size = Vector3(6, 0.03, 0.12)
+
+[node name="Tick_3" type="CSGBox3D" parent="Geometry/DashLane"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 0.015, 0)
+size = Vector3(6, 0.03, 0.12)
+
+[node name="Tick_4" type="CSGBox3D" parent="Geometry/DashLane"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 0.015, 2)
+size = Vector3(6, 0.03, 0.12)
+
+[node name="Tick_5" type="CSGBox3D" parent="Geometry/DashLane"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 0.015, 4)
+size = Vector3(6, 0.03, 0.12)
+
+[node name="Tick_6" type="CSGBox3D" parent="Geometry/DashLane"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 0.015, 6)
+size = Vector3(6, 0.03, 0.12)
+
+[node name="Tick_7" type="CSGBox3D" parent="Geometry/DashLane"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 0.015, 8)
+size = Vector3(6, 0.03, 0.12)
+
+[node name="Tick_8" type="CSGBox3D" parent="Geometry/DashLane"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 0.015, 10)
+size = Vector3(6, 0.03, 0.12)
+
+[node name="Tick_9" type="CSGBox3D" parent="Geometry/DashLane"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 0.015, 12)
+size = Vector3(6, 0.03, 0.12)
+
+[node name="Tick_10" type="CSGBox3D" parent="Geometry/DashLane"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 0.015, 14)
+size = Vector3(6, 0.03, 0.12)
+
+[node name="Tick_11" type="CSGBox3D" parent="Geometry/DashLane"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 0.015, 16)
+size = Vector3(6, 0.03, 0.12)
+
+[node name="Tick_12" type="CSGBox3D" parent="Geometry/DashLane"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 0.015, 18)
+size = Vector3(6, 0.03, 0.12)
+
+[node name="Tick_13" type="CSGBox3D" parent="Geometry/DashLane"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 0.015, 20)
+size = Vector3(6, 0.03, 0.12)
+
+[node name="Tick_14" type="CSGBox3D" parent="Geometry/DashLane"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 0.015, 22)
+size = Vector3(6, 0.03, 0.12)
+
+[node name="Tick_15" type="CSGBox3D" parent="Geometry/DashLane"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 0.015, 24)
+size = Vector3(6, 0.03, 0.12)
+
+[node name="ThinWall" type="CSGBox3D" parent="Geometry/DashLane"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 61, 2.25, 10)
+size = Vector3(6, 5.5, 0.2)
+
+[node name="LowCeiling" type="CSGBox3D" parent="Geometry/DashLane"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 61, 2.45, 21)
+size = Vector3(6, 0.3, 6)
+
+[node name="LowCeilingPostA" type="CSGBox3D" parent="Geometry/DashLane"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 58.2, 0.9, 18.2)
+size = Vector3(0.4, 2.8, 0.4)
+
+[node name="LowCeilingPostB" type="CSGBox3D" parent="Geometry/DashLane"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 63.8, 0.9, 23.8)
+size = Vector3(0.4, 2.8, 0.4)
 
 [node name="Labels" type="Node3D" parent="."]
 
@@ -564,6 +654,105 @@ outline_size = 21
 text = "CLIMB TOWER (mantle up each tier)"
 font_size = 128
 
+[node name="DashTick_0" type="Label3D" parent="Labels"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 54, 0.5, -6)
+billboard = 1
+pixel_size = 0.008
+modulate = Color(0.6, 0.95, 1, 1)
+outline_size = 10
+text = "0 m"
+font_size = 64
+
+[node name="DashTick_2" type="Label3D" parent="Labels"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 54, 0.5, -2)
+billboard = 1
+pixel_size = 0.008
+modulate = Color(0.6, 0.95, 1, 1)
+outline_size = 10
+text = "4 m"
+font_size = 64
+
+[node name="DashTick_4" type="Label3D" parent="Labels"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 54, 0.5, 2)
+billboard = 1
+pixel_size = 0.008
+modulate = Color(0.6, 0.95, 1, 1)
+outline_size = 10
+text = "8 m"
+font_size = 64
+
+[node name="DashTick_6" type="Label3D" parent="Labels"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 54, 0.5, 6)
+billboard = 1
+pixel_size = 0.008
+modulate = Color(0.6, 0.95, 1, 1)
+outline_size = 10
+text = "12 m"
+font_size = 64
+
+[node name="DashTick_8" type="Label3D" parent="Labels"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 54, 0.5, 10)
+billboard = 1
+pixel_size = 0.008
+modulate = Color(0.6, 0.95, 1, 1)
+outline_size = 10
+text = "16 m"
+font_size = 64
+
+[node name="DashTick_10" type="Label3D" parent="Labels"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 54, 0.5, 14)
+billboard = 1
+pixel_size = 0.008
+modulate = Color(0.6, 0.95, 1, 1)
+outline_size = 10
+text = "20 m"
+font_size = 64
+
+[node name="DashTick_12" type="Label3D" parent="Labels"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 54, 0.5, 18)
+billboard = 1
+pixel_size = 0.008
+modulate = Color(0.6, 0.95, 1, 1)
+outline_size = 10
+text = "24 m"
+font_size = 64
+
+[node name="DashTick_14" type="Label3D" parent="Labels"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 54, 0.5, 22)
+billboard = 1
+pixel_size = 0.008
+modulate = Color(0.6, 0.95, 1, 1)
+outline_size = 10
+text = "28 m"
+font_size = 64
+
+[node name="DashLaneTitle" type="Label3D" parent="Labels"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 3.5, -7)
+billboard = 1
+pixel_size = 0.008
+modulate = Color(0.6, 0.95, 1, 1)
+outline_size = 21
+text = "DASH LANE (E: sigil leap toward the crosshair)"
+font_size = 128
+
+[node name="ThinWallTitle" type="Label3D" parent="Labels"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 61, 5.8, 10)
+billboard = 1
+pixel_size = 0.008
+modulate = Color(0.6, 0.95, 1, 1)
+outline_size = 21
+text = "THIN WALL 0.2 m"
+font_size = 128
+
+[node name="LowCeilingTitle" type="Label3D" parent="Labels"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 61, 3.4, 21)
+billboard = 1
+pixel_size = 0.008
+modulate = Color(0.6, 0.95, 1, 1)
+outline_size = 21
+text = "LOW CEILING 2.3 m (leap up into it)"
+font_size = 128
+
 [node name="TestPoints" type="Node3D" parent="."]
 
 [node name="Ledge_0_25" type="Marker3D" parent="TestPoints"]
@@ -637,6 +826,18 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, -0, 0, 1, 22.5, 0.05, 3)
 
 [node name="TowerBase" type="Marker3D" parent="TestPoints"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, -0, 0, 1, 41, 0.05, -26)
+
+[node name="DashLaneStart" type="Marker3D" parent="TestPoints"]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, -0, 0, -1, 50, 0.05, -6)
+
+[node name="ThinWallFront" type="Marker3D" parent="TestPoints"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, -0, 0, 1, 61, 0.05, 13)
+
+[node name="ThinWallBack" type="Marker3D" parent="TestPoints"]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, -0, 0, -1, 61, 0.05, 10.45)
+
+[node name="UnderCeiling" type="Marker3D" parent="TestPoints"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, -0, 0, 1, 61, 0.05, 21)
 
 [node name="Spawn" type="Marker3D" parent="TestPoints"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, -0, 0, 1, 0, 0.05, 6)

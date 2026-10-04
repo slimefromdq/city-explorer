@@ -20,6 +20,10 @@ extends Node3D
 @export var base_fov := 75.0
 ## Extra FOV at full sprint speed and above, for a sense of speed.
 @export var speed_fov_kick := 12.0
+## FOV change while winding up a sigil leap (negative = a slight zoom-in tell).
+@export var dash_startup_fov := -5.0
+## Extra FOV during the leap itself.
+@export var dash_launch_fov := 14.0
 ## How quickly the camera catches up vertically (stairs, landings).
 @export var height_smoothing := 12.0
 
@@ -79,7 +83,13 @@ func _process(dt: float) -> void:
 	_arm.spring_length = distance
 	var t := target.tuning
 	var over_walk := clampf((target.horizontal_speed() - t.walk_speed) / maxf(0.1, t.sprint_speed - t.walk_speed), 0.0, 1.0)
-	_fov = lerpf(_fov, base_fov + over_walk * speed_fov_kick, minf(1.0, dt * 8.0))
+	var want := base_fov + over_walk * speed_fov_kick
+	match target.states.current_name:
+		&"DashStartup":
+			want += dash_startup_fov
+		&"DashLaunch":
+			want += dash_launch_fov
+	_fov = lerpf(_fov, want, minf(1.0, dt * 8.0))
 	camera.fov = _fov
 
 

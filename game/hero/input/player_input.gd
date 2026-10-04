@@ -49,3 +49,5 @@ func _physics_process(_dt: float) -> void:
 	i.jump_held = Input.is_action_pressed(&"jump")
 	if Input.is_action_just_pressed(&"jump"):
 		i.jump_pressed = true
+	if Input.is_action_just_pressed(&"dash"):
+		i.dash_pressed = true

@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://game/hero/hero.gd" id="1"]
 [ext_resource type="Resource" path="res://game/hero/movement/default_tuning.tres" id="2"]
@@ -9,6 +9,8 @@
 [ext_resource type="Script" path="res://game/hero/movement/states/crouch_state.gd" id="7"]
 [ext_resource type="Script" path="res://game/hero/movement/states/mantle_state.gd" id="8"]
 [ext_resource type="Script" path="res://game/hero/model/hero_model.gd" id="9"]
+[ext_resource type="Script" path="res://game/hero/movement/states/dash_startup_state.gd" id="10"]
+[ext_resource type="Script" path="res://game/hero/movement/states/dash_launch_state.gd" id="11"]
 
 [node name="Hero" type="CharacterBody3D"]
 script = ExtResource("1")
@@ -33,6 +35,12 @@ script = ExtResource("7")
 
 [node name="Mantle" type="Node" parent="States"]
 script = ExtResource("8")
+
+[node name="DashStartup" type="Node" parent="States"]
+script = ExtResource("10")
+
+[node name="DashLaunch" type="Node" parent="States"]
+script = ExtResource("11")
 
 [node name="Model" type="Node3D" parent="."]
 script = ExtResource("9")

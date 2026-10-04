@@ -63,6 +63,39 @@ extends Resource
 ## After touching a wall you still count as "on the wall" for this long.
 @export var wall_contact_grace := 0.18
 
+@export_group("Sigil leap (air dash)")
+## How many leaps you can store. Charges refill one at a time.
+@export_range(1, 6) var dash_charges := 2
+## Seconds to recharge ONE charge.
+@export var dash_recharge_time := 2.5
+## Minimum gap between two leaps, even with charges left.
+@export var dash_cooldown := 0.35
+## The committed windup while the sigil draws itself in. You can't cancel it.
+@export_range(0.05, 0.6, 0.01) var dash_startup := 0.2
+## Gravity multiplier during the windup: the "hang in the air" tell.
+@export_range(0.0, 1.0, 0.05) var dash_startup_gravity := 0.15
+## How quickly your existing momentum bleeds away during the windup (per second).
+@export var dash_startup_brake := 12.0
+## How quickly vertical speed (rising or falling) bleeds away during the windup.
+## Higher = a sharper mid-air stop.
+@export var dash_startup_hang_brake := 25.0
+@export var dash_speed := 32.0
+## How far the leap carries you (its duration is distance / speed).
+@export var dash_distance := 9.0
+## Share of the leap speed you keep as momentum when it ends.
+@export_range(0.0, 1.0, 0.05) var dash_end_carry := 0.45
+## Brief low-gravity float right after the leap ends.
+@export var dash_end_hang := 0.12
+## Aim pitch limits (as the sine of the angle): looking straight down or up is clamped.
+@export_range(-1.0, 0.0, 0.05) var dash_min_pitch := -0.6
+@export_range(0.0, 1.0, 0.05) var dash_max_pitch := 0.95
+## On the ground, the leap always lifts at least this much (so it never digs into the floor).
+@export_range(0.0, 0.5, 0.01) var dash_ground_min_pitch := 0.12
+## A press this long before the leap is allowed (e.g. mid-mantle) still fires.
+@export var dash_buffer := 0.15
+## How far behind your body centre the sigil appears.
+@export var sigil_offset := 0.9
+
 @export_group("Facing")
 ## How quickly the body turns to face its travel direction.
 @export var turn_speed := 18.0

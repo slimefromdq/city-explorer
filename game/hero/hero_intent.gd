@@ -20,7 +20,9 @@ var jump_held := false
 # Presses: true only on the frame the button went down. The hero clears them
 # after every physics tick, so a press is seen exactly once.
 var jump_pressed := false
+var dash_pressed := false
 
 
 func clear_presses() -> void:
 	jump_pressed = false
+	dash_pressed = false

@@ -5,6 +5,8 @@ extends MoveState
 
 
 func physics_update(dt: float) -> void:
+	if try_start_dash():
+		return
 	var i := hero.intent
 	if i.crouch:
 		machine.change(&"Crouch")

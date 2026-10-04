@@ -178,8 +178,10 @@ func _place(marker: String) -> void:
 	hero.velocity = Vector3.ZERO
 	hero.motor.reset()
 	hero.states.change(&"Air")
-	hero.intent.aim_yaw = m.global_rotation.y
-	hero.face_yaw = m.global_rotation.y
+	# Read the heading from the marker's forward axis (Euler angles can flip at 180 degrees).
+	var fwd := -m.global_basis.z
+	hero.intent.aim_yaw = atan2(-fwd.x, -fwd.z)
+	hero.face_yaw = hero.intent.aim_yaw
 	hero.reset_physics_interpolation()
 	await _wait_until(func() -> bool: return hero.states.current_name == &"Ground", 60)
 	await _frames(2)

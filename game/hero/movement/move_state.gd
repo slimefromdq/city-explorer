@@ -26,3 +26,13 @@ func exit() -> void:
 ## Called every physics tick while active.
 func physics_update(_dt: float) -> void:
 	pass
+
+
+## Shared by the "free" states (Ground, Air, Crouch): start a sigil leap if one
+## was pressed and is allowed. Committed states (Mantle, the leap itself) don't
+## call this, so a press during them waits in the buffer.
+func try_start_dash() -> bool:
+	if not motor.wants_dash():
+		return false
+	machine.change(&"DashStartup")
+	return true

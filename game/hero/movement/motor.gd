@@ -33,6 +33,10 @@ var wall_normal := Vector3.ZERO   # flat normal of that wall
 var wall_kicks_used := 0
 var crouched := false             # the capsule is currently short
 var hold_crouch := false          # set by the Crouch state; otherwise we stand up when there's room
+var dash_pool: ChargePool         # sigil leap charges (core/charge_pool.gd)
+var dash_cd_left := 0.0
+var dash_buffer_left := 0.0
+var hang_left := 0.0              # >0 = low gravity (just after a leap)
 
 var _was_on_floor := true
 var _shape: CollisionShape3D
@@ -50,6 +54,7 @@ func setup(p_hero: Hero, shape: CollisionShape3D) -> void:
 	hero.floor_snap_length = 0.45
 	hero.floor_stop_on_slope = true
 	hero.safe_margin = 0.01
+	dash_pool = ChargePool.new(tuning.dash_charges, tuning.dash_recharge_time, 0.0)
 
 
 func reset() -> void:
@@ -61,6 +66,10 @@ func reset() -> void:
 	wall_left = 0.0
 	wall_kicks_used = 0
 	hold_crouch = false
+	dash_pool.fill()
+	dash_cd_left = 0.0
+	dash_buffer_left = 0.0
+	hang_left = 0.0
 	if crouched:
 		crouched = false
 		_apply_height(tuning.stand_height)
@@ -71,8 +80,14 @@ func tick_timers(dt: float) -> void:
 	just_landed = false
 	jump_buffer_left = maxf(0.0, jump_buffer_left - dt)
 	wall_left = maxf(0.0, wall_left - dt)
+	dash_buffer_left = maxf(0.0, dash_buffer_left - dt)
+	dash_cd_left = maxf(0.0, dash_cd_left - dt)
+	hang_left = maxf(0.0, hang_left - dt)
+	dash_pool.tick(dt)
 	if hero.intent.jump_pressed:
 		jump_buffer_left = tuning.jump_buffer
+	if hero.intent.dash_pressed:
+		dash_buffer_left = tuning.dash_buffer
 	if on_floor:
 		coyote_left = tuning.coyote_time
 		wall_kicks_used = 0
@@ -98,8 +113,10 @@ func steer(target_speed: float, accel: float, brake: float, dt: float) -> void:
 	run_vel = run_vel.move_toward(wish * target_speed, rate * dt)
 
 
-func apply_gravity(dt: float) -> void:
-	var g := tuning.gravity
+func apply_gravity(dt: float, scale: float = 1.0) -> void:
+	var g := tuning.gravity * scale
+	if hang_left > 0.0:
+		g *= 0.2
 	if vy < 0.0:
 		g *= tuning.fall_gravity_mult
 	vy = maxf(vy - g * dt, -tuning.max_fall_speed)
@@ -139,6 +156,26 @@ func add_impulse(v: Vector3) -> void:
 	impulse += v
 
 
+## A leap was requested (recently) and is allowed right now.
+func wants_dash() -> bool:
+	return dash_buffer_left > 0.0 and dash_cd_left <= 0.0 and dash_pool.has_charge()
+
+
+## Direction of a leap: where the camera aims, clamped so it never goes
+## straight up/down and never digs into the floor when grounded.
+func dash_direction() -> Vector3:
+	var aim := hero.intent.aim_dir.normalized()
+	var flat := Vector3(aim.x, 0.0, aim.z)
+	if flat.length() < 0.05:
+		flat = Basis(Vector3.UP, hero.intent.aim_yaw) * Vector3.FORWARD
+	flat = flat.normalized()
+	var pitch := clampf(aim.y, tuning.dash_min_pitch, tuning.dash_max_pitch)
+	if on_floor:
+		pitch = maxf(pitch, tuning.dash_ground_min_pitch)
+	var h := sqrt(1.0 - pitch * pitch)
+	return Vector3(flat.x * h, pitch, flat.z * h)
+
+
 # ------------------------------------------------------------ the actual move
 
 ## Sum the parts, try a step-up, then move_and_slide and record what we hit.
@@ -150,6 +187,15 @@ func move(dt: float) -> void:
 		_try_step_up(dt)
 	hero.move_and_slide()
 	_after_move(pre_vy)
+
+
+## Move with an exact velocity (used by the leap, which ignores steering).
+## move_and_slide sweeps the capsule along the path, so fast moves can't skip
+## through thin walls.
+func move_direct(v: Vector3) -> void:
+	hero.velocity = v
+	hero.move_and_slide()
+	_after_move(v.y)
 
 
 func _after_move(pre_vy: float) -> void:

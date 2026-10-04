@@ -4,6 +4,8 @@ extends MoveState
 
 
 func physics_update(dt: float) -> void:
+	if try_start_dash():
+		return
 	var i := hero.intent
 	if motor.jump_buffer_left > 0.0:
 		if motor.coyote_left > 0.0 and not motor.crouched:
