@@ -15,6 +15,7 @@ var _dir := Vector3.FORWARD
 
 func enter(_from: StringName, _data: Dictionary) -> void:
 	motor.roll_buffer_left = 0.0
+	motor.roll_pool.spend()
 	var wish := motor.wish_dir()
 	if wish.length() < 0.1:
 		wish = -(Basis(Vector3.UP, hero.intent.aim_yaw) * Vector3.FORWARD)   # back-step roll

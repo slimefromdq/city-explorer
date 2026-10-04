@@ -109,7 +109,11 @@ extends Resource
 
 @export_group("Dodge roll")
 ## A grounded, cheap, non-committal evade: short, fast, low to the ground,
-## with a window of invulnerability. No charges, just a short cooldown.
+## with a window of invulnerability. Two charges keep it from being spammed
+## (which would make blocking pointless); a short cooldown spaces the two out.
+@export var roll_charges := 2
+## Seconds to refill one roll charge (refills one at a time).
+@export var roll_recharge_time := 2.5
 @export var roll_speed := 15.0
 @export var roll_time := 0.36
 ## Invulnerable from roll_iframe_start to roll_iframe_end seconds into the roll.

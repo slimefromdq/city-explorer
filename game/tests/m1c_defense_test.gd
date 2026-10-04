@@ -54,8 +54,18 @@ func _run() -> void:
 	_check(back_dir.z > 0.9, "no direction held = roll backwards from the camera (dir z %.2f)" % back_dir.z)
 	await _wait_until(func() -> bool: return hero.states.current_name == &"Ground", 60)
 
-	print("roll i-frames")
+	print("roll charges")
+	_check(not hero.motor.roll_pool.has_charge(), "two rolls in a row use up both charges (%.2f left)" % hero.motor.roll_pool.charges)
 	await _frames(int(t.roll_cooldown * 60.0) + 2)
+	events.clear()
+	hero.intent.roll_pressed = true
+	await _frames(2)
+	_check(not _saw(MoveEvent.Type.ROLL), "a third roll is refused while out of charges")
+	await _wait_until(func() -> bool: return hero.motor.roll_pool.has_charge(), int(t.roll_recharge_time * 60.0) + 10)
+	_check(hero.motor.roll_pool.has_charge(), "a roll charge comes back within roll_recharge_time")
+
+	print("roll i-frames")
+	events.clear()
 	hero.intent.roll_pressed = true
 	await _frames(int((t.roll_iframe_start + t.roll_iframe_end) * 0.5 * 60.0))
 	var hp := hero.defense.health

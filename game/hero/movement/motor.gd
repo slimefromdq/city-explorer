@@ -37,6 +37,7 @@ var dash_pool: ChargePool         # sigil leap charges (core/charge_pool.gd)
 var dash_cd_left := 0.0
 var dash_buffer_left := 0.0
 var hang_left := 0.0              # >0 = low gravity (just after a leap)
+var roll_pool: ChargePool         # dodge roll charges (stops roll spam; Lucy's pick)
 var roll_cd_left := 0.0
 var roll_buffer_left := 0.0
 
@@ -57,6 +58,7 @@ func setup(p_hero: Hero, shape: CollisionShape3D) -> void:
 	hero.floor_stop_on_slope = true
 	hero.safe_margin = 0.01
 	dash_pool = ChargePool.new(tuning.dash_charges, tuning.dash_recharge_time, 0.0)
+	roll_pool = ChargePool.new(tuning.roll_charges, tuning.roll_recharge_time, 0.0)
 
 
 func reset() -> void:
@@ -69,6 +71,7 @@ func reset() -> void:
 	wall_kicks_used = 0
 	hold_crouch = false
 	dash_pool.fill()
+	roll_pool.fill()
 	dash_cd_left = 0.0
 	dash_buffer_left = 0.0
 	hang_left = 0.0
@@ -88,6 +91,7 @@ func tick_timers(dt: float) -> void:
 	dash_cd_left = maxf(0.0, dash_cd_left - dt)
 	hang_left = maxf(0.0, hang_left - dt)
 	dash_pool.tick(dt)
+	roll_pool.tick(dt)
 	if hero.intent.jump_pressed:
 		jump_buffer_left = tuning.jump_buffer
 	if hero.intent.dash_pressed:
@@ -185,9 +189,9 @@ func wants_dash() -> bool:
 	return dash_buffer_left > 0.0 and dash_cd_left <= 0.0 and dash_pool.has_charge()
 
 
-## A roll was requested (recently) and is allowed: grounded, off cooldown.
+## A roll was requested (recently) and is allowed: grounded, off cooldown, a charge left.
 func wants_roll() -> bool:
-	return roll_buffer_left > 0.0 and roll_cd_left <= 0.0 and on_floor
+	return roll_buffer_left > 0.0 and roll_cd_left <= 0.0 and on_floor and roll_pool.has_charge()
 
 
 ## Direction of a leap: where the camera aims, clamped so it never goes

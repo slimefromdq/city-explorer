@@ -17,7 +17,7 @@ F5 still runs the old prototype.
 | Space | jump (hold for full height, tap for a hop); against a wall in the air = wall kick (3 per airtime) |
 | C or Ctrl (hold) | crouch |
 | E | sigil leap toward the crosshair (look up to leap up; 2 charges) |
-| Q or Alt | dodge roll (ground only; i-frames; rolls backwards if no direction held) |
+| Q or Alt | dodge roll (ground only; i-frames; 2 charges that refill over 2.5 s each; rolls backwards if no direction held) |
 | F or right mouse (hold) | block (front arc; first 0.15 s = perfect block) |
 | run + jump into a ledge | mantle up (ledges 0.35 to 2.5 m above your feet) |
 | F5 | respawn |

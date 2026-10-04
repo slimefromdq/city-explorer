@@ -103,7 +103,7 @@ func _process(_dt: float) -> void:
 	var roll_phase := ""
 	if h.states.current_name == &"Roll":
 		roll_phase = "   ROLLING %.2f/%.2f s%s" % [h.states.time_in_state, t.roll_time, "  I-FRAMES" if d.iframes else ""]
-	lines.append("roll       cooldown %.2f%s" % [m.roll_cd_left, roll_phase])
+	lines.append("roll       charges %.2f/%d   cooldown %.2f%s" % [m.roll_pool.charges, t.roll_charges, m.roll_cd_left, roll_phase])
 	var block_phase := "down"
 	if d.blocking:
 		block_phase = "UP  perfect window %.2f s" % d.perfect_window_left if d.perfect_window_left > 0.0 else "UP"
