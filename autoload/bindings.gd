@@ -20,6 +20,9 @@ func _ready() -> void:
 	_keys(&"ability_4", [KEY_4])
 	_keys(&"reload", [KEY_R])
 	_keys(&"map", [KEY_M])
+	# --- Meridia Hero Sandbox (res://game) ---
+	_keys(&"crouch", [KEY_C, KEY_CTRL])
+	_keys(&"dbg_overlay", [KEY_F3])
 	# --- test-bench tools ---
 	_keys(&"dbg_help", [KEY_F1])
 	_keys(&"dbg_teleport", [KEY_F2])

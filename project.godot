@@ -11,6 +11,7 @@ config/features=PackedStringArray("4.7", "Forward Plus")
 
 Bindings="*res://autoload/bindings.gd"
 Events="*res://autoload/events.gd"
+DebugOverlay="*res://game/autoload/debug_overlay.gd"
 
 [display]
 
@@ -24,6 +25,8 @@ window/stretch/mode="canvas_items"
 3d_physics/layer_2="fighter"
 3d_physics/layer_3="hurtbox"
 3d_physics/layer_4="pickup"
+3d_physics/layer_5="card_body"
+3d_physics/layer_6="trigger"
 
 [physics]
 

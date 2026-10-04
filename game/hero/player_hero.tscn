@@ -1,0 +1,14 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="PackedScene" path="res://game/hero/hero.tscn" id="1"]
+[ext_resource type="Script" path="res://game/hero/input/player_input.gd" id="2"]
+[ext_resource type="Script" path="res://game/hero/camera/shoulder_camera.gd" id="3"]
+
+[node name="PlayerHero" instance=ExtResource("1")]
+display_name = "Player"
+
+[node name="PlayerInput" type="Node" parent="."]
+script = ExtResource("2")
+
+[node name="ShoulderCamera" type="Node3D" parent="."]
+script = ExtResource("3")
