@@ -36,3 +36,20 @@ func try_start_dash() -> bool:
 		return false
 	machine.change(&"DashStartup")
 	return true
+
+
+## Ground-only dodge roll. Called by Ground, Crouch and Block, so a roll can
+## cancel out of those. A press in the air stays buffered until you land.
+func try_start_roll() -> bool:
+	if not motor.wants_roll():
+		return false
+	machine.change(&"Roll")
+	return true
+
+
+## Raise the guard if block is held (Ground and Crouch call this).
+func try_start_block() -> bool:
+	if not hero.intent.block or not motor.on_floor:
+		return false
+	machine.change(&"Block")
+	return true

@@ -17,7 +17,7 @@ func physics_update(dt: float) -> void:
 			hero.emit_movement_event(MoveEvent.Type.WALL_KICK, {"kicks_used": motor.wall_kicks_used})
 	motor.apply_jump_cut()
 	var speed := tuning.sprint_speed if i.sprint else tuning.walk_speed
-	motor.steer(speed, tuning.air_accel, tuning.air_accel, dt)
+	motor.air_steer(speed, dt)
 	motor.apply_gravity(dt)
 	motor.move(dt)
 

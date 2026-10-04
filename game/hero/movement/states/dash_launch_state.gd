@@ -5,7 +5,7 @@ extends MoveState
 ## The motor sweeps the body along the path every tick, so even at full speed
 ## the leap stops at walls instead of passing through them. Hitting a wall with
 ## a ledge in reach turns into a mantle; landing or a head-on wall ends early.
-## When it ends we keep some momentum and float briefly.
+## When it ends most of the speed becomes momentum, so you fly on.
 ##
 ## Event: OnDashLaunch on entry.
 
@@ -46,8 +46,12 @@ func physics_update(_dt: float) -> void:
 
 
 func _finish() -> void:
-	motor.impulse = _dir * tuning.dash_speed * tuning.dash_end_carry
-	motor.vy = 0.0
+	# Hand the leap's speed over as real momentum: horizontal into run_vel
+	# (which air steering preserves), upward into vy.
+	var v := _dir * tuning.dash_speed
+	motor.run_vel = Vector3(v.x, 0.0, v.z) * tuning.dash_end_carry
+	motor.vy = maxf(0.0, v.y) * tuning.dash_end_vertical_carry
+	motor.impulse = Vector3.ZERO
 	motor.hang_left = tuning.dash_end_hang
 	motor.dash_cd_left = tuning.dash_cooldown
 	machine.change(&"Ground" if motor.on_floor else &"Air")

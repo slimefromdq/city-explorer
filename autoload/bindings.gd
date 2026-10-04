@@ -22,6 +22,7 @@ func _ready() -> void:
 	_keys(&"map", [KEY_M])
 	# --- Meridia Hero Sandbox (res://game) ---
 	_keys(&"crouch", [KEY_C, KEY_CTRL])
+	_keys(&"roll", [KEY_Q, KEY_ALT])
 	_keys(&"dbg_overlay", [KEY_F3])
 	# --- test-bench tools ---
 	_keys(&"dbg_help", [KEY_F1])

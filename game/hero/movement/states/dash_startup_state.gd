@@ -30,6 +30,9 @@ func enter(_from: StringName, _data: Dictionary) -> void:
 
 func exit() -> void:
 	hero.model.set_charge(0.0)
+	# Interrupted before launching (e.g. hit during the windup): the sigil fades.
+	if machine.current_name != &"DashLaunch" and _sigil != null and is_instance_valid(_sigil):
+		_sigil.cancel()
 
 
 func physics_update(dt: float) -> void:

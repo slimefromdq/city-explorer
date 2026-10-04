@@ -16,13 +16,16 @@ var aim_point := Vector3.ZERO     # world point under the crosshair
 var sprint := false
 var crouch := false
 var jump_held := false
+var block := false
 
 # Presses: true only on the frame the button went down. The hero clears them
 # after every physics tick, so a press is seen exactly once.
 var jump_pressed := false
 var dash_pressed := false
+var roll_pressed := false
 
 
 func clear_presses() -> void:
 	jump_pressed = false
 	dash_pressed = false
+	roll_pressed = false

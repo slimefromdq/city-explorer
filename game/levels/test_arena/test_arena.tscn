@@ -1,8 +1,9 @@
-[gd_scene load_steps=16 format=3]
+[gd_scene load_steps=17 format=3]
 
 [ext_resource type="Script" path="res://game/levels/test_arena/test_arena.gd" id="script"]
 [ext_resource type="Shader" path="res://game/levels/test_arena/arena_grid.gdshader" id="shader"]
 [ext_resource type="PackedScene" path="res://game/hero/player_hero.tscn" id="hero"]
+[ext_resource type="PackedScene" path="res://game/enemies/training_dummy.tscn" id="dummy"]
 
 [sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
 sky_top_color = Color(0.32, 0.46, 0.7, 1)
@@ -400,6 +401,43 @@ size = Vector3(0.4, 2.8, 0.4)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 63.8, 0.9, 23.8)
 size = Vector3(0.4, 2.8, 0.4)
 
+[node name="Dummies" type="Node3D" parent="."]
+
+[node name="Swinger" parent="Dummies" instance=ExtResource("dummy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -35, 0, 35)
+display_name = "Swinger"
+attack = 1
+aggro_range = 5.0
+
+[node name="Shooter" parent="Dummies" instance=ExtResource("dummy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22, 0, 42)
+display_name = "Shooter"
+attack = 2
+aggro_range = 18.0
+interval = 1.8
+windup = 0.5
+damage = 8.0
+guard_damage = 15.0
+flinch = 0.15
+knockback = 3.0
+
+[node name="Slammer" parent="Dummies" instance=ExtResource("dummy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0, 36)
+display_name = "Slammer"
+attack = 3
+aggro_range = 6.0
+interval = 2.8
+windup = 0.9
+damage = 25.0
+reach = 4.0
+knockback = 9.0
+flinch = 0.5
+
+[node name="Punching Bag" parent="Dummies" instance=ExtResource("dummy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -45, 0, 32)
+display_name = "Punching Bag"
+attack = 0
+
 [node name="Labels" type="Node3D" parent="."]
 
 [node name="LedgeLabel_0" type="Label3D" parent="Labels"]
@@ -753,6 +791,15 @@ outline_size = 21
 text = "LOW CEILING 2.3 m (leap up into it)"
 font_size = 128
 
+[node name="CombatTitle" type="Label3D" parent="Labels"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -25, 4.5, 30)
+billboard = 1
+pixel_size = 0.008
+modulate = Color(1, 0.8, 0.6, 1)
+outline_size = 21
+text = "COMBAT YARD  orange = block it   yellow = block or roll   purple = ROLL it"
+font_size = 128
+
 [node name="TestPoints" type="Node3D" parent="."]
 
 [node name="Ledge_0_25" type="Marker3D" parent="TestPoints"]
@@ -838,6 +885,18 @@ transform = Transform3D(-1, 0, 0, 0, 1, 0, -0, 0, -1, 61, 0.05, 10.45)
 
 [node name="UnderCeiling" type="Marker3D" parent="TestPoints"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, -0, 0, 1, 61, 0.05, 21)
+
+[node name="SwingerFront" type="Marker3D" parent="TestPoints"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, -0, 0, 1, -35, 0.05, 37.4)
+
+[node name="ShooterFront" type="Marker3D" parent="TestPoints"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, -0, 0, 1, -22, 0.05, 52)
+
+[node name="SlammerFront" type="Marker3D" parent="TestPoints"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, -0, 0, 1, -8, 0.05, 39)
+
+[node name="YardOpen" type="Marker3D" parent="TestPoints"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, -0, 0, 1, -25, 0.05, 60)
 
 [node name="Spawn" type="Marker3D" parent="TestPoints"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, -0, 0, 1, 0, 0.05, 6)

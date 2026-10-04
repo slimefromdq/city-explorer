@@ -13,7 +13,7 @@ func exit() -> void:
 
 
 func physics_update(dt: float) -> void:
-	if try_start_dash():
+	if try_start_dash() or try_start_roll() or try_start_block():
 		return
 	if not hero.intent.crouch:
 		machine.change(&"Ground")

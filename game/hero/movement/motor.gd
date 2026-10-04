@@ -37,6 +37,8 @@ var dash_pool: ChargePool         # sigil leap charges (core/charge_pool.gd)
 var dash_cd_left := 0.0
 var dash_buffer_left := 0.0
 var hang_left := 0.0              # >0 = low gravity (just after a leap)
+var roll_cd_left := 0.0
+var roll_buffer_left := 0.0
 
 var _was_on_floor := true
 var _shape: CollisionShape3D
@@ -70,6 +72,8 @@ func reset() -> void:
 	dash_cd_left = 0.0
 	dash_buffer_left = 0.0
 	hang_left = 0.0
+	roll_cd_left = 0.0
+	roll_buffer_left = 0.0
 	if crouched:
 		crouched = false
 		_apply_height(tuning.stand_height)
@@ -88,6 +92,10 @@ func tick_timers(dt: float) -> void:
 		jump_buffer_left = tuning.jump_buffer
 	if hero.intent.dash_pressed:
 		dash_buffer_left = tuning.dash_buffer
+	roll_cd_left = maxf(0.0, roll_cd_left - dt)
+	roll_buffer_left = maxf(0.0, roll_buffer_left - dt)
+	if hero.intent.roll_pressed:
+		roll_buffer_left = tuning.roll_buffer
 	if on_floor:
 		coyote_left = tuning.coyote_time
 		wall_kicks_used = 0
@@ -107,10 +115,26 @@ func wish_dir() -> Vector3:
 	return d.limit_length(1.0)
 
 
+## Ground steering: move toward the wished velocity. Speed above the run speed
+## (from a leap or knockback) bleeds off slowly, so landings skid.
 func steer(target_speed: float, accel: float, brake: float, dt: float) -> void:
 	var wish := wish_dir()
 	var rate := accel if wish != Vector3.ZERO else brake
+	if run_vel.length() > maxf(target_speed, tuning.sprint_speed) + 0.5:
+		rate = minf(rate, tuning.ground_overspeed_brake)
 	run_vel = run_vel.move_toward(wish * target_speed, rate * dt)
+
+
+## Air steering: push toward the wished direction, but never past
+## max(current speed, target speed), and never brake momentum you're not
+## pushing against. Low air_accel = committed jumps; momentum carries.
+func air_steer(target_speed: float, dt: float) -> void:
+	var wish := wish_dir()
+	if wish != Vector3.ZERO:
+		var cap := maxf(run_vel.length(), target_speed)
+		var nv := run_vel + wish * tuning.air_accel * dt
+		run_vel = nv.limit_length(cap)
+	run_vel = run_vel.move_toward(Vector3.ZERO, tuning.air_drag * dt)
 
 
 func apply_gravity(dt: float, scale: float = 1.0) -> void:
@@ -161,6 +185,11 @@ func wants_dash() -> bool:
 	return dash_buffer_left > 0.0 and dash_cd_left <= 0.0 and dash_pool.has_charge()
 
 
+## A roll was requested (recently) and is allowed: grounded, off cooldown.
+func wants_roll() -> bool:
+	return roll_buffer_left > 0.0 and roll_cd_left <= 0.0 and on_floor
+
+
 ## Direction of a leap: where the camera aims, clamped so it never goes
 ## straight up/down and never digs into the floor when grounded.
 func dash_direction() -> Vector3:
@@ -180,7 +209,7 @@ func dash_direction() -> Vector3:
 
 ## Sum the parts, try a step-up, then move_and_slide and record what we hit.
 func move(dt: float) -> void:
-	impulse *= exp(-(10.0 if on_floor else 3.5) * dt)
+	impulse *= exp(-(8.0 if on_floor else 1.5) * dt)
 	hero.velocity = run_vel + Vector3.UP * vy + impulse
 	var pre_vy := hero.velocity.y
 	if on_floor:

@@ -35,6 +35,7 @@ var _pivot := Node3D.new()
 var _arm := SpringArm3D.new()
 var _height := 0.0
 var _fov := 75.0
+var _shake := 0.0
 
 
 func _ready() -> void:
@@ -53,6 +54,7 @@ func _ready() -> void:
 	camera.far = 4500.0
 	camera.current = true
 	_fov = base_fov
+	Events.camera_shake.connect(func(amount: float) -> void: _shake = maxf(_shake, amount))
 	if target != null:
 		if not target.is_node_ready():
 			await target.ready
@@ -91,6 +93,10 @@ func _process(dt: float) -> void:
 			want += dash_launch_fov
 	_fov = lerpf(_fov, want, minf(1.0, dt * 8.0))
 	camera.fov = _fov
+	# Hit shake: a short random jitter that decays.
+	_shake = maxf(0.0, _shake - dt * 2.5)
+	camera.h_offset = randf_range(-1.0, 1.0) * _shake * 0.12
+	camera.v_offset = randf_range(-1.0, 1.0) * _shake * 0.12
 
 
 ## Ray from the screen centre. Returns {dir, point}: the aim direction and the

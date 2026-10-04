@@ -34,6 +34,7 @@ var spawn_yaw := 0.0
 @onready var motor: HeroMotor = $Motor
 @onready var states: MoveStateMachine = $States
 @onready var model: HeroModel = $Model
+@onready var defense: HeroDefense = $Defense
 
 
 func _ready() -> void:
@@ -50,6 +51,7 @@ func _ready() -> void:
 	global_rotation = Vector3.ZERO
 	spawn_transform = global_transform
 	motor.setup(self, body_shape)
+	defense.setup(self)
 	states.setup(self, motor)
 	states.state_changed.connect(func(from: StringName, to: StringName) -> void:
 		Events.hero_state_changed.emit(self, from, to))
@@ -57,9 +59,11 @@ func _ready() -> void:
 
 func _physics_process(dt: float) -> void:
 	motor.tick_timers(dt)
+	defense.tick(dt)
 	states.physics_update(dt)
 	_update_facing(dt)
 	model.set_crouched(motor.crouched)
+	model.set_guard(defense.blocking, defense.perfect_window_left > 0.0)
 	intent.clear_presses()
 
 
@@ -68,11 +72,17 @@ func emit_movement_event(type: MoveEvent.Type, data: Dictionary = {}) -> void:
 	Events.movement_event.emit(self, type, data)
 
 
+## Every attack on the hero comes through here. Returns a HitData.Result.
+func take_hit(hit: HitData) -> int:
+	return defense.take_hit(hit)
+
+
 ## Instant respawn at the spawn point with everything reset.
 func respawn() -> void:
 	global_transform = spawn_transform
 	velocity = Vector3.ZERO
 	motor.reset()
+	defense.reset()
 	face_yaw = spawn_yaw
 	states.change(&"Air")
 	reset_physics_interpolation()
@@ -87,9 +97,11 @@ func horizontal_speed() -> float:
 	return Vector2(velocity.x, velocity.z).length()
 
 
-## The model faces where we're travelling.
+## The model faces where we're travelling (Block and the leap set face_yaw
+## themselves, so we leave it alone in those states).
 func _update_facing(dt: float) -> void:
 	var h := Vector2(velocity.x, velocity.z)
-	if h.length() > 1.5:
+	var locked := states.current_name in [&"Block", &"DashStartup", &"Roll"]
+	if h.length() > 1.5 and not locked:
 		face_yaw = lerp_angle(face_yaw, atan2(-h.x, -h.y), minf(1.0, tuning.turn_speed * dt))
 	model.rotation.y = face_yaw

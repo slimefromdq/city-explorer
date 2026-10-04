@@ -43,7 +43,7 @@ func _run() -> void:
 	await _frames(45)
 	_check(absf(hero.horizontal_speed() - t.sprint_speed) < 0.3, "sprint reaches sprint_speed (%.2f vs %.2f)" % [hero.horizontal_speed(), t.sprint_speed])
 	_set_move(Vector2.ZERO)
-	await _frames(25)
+	await _frames(int(ceil(t.sprint_speed / t.ground_brake * 60.0)) + 5)
 	_check(hero.horizontal_speed() < 0.5, "letting go stops the hero (%.2f m/s)" % hero.horizontal_speed())
 
 	print("jump")
@@ -143,6 +143,8 @@ func _run() -> void:
 	await _place("ShaftBottom")
 	events.clear()
 	_set_move(Vector2(0, 1))
+	# Low air control: walk up to the wall first, then jump against it.
+	await _wait_until(func() -> bool: return hero.motor.wall_left > 0.0, 120)
 	hero.intent.jump_pressed = true
 	hero.intent.jump_held = true
 	var best_y := 0.0

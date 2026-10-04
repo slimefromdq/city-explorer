@@ -66,6 +66,12 @@ func launch() -> void:
 	_launch_sound.play()
 
 
+## The leap was interrupted: skip the launch flash and just fade out.
+func cancel() -> void:
+	_phase = Phase.FADING
+	_t = 0.0
+
+
 func _process(dt: float) -> void:
 	_t += dt
 	_mat.set_shader_parameter(&"spin", Time.get_ticks_msec() / 1000.0 * spin_speed)

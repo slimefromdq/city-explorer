@@ -98,8 +98,17 @@ func _process(_dt: float) -> void:
 	elif h.states.current_name == &"DashLaunch":
 		dash_phase = "   LAUNCH"
 	lines.append("dash       charges %.2f/%d   cooldown %.2f%s" % [m.dash_pool.charges, t.dash_charges, m.dash_cd_left, dash_phase])
-	lines.append("roll       not built yet (M1c)")
-	lines.append("block      not built yet (M1c)")
+	var d := h.defense
+	lines.append("health     %5.1f / %d     guard %5.1f / %d" % [d.health, int(t.max_health), d.guard, int(t.guard_max)])
+	var roll_phase := ""
+	if h.states.current_name == &"Roll":
+		roll_phase = "   ROLLING %.2f/%.2f s%s" % [h.states.time_in_state, t.roll_time, "  I-FRAMES" if d.iframes else ""]
+	lines.append("roll       cooldown %.2f%s" % [m.roll_cd_left, roll_phase])
+	var block_phase := "down"
+	if d.blocking:
+		block_phase = "UP  perfect window %.2f s" % d.perfect_window_left if d.perfect_window_left > 0.0 else "UP"
+	lines.append("block      %s" % block_phase)
+	lines.append("last hit   %s" % (d.last_result_text if d.last_result_text != "" else "-"))
 	lines.append("")
 	lines.append("recent events (newest first)")
 	for e in _events:
