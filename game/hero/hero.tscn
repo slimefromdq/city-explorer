@@ -1,4 +1,4 @@
-[gd_scene load_steps=17 format=3]
+[gd_scene load_steps=18 format=3]
 
 [ext_resource type="Script" path="res://game/hero/hero.gd" id="1"]
 [ext_resource type="Resource" path="res://game/hero/movement/default_tuning.tres" id="2"]
@@ -16,6 +16,7 @@
 [ext_resource type="Script" path="res://game/hero/movement/states/hitstun_state.gd" id="14"]
 [ext_resource type="Script" path="res://game/hero/defense/hero_defense.gd" id="15"]
 [ext_resource type="Script" path="res://game/hero/movement/states/slide_state.gd" id="16"]
+[ext_resource type="Script" path="res://game/cards/ability_runner.gd" id="17"]
 
 [node name="Hero" type="CharacterBody3D"]
 script = ExtResource("1")
@@ -58,6 +59,9 @@ script = ExtResource("13")
 
 [node name="Hitstun" type="Node" parent="States"]
 script = ExtResource("14")
+
+[node name="Runner" type="Node" parent="."]
+script = ExtResource("17")
 
 [node name="Defense" type="Node" parent="."]
 script = ExtResource("15")

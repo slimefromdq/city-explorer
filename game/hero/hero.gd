@@ -35,6 +35,8 @@ var spawn_yaw := 0.0
 @onready var states: MoveStateMachine = $States
 @onready var model: HeroModel = $Model
 @onready var defense: HeroDefense = $Defense
+## Casts the equipped cards (M2). Optional so a bare body still works.
+@onready var runner: AbilityRunner = get_node_or_null("Runner")
 
 
 func _ready() -> void:
@@ -53,6 +55,8 @@ func _ready() -> void:
 	motor.setup(self, body_shape)
 	defense.setup(self)
 	states.setup(self, motor)
+	if runner != null:
+		runner.setup(self)
 	states.state_changed.connect(func(from: StringName, to: StringName) -> void:
 		Events.hero_state_changed.emit(self, from, to))
 
@@ -64,6 +68,8 @@ func _physics_process(dt: float) -> void:
 	_update_facing(dt)
 	model.set_crouched(motor.crouched)
 	model.set_guard(defense.blocking, defense.perfect_window_left > 0.0)
+	if runner != null:
+		runner.tick(dt)   # after movement, so casts start from where we are now
 	intent.clear_presses()
 
 
@@ -86,6 +92,42 @@ func respawn() -> void:
 	face_yaw = spawn_yaw
 	states.change(&"Air")
 	reset_physics_interpolation()
+
+
+## Knock the hero around (explosions, kicks, their own rocket jump). Goes into
+## real momentum (run_vel / vy), so with low air control a blast really sends you.
+func push(v: Vector3) -> void:
+	motor.run_vel += Vector3(v.x, 0.0, v.z)
+	if v.y > 0.0:
+		motor.vy = maxf(motor.vy, 0.0) + v.y
+	else:
+		motor.vy += v.y
+	# Grounded states pin us to the floor every tick; an upward shove has to
+	# hand over to Air or it would be cancelled.
+	if v.y > 1.0 and states.current_name in [&"Ground", &"Crouch", &"Slide", &"Block", &"Roll"]:
+		states.change(&"Air")
+
+
+func is_dead() -> bool:
+	return defense.dead
+
+
+## Where hand-thrown cards start: chest height, a little to the right (the
+## camera sits over the right shoulder).
+func hand_position() -> Vector3:
+	return global_position + Vector3.UP * (0.95 if motor.crouched else 1.35) + Basis(Vector3.UP, intent.aim_yaw) * Vector3(0.35, 0.0, -0.2)
+
+
+## Instantly move (teleport cards). Optionally keep running speed.
+func teleport_to(pos: Vector3, keep_momentum: bool) -> void:
+	global_position = pos
+	if not keep_momentum:
+		motor.run_vel = Vector3.ZERO
+		motor.impulse = Vector3.ZERO
+	motor.vy = maxf(motor.vy, 0.0)
+	reset_physics_interpolation()
+	if states.current_name in [&"Ground", &"Crouch", &"Slide", &"Roll"]:
+		states.change(&"Air")   # Air lands again at once if we arrived on a floor
 
 
 func set_spawn(t: Transform3D, yaw: float) -> void:

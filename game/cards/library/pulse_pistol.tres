@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="AbilityCard" format=3]
+
+[ext_resource type="Script" path="res://game/cards/card_body_def.gd" id="1_fluie"]
+[ext_resource type="Script" path="res://game/cards/effects/card_effect.gd" id="2_wpf3c"]
+[ext_resource type="Script" path="res://game/cards/effects/spawn_body_effect.gd" id="3_d8n4s"]
+[ext_resource type="Script" path="res://game/cards/effects/damage_area_effect.gd" id="4_njw7x"]
+[ext_resource type="Script" path="res://game/cards/ability_card.gd" id="5_xkjvi"]
+
+[sub_resource type="Resource" id="Resource_4xs8x"]
+script = ExtResource("1_fluie")
+shape = 3
+radius = 0.04
+
+[sub_resource type="Resource" id="Resource_vns6q"]
+script = ExtResource("3_d8n4s")
+spread_degrees = 1.0
+
+[sub_resource type="Resource" id="Resource_g5aka"]
+script = ExtResource("4_njw7x")
+damage = 9.0
+
+[resource]
+script = ExtResource("5_xkjvi")
+display_name = "Pulse Pistol"
+description = "Primary weapon. Hold to fire a fast pulse beam."
+color = Color(0.45, 0.85, 1, 1)
+trigger = 1
+fire_interval = 0.16
+cooldown = 0.0
+body = SubResource("Resource_4xs8x")
+on_cast = Array[ExtResource("2_wpf3c")]([SubResource("Resource_vns6q")])
+on_contact = Array[ExtResource("2_wpf3c")]([SubResource("Resource_g5aka")])

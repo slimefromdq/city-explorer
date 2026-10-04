@@ -1,9 +1,13 @@
-[gd_scene load_steps=17 format=3]
+[gd_scene load_steps=21 format=3]
 
 [ext_resource type="Script" path="res://game/levels/test_arena/test_arena.gd" id="script"]
 [ext_resource type="Shader" path="res://game/levels/test_arena/arena_grid.gdshader" id="shader"]
 [ext_resource type="PackedScene" path="res://game/hero/player_hero.tscn" id="hero"]
 [ext_resource type="PackedScene" path="res://game/enemies/training_dummy.tscn" id="dummy"]
+[ext_resource type="Script" path="res://game/enemies/target_dummy.gd" id="target_dummy"]
+[ext_resource type="Script" path="res://game/cards/card_loadout.gd" id="loadout_script"]
+[ext_resource type="Resource" path="res://game/cards/loadouts/m2a_kit.tres" id="loadout_a"]
+[ext_resource type="Resource" path="res://game/cards/loadouts/m2a_rocket.tres" id="loadout_b"]
 
 [sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
 sky_top_color = Color(0.32, 0.46, 0.7, 1)
@@ -79,6 +83,7 @@ shader_parameter/line_strength = 0.35
 
 [node name="TestArena" type="Node3D"]
 script = ExtResource("script")
+loadouts = Array[ExtResource("loadout_script")]([ExtResource("loadout_a"), ExtResource("loadout_b")])
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = SubResource("env")
@@ -900,3 +905,58 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, -0, 0, 1, -25, 0.05, 60)
 
 [node name="Spawn" type="Marker3D" parent="TestPoints"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, -0, 0, 1, 0, 0.05, 6)
+
+[node name="CardRange" type="CSGCombiner3D" parent="Geometry"]
+material_override = SubResource("mat_ledge")
+use_collision = true
+
+[node name="BackWall" type="CSGBox3D" parent="Geometry/CardRange"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 2, 26)
+size = Vector3(20, 4, 1)
+
+[node name="SideWall" type="CSGBox3D" parent="Geometry/CardRange"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40.5, 1.5, 34)
+size = Vector3(1, 3, 16)
+
+[node name="Pillar" type="CSGBox3D" parent="Geometry/CardRange"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22, 1.5, 40)
+size = Vector3(1.5, 3, 1.5)
+
+[node name="CardRangeLabel" type="Label3D" parent="Labels"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 4.8, 26)
+billboard = 1
+pixel_size = 0.008
+modulate = Color(0.6, 0.9, 1, 1)
+outline_size = 10
+text = "CARD RANGE  (Tab: next loadout, F4: reload cards, F5: reset)"
+font_size = 64
+
+[node name="TargetDummies" type="Node3D" parent="."]
+
+[node name="Near" type="CharacterBody3D" parent="TargetDummies"]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 30, 0.05, 42)
+script = ExtResource("target_dummy")
+
+[node name="Left" type="CharacterBody3D" parent="TargetDummies"]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 25, 0.05, 37)
+script = ExtResource("target_dummy")
+
+[node name="Right" type="CharacterBody3D" parent="TargetDummies"]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 35, 0.05, 37)
+script = ExtResource("target_dummy")
+
+[node name="PairA" type="CharacterBody3D" parent="TargetDummies"]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 29, 0.05, 31)
+script = ExtResource("target_dummy")
+
+[node name="PairB" type="CharacterBody3D" parent="TargetDummies"]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 31, 0.05, 31)
+script = ExtResource("target_dummy")
+
+[node name="Far" type="CharacterBody3D" parent="TargetDummies"]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 30, 0.05, 28)
+script = ExtResource("target_dummy")
+max_health = 1000.0
+
+[node name="CardRangeStart" type="Marker3D" parent="TestPoints"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0.05, 50)

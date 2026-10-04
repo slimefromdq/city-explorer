@@ -6,6 +6,8 @@ extends Node
 ##
 ## Lives as a child of the hero; finds the ShoulderCamera sibling for aiming.
 
+const CARD_ACTIONS: Array[StringName] = [&"card_primary", &"card_1", &"card_2", &"card_3"]
+
 ## Tests switch this off and write the intent themselves.
 @export var enabled := true
 
@@ -54,3 +56,7 @@ func _physics_process(_dt: float) -> void:
 		i.dash_pressed = true
 	if Input.is_action_just_pressed(&"roll"):
 		i.roll_pressed = true
+	for slot in CARD_ACTIONS.size():
+		i.card_held[slot] = Input.is_action_pressed(CARD_ACTIONS[slot])
+		if Input.is_action_just_pressed(CARD_ACTIONS[slot]):
+			i.card_pressed[slot] = true

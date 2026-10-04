@@ -24,6 +24,12 @@ func _ready() -> void:
 	_keys(&"crouch", [KEY_C, KEY_CTRL])
 	_keys(&"roll", [KEY_Q, KEY_ALT])
 	_keys(&"dbg_overlay", [KEY_F3])
+	_mouse(&"card_primary", MOUSE_BUTTON_LEFT)
+	_keys(&"card_1", [KEY_R, KEY_1])
+	_keys(&"card_2", [KEY_G, KEY_2])
+	_keys(&"card_3", [KEY_V, KEY_3])
+	_keys(&"card_reload", [KEY_F4])
+	_keys(&"loadout_next", [KEY_TAB])
 	# --- test-bench tools ---
 	_keys(&"dbg_help", [KEY_F1])
 	_keys(&"dbg_teleport", [KEY_F2])

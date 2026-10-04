@@ -100,11 +100,11 @@ func _process(dt: float) -> void:
 
 
 ## Ray from the screen centre. Returns {dir, point}: the aim direction and the
-## first world/hurtbox point under the crosshair (or a far point if nothing).
+## first world/character/hurtbox point under the crosshair (or a far point if nothing).
 func compute_aim(exclude: Array[RID]) -> Dictionary:
 	var origin := camera.global_position
 	var dir := -camera.global_transform.basis.z
-	var q := PhysicsRayQueryParameters3D.create(origin, origin + dir * 300.0, Hero.LAYER_WORLD | 4)
+	var q := PhysicsRayQueryParameters3D.create(origin, origin + dir * 300.0, Hero.LAYER_WORLD | Hero.LAYER_CHARACTER | 4)
 	q.collide_with_areas = true
 	q.exclude = exclude
 	var r := camera.get_world_3d().direct_space_state.intersect_ray(q)

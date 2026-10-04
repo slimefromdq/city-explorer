@@ -109,6 +109,21 @@ func _process(_dt: float) -> void:
 		block_phase = "UP  perfect window %.2f s" % d.perfect_window_left if d.perfect_window_left > 0.0 else "UP"
 	lines.append("block      %s" % block_phase)
 	lines.append("last hit   %s" % (d.last_result_text if d.last_result_text != "" else "-"))
+	var r := h.runner
+	if r != null and not r.cards.is_empty():
+		lines.append("")
+		lines.append("cards      energy %5.1f / %d   %s" % [r.energy, int(r.max_energy), "can cast" if r.can_act() else "CAN'T CAST (%s)" % h.states.current_name])
+		for i in AbilityRunner.SLOT_COUNT:
+			var c := r.cards[i]
+			if c == null:
+				lines.append("  %-4s  -" % AbilityRunner.SLOT_KEYS[i])
+				continue
+			var pool := r.pools[i] as ChargePool
+			var ch := "charges %.2f/%d" % [pool.charges, pool.max_charges] if pool != null else "no cooldown"
+			lines.append("  %-4s  %-14s %s  %s" % [AbilityRunner.SLOT_KEYS[i], c.display_name, ch, AbilityCard.Trigger.keys()[c.trigger]])
+		lines.append("recent casts (newest first)")
+		for l in r.log_lines:
+			lines.append(l)
 	lines.append("")
 	lines.append("recent events (newest first)")
 	for e in _events:

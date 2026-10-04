@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CardLoadout" format=3]
+
+[ext_resource type="Script" path="res://game/cards/ability_card.gd" id="1_uvi8w"]
+[ext_resource type="Resource" path="res://game/cards/library/pulse_pistol.tres" id="2_aug00"]
+[ext_resource type="Resource" path="res://game/cards/library/ball_kick.tres" id="3_2afny"]
+[ext_resource type="Resource" path="res://game/cards/library/bug_grenade.tres" id="4_u7pg5"]
+[ext_resource type="Resource" path="res://game/cards/library/blink.tres" id="5_1u7lu"]
+[ext_resource type="Script" path="res://game/cards/card_loadout.gd" id="6_qj3i3"]
+
+[resource]
+script = ExtResource("6_qj3i3")
+display_name = "M2a: pistol, ball kick, bug grenade, blink"
+cards = Array[ExtResource("1_uvi8w")]([ExtResource("2_aug00"), ExtResource("3_2afny"), ExtResource("4_u7pg5"), ExtResource("5_1u7lu")])

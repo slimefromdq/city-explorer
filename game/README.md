@@ -5,7 +5,7 @@ the old Gunslinger prototype (`main.tscn`, `fighter/`, `abilities/`) are left as
 they are. The architecture plan this follows is in the project's
 `meridia/architecture-proposal.md`.
 
-## Run it (M1: movement, sigil leap, defense)
+## Run it (M1 movement and defense, M2a cards)
 
 Open `game/levels/test_arena/test_arena.tscn` and press **F6** (Run Current Scene).
 F5 still runs the old prototype.
@@ -20,7 +20,11 @@ F5 still runs the old prototype.
 | Q or Alt | dodge roll (ground only; i-frames; 2 charges that refill over 2.5 s each; rolls backwards if no direction held) |
 | F or right mouse (hold) | block (front arc; first 0.15 s = perfect block) |
 | run + jump into a ledge | mantle up (ledges 0.35 to 2.5 m above your feet) |
-| F5 | respawn |
+| Left mouse (hold) | primary card (Pulse Pistol) |
+| R / G / V (or 1 / 2 / 3) | ability cards 1 to 3 |
+| Tab | next test loadout (the rocket jump is in the second one) |
+| F4 | reload every card file from disk |
+| F5 | respawn and reset the target dummies |
 | F3 | toggle the debug overlay |
 | Esc | free the mouse (click to capture again) |
 
@@ -61,12 +65,33 @@ flash, sound, camera shake). The combat yard (south-west of spawn) has
 SWING (orange, blockable), SHOOT (yellow orbs), SLAM (purple, unblockable: roll
 it), NONE (punching bag). A perfect block staggers the dummy.
 
+## Cards (M2a)
+
+A card is a `.tres` file in `cards/library/`. It holds no code: a trigger
+(press / hold), a cost (cooldown, charges, energy), an optional body to throw
+(`CardBodyDef`: ball, grenade, bug or beam, plus bouncy / sticky / heavy /
+spiky), and five lists of effect blocks: **on cast**, **on contact**, **on
+hit**, **on kill** and **on expire**. `cards/ability_runner.gd` on the hero reads
+the card and runs those lists. The blocks so far are in `cards/effects/`: Spawn
+body, Damage area, Apply impulse and Teleport.
+
+**Make a new card:** in the FileSystem dock, duplicate a card in
+`cards/library/`, select the copy, change its fields in the Inspector, and save.
+Put it in a loadout (`cards/loadouts/*.tres`, or the PlayerHero's Runner >
+Loadout) and press F4 in-game after any edit. Mistakes such as an empty effect
+slot or a body with no "Spawn body" are printed to the Output panel by name.
+
+The card range is north-east of spawn: six target dummies (floating damage
+numbers, a health bar, knockback, fall over at 0 HP and stand back up) in front
+of a wall and a pillar for bouncing and sticking things.
+
 ## Tests
 
 ```
 godot --headless --fixed-fps 60 res://game/tests/m1a_movement_test.tscn
 godot --headless --fixed-fps 60 res://game/tests/m1b_sigil_leap_test.tscn
 godot --headless --fixed-fps 60 res://game/tests/m1c_defense_test.tscn
+godot --headless --fixed-fps 60 res://game/tests/m2a_cards_test.tscn
 ```
 Drives the hero through the real arena by writing its intent (no keyboard), and
 checks walk/sprint/stop speeds, jump height, short hop, coyote time, mantles,
