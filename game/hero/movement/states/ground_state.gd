@@ -9,7 +9,7 @@ func physics_update(dt: float) -> void:
 		return
 	var i := hero.intent
 	if i.crouch:
-		machine.change(&"Crouch")
+		machine.change(&"Slide" if motor.run_vel.length() >= tuning.slide_min_speed else &"Crouch")
 		return
 	var jumped := false
 	if motor.jump_buffer_left > 0.0 and not motor.crouched:

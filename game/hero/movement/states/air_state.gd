@@ -23,7 +23,11 @@ func physics_update(dt: float) -> void:
 
 	if motor.on_floor:
 		hero.emit_movement_event(MoveEvent.Type.LAND, {"impact_speed": motor.land_speed})
-		machine.change(&"Crouch" if i.crouch else &"Ground")
+		if i.crouch:
+			# Landing with crouch held and speed to spare turns straight into a slide.
+			machine.change(&"Slide" if motor.run_vel.length() >= tuning.slide_min_speed else &"Crouch")
+		else:
+			machine.change(&"Ground")
 		return
 	# Pushing into a wall with a ledge within reach? Pull up onto it.
 	if motor.wall_left > 0.0 and _pushing_into_wall():

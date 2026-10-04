@@ -160,6 +160,68 @@ func _run() -> void:
 	_note("highest point reached with wall kicks: %.2f m" % best_y)
 	_release_all()
 
+	print("slide")
+	# Dash lane: 30 m of flat floor heading +z.
+	await _place("DashLaneStart")
+	_set_move(Vector2(0, 1), true)
+	await _frames(45)
+	events.clear()
+	hero.intent.crouch = true
+	await _frames(1)
+	_check(hero.states.current_name == &"Slide" and _saw(MoveEvent.Type.SLIDE), "crouch while sprinting starts a Slide and emits OnSlide")
+	_check(hero.motor.crouched, "sliding uses the short capsule")
+	await _frames(30)
+	var slide_expect := t.sprint_speed - t.slide_friction * 0.5
+	_check(absf(hero.horizontal_speed() - slide_expect) < 0.8, "slide keeps momentum: %.2f m/s after 0.5 s (crouch-walk would be %.1f)" % [hero.horizontal_speed(), t.crouch_speed])
+	hero.intent.jump_pressed = true
+	hero.intent.jump_held = true
+	await _frames(3)
+	_check(hero.states.current_name == &"Air" and hero.horizontal_speed() > slide_expect - 1.0, "jumping out of a slide keeps the speed (%.2f m/s)" % hero.horizontal_speed())
+	_release_all()
+
+	await _place("DashLaneStart")
+	_set_move(Vector2(0, 1), false)
+	await _frames(45)
+	hero.intent.crouch = true
+	await _frames(1)
+	_check(hero.states.current_name == &"Crouch", "crouch at walking speed is a normal crouch, not a slide")
+	_release_all()
+
+	await _place("DashLaneStart")
+	_set_move(Vector2(0, 1), true)
+	await _frames(45)
+	hero.intent.crouch = true
+	_set_move(Vector2.ZERO)
+	await _wait_until(func() -> bool: return hero.states.current_name == &"Crouch", int((t.sprint_speed - t.slide_end_speed) / t.slide_friction * 60.0) + 20)
+	_check(hero.states.current_name == &"Crouch", "a slide slows down on its own and ends in a crouch")
+	_release_all()
+
+	await _place("DashLaneStart")
+	_set_move(Vector2(0, 1), true)
+	await _frames(45)
+	hero.intent.crouch = true
+	await _frames(10)
+	hero.intent.crouch = false
+	await _frames(2)
+	_check(hero.states.current_name == &"Ground" and hero.horizontal_speed() > t.sprint_speed - 2.0, "letting go of crouch stands up without losing the speed (%.2f m/s)" % hero.horizontal_speed())
+	_release_all()
+
+	# Downhill: top of the 30 degree ramp, sliding down toward +z.
+	await _place("DashLaneStart")
+	hero.global_position = Vector3(28, 6.1, -17.5)
+	hero.reset_physics_interpolation()
+	await _wait_until(func() -> bool: return hero.states.current_name == &"Ground", 60)
+	_set_move(Vector2(0, 1), true)
+	await _wait_until(func() -> bool: return hero.global_position.z > -15.0, 90)
+	hero.intent.crouch = true
+	var top_speed := 0.0
+	for i in 60:
+		await _frames(1)
+		if hero.states.current_name == &"Slide":
+			top_speed = maxf(top_speed, hero.horizontal_speed())
+	_check(top_speed > t.sprint_speed + 2.0, "sliding downhill speeds you up (peak %.2f m/s)" % top_speed)
+	_release_all()
+
 	print("respawn + overlay")
 	hero.global_position = Vector3(0, -40, 0)
 	await _frames(2)

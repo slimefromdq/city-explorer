@@ -89,10 +89,10 @@ extends Resource
 @export var dash_startup_hang_brake := 25.0
 @export var dash_speed := 32.0
 ## How far the leap carries you (its duration is distance / speed).
-@export var dash_distance := 9.0
+@export var dash_distance := 7.5
 ## Share of the leap's HORIZONTAL speed you keep as momentum when it ends.
 ## With low air control this is what sends you flying.
-@export_range(0.0, 1.0, 0.05) var dash_end_carry := 0.8
+@export_range(0.0, 1.0, 0.05) var dash_end_carry := 0.7
 ## Share of the leap's UPWARD speed you keep (a leap aimed up keeps rising a bit).
 @export_range(0.0, 1.0, 0.05) var dash_end_vertical_carry := 0.6
 ## Brief low-gravity float right after the leap ends.
@@ -106,6 +106,20 @@ extends Resource
 @export var dash_buffer := 0.15
 ## How far behind your body centre the sigil appears.
 @export var sigil_offset := 0.9
+
+@export_group("Slide")
+## Crouching while at least this fast on the ground slides instead (walk is 8.5,
+## so you need to sprint or land with momentum).
+@export var slide_min_speed := 10.0
+## Speed lost per second while sliding on flat ground (crouch-walking brakes ~32).
+@export var slide_friction := 4.0
+## How strongly slopes speed you up (downhill) or slow you (uphill). 1 = full gravity.
+@export_range(0.0, 1.5, 0.05) var slide_slope_mult := 0.8
+@export var slide_max_speed := 28.0
+## Below this speed the slide ends (into a crouch if still held).
+@export var slide_end_speed := 5.0
+## How fast you can bend a slide toward the stick, radians per second.
+@export var slide_turn_rate := 1.2
 
 @export_group("Dodge roll")
 ## A grounded, cheap, non-committal evade: short, fast, low to the ground,

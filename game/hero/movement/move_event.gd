@@ -18,11 +18,12 @@ enum Type {
 	JUMP,            # left the ground with a jump
 	MANTLE,          # grabbed a ledge and started pulling up (data: height)
 	WALL_KICK,       # kicked off a wall in the air (data: kicks_used)
+	SLIDE,           # started a crouch-slide (data: speed)
 }
 
 const NAMES := [
 	"OnDashStart", "OnSigilFormed", "OnDashLaunch", "OnRoll", "OnBlockStart",
-	"OnPerfectBlock", "OnLand", "OnJump", "OnMantle", "OnWallKick",
+	"OnPerfectBlock", "OnLand", "OnJump", "OnMantle", "OnWallKick", "OnSlide",
 ]
 
 

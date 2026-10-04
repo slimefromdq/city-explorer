@@ -15,7 +15,7 @@ F5 still runs the old prototype.
 | WASD | move |
 | Shift | sprint |
 | Space | jump (hold for full height, tap for a hop); against a wall in the air = wall kick (3 per airtime) |
-| C or Ctrl (hold) | crouch |
+| C or Ctrl (hold) | crouch; while moving fast (sprinting, or landing from a leap) it becomes a slide that keeps your speed, speeds up downhill, and can be jumped out of |
 | E | sigil leap toward the crosshair (look up to leap up; 2 charges) |
 | Q or Alt | dodge roll (ground only; i-frames; 2 charges that refill over 2.5 s each; rolls backwards if no direction held) |
 | F or right mouse (hold) | block (front arc; first 0.15 s = perfect block) |
@@ -35,7 +35,7 @@ CSG boxes under `Geometry/` in the arena scene, so you can move or add them in t
 ```
 HeroPlayerInput  -> writes Hero.intent (what you want; no rules)
 Hero             -> each physics tick: motor timers -> active state -> facing
-MoveStateMachine -> runs one state at a time: Ground, Air, Crouch, Mantle, DashStartup, DashLaunch, Roll, Block, Hitstun
+MoveStateMachine -> runs one state at a time: Ground, Air, Crouch, Slide, Mantle, DashStartup, DashLaunch, Roll, Block, Hitstun
 HeroDefense      -> health, guard, and what a hit does (DODGED / PERFECT_BLOCK / BLOCKED / GUARD_BREAK / HIT)
 HeroMotor        -> the only code that moves the body (velocity parts, step-up, ledge checks)
 ShoulderCamera   -> mouse look + aim ray; never moves the hero
@@ -70,4 +70,4 @@ godot --headless --fixed-fps 60 res://game/tests/m1c_defense_test.tscn
 ```
 Drives the hero through the real arena by writing its intent (no keyboard), and
 checks walk/sprint/stop speeds, jump height, short hop, coyote time, mantles,
-the crouch tunnel, ramps, stairs, curbs, wall kicks, respawn, and the overlay.
+the crouch tunnel, sliding, ramps, stairs, curbs, wall kicks, respawn, and the overlay.
