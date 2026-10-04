@@ -9,6 +9,8 @@ func _ready() -> void:
 	_keys(&"move_right", [KEY_D])
 	_keys(&"jump", [KEY_SPACE])
 	_keys(&"sprint", [KEY_SHIFT])
+	_keys(&"crouch", [KEY_CTRL, KEY_C])
+	_keys(&"controller_debug", [KEY_F3])
 	_keys(&"dash", [KEY_E])
 	_keys(&"dodge", [KEY_Q])
 	_keys(&"block", [KEY_F])

@@ -12,6 +12,13 @@ Open the folder in Godot 4.7.x (Forward+ renderer) and press F5.
 First open imports scripts (`class_name`s); if you run from CLI do
 `godot --headless --import` once.
 
+**Modular action controller:** open `action/traversal_lab.tscn` and press F6 for
+the capsule-based traversal/combat prototype (crouch, momentum slide, independent
+dodge charges, low/high mantles, wall run/jump, anticipated single air dash,
+magical block and three-hit melee). See [controls, architecture and integration](docs/action-controller.md).
+Run `godot res://action/traversal_lab.tscn -- --city` to try it in the city,
+or `godot --headless --fixed-fps 60 res://tests/action_controller_test.tscn` for its checks.
+
 ## Controls
 
 | Input | Action |
