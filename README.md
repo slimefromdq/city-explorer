@@ -82,15 +82,15 @@ map + compass; distinct silhouettes per district so you can orient from anywhere
 ```
 core/          HitData (the combat vocabulary), ChargePool (regen charges)
 fighter/       Fighter = archetype-agnostic shared layer:
-               Locomotion (velocity = run + gravity + impulse, "drives" for dash/dodge/slide, mantle, wall-kick)
-               GuardComponent, DodgeComponent, BountyComponent, GunComponent, Hurtbox
-               CharacterModel (procedural rig, poses, afterimages), MeterRing, Nameplate, Trail3D, VFX
+			   Locomotion (velocity = run + gravity + impulse, "drives" for dash/dodge/slide, mantle, wall-kick)
+			   GuardComponent, DodgeComponent, BountyComponent, GunComponent, Hurtbox
+			   CharacterModel (procedural rig, poses, afterimages), MeterRing, Nameplate, Trail3D, VFX
 abilities/     Ability base (cooldown, scheduler, channel) + gunslinger/ (one script per move)
 control/       PlayerController / BotBrain fill Fighter intents; CameraRig owns the aim ray
 world/         CityLayout (map as data), CityBuilder (orchestrator), BlockBuilder, BuildingFactory (style recipes),
-               ParkBuilder+ParkTerrain, StationBuilder, LibraryBuilder, ClockPlazaBuilder, HighwayBuilder, RailBuilder, RoofRoutes,
-               WaterfrontBuilder, ShipBuilder, WaterZone,
-               Kit (box/ramp/stairs), StaticBatch (merges meshes: thousands of boxes -> few draw calls), Props, Mats, SkyEnv
+			   ParkBuilder+ParkTerrain, StationBuilder, LibraryBuilder, ClockPlazaBuilder, HighwayBuilder, RailBuilder, RoofRoutes,
+			   WaterfrontBuilder, ShipBuilder, WaterZone,
+			   Kit (box/ramp/stairs), StaticBatch (merges meshes: thousands of boxes -> few draw calls), Props, Mats, SkyEnv
 shaders/       cel bands, facade (windows in world space), mural, ring, shield, outline
 ui/            Hud, DamageNumbers (Events-driven)
 tests/         smoke_test (headless rules), audit (walkability + allowlist), screenshot (renders viewpoints)
