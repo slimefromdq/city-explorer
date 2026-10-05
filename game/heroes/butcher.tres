@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="HeroDefinition" format=3]
+
+[ext_resource type="Resource" path="res://game/cards/library/bloodlust.tres" id="1_xn7kg"]
+[ext_resource type="Script" path="res://game/heroes/hero_definition.gd" id="2_ddvcj"]
+[ext_resource type="Script" path="res://game/cards/ability_card.gd" id="3_5gvjn"]
+[ext_resource type="Resource" path="res://game/cards/library/cleaver.tres" id="4_qog65"]
+[ext_resource type="Resource" path="res://game/cards/library/meat_hook.tres" id="5_yygii"]
+[ext_resource type="Resource" path="res://game/cards/library/ball_kick.tres" id="6_jwbd6"]
+[ext_resource type="Resource" path="res://game/cards/library/riposte.tres" id="7_g45oc"]
+
+[resource]
+script = ExtResource("2_ddvcj")
+id = &"butcher"
+display_name = "Butcher"
+description = "Close-range bruiser. Hooks you in, cleaves, and punishes attacks with perfect blocks."
+body_color = Color(0.5, 0.18, 0.16, 1)
+accent_color = Color(0.95, 0.85, 0.75, 1)
+starting_cards = Array[ExtResource("3_5gvjn")]([ExtResource("4_qog65"), ExtResource("5_yygii"), ExtResource("6_jwbd6"), ExtResource("7_g45oc")])
+passive = ExtResource("1_xn7kg")

@@ -22,6 +22,21 @@ func _ready() -> void:
 	_keys(&"ability_4", [KEY_4])
 	_keys(&"reload", [KEY_R])
 	_keys(&"map", [KEY_M])
+	# --- Meridia Hero Sandbox (res://game) ---
+	_keys(&"crouch", [KEY_C, KEY_CTRL])
+	_keys(&"roll", [KEY_Q, KEY_ALT])
+	_keys(&"dbg_overlay", [KEY_F3])
+	_mouse(&"card_primary", MOUSE_BUTTON_LEFT)
+	_keys(&"card_1", [KEY_R, KEY_1])
+	_keys(&"card_2", [KEY_G, KEY_2])
+	_keys(&"card_3", [KEY_V, KEY_3])
+	_keys(&"card_reload", [KEY_F4])
+	_keys(&"loadout_next", [KEY_TAB])
+	# The hero blocks on right mouse only; F is interact (Lucy's pick, M3).
+	# (The old prototype keeps its own "block" action on F + right mouse.)
+	_mouse(&"hero_block", MOUSE_BUTTON_RIGHT)
+	_keys(&"interact", [KEY_F])
+	_keys(&"ui_wipe_save", [KEY_F10])
 	# --- test-bench tools ---
 	_keys(&"dbg_help", [KEY_F1])
 	_keys(&"dbg_teleport", [KEY_F2])

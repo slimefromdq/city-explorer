@@ -1,0 +1,40 @@
+[gd_resource type="Resource" script_class="AbilityCard" format=3]
+
+[ext_resource type="Script" path="res://game/cards/card_body_def.gd" id="1_135ps"]
+[ext_resource type="Script" path="res://game/cards/effects/card_effect.gd" id="2_sktbh"]
+[ext_resource type="Script" path="res://game/cards/effects/spawn_body_effect.gd" id="3_yftgq"]
+[ext_resource type="Script" path="res://game/cards/effects/damage_area_effect.gd" id="4_ijalh"]
+[ext_resource type="Script" path="res://game/cards/effects/apply_impulse_effect.gd" id="5_dgkgs"]
+[ext_resource type="Script" path="res://game/cards/ability_card.gd" id="6_p18bo"]
+
+[sub_resource type="Resource" id="Resource_s1b6n"]
+script = ExtResource("1_135ps")
+radius = 0.15
+speed = 45.0
+gravity_scale = 0.0
+lifetime = 0.6
+
+[sub_resource type="Resource" id="Resource_k83lu"]
+script = ExtResource("3_yftgq")
+inherit_velocity = 0.0
+
+[sub_resource type="Resource" id="Resource_dmk0c"]
+script = ExtResource("4_ijalh")
+damage = 12.0
+
+[sub_resource type="Resource" id="Resource_7p63e"]
+script = ExtResource("5_dgkgs")
+direction = 4
+strength = 16.0
+up_bias = 0.25
+
+[resource]
+script = ExtResource("6_p18bo")
+display_name = "Meat Hook"
+description = "Throw a hook. Whatever it catches gets yanked toward you."
+color = Color(0.75, 0.6, 0.55, 1)
+cooldown = 4.0
+energy_cost = 15.0
+body = SubResource("Resource_s1b6n")
+on_cast = Array[ExtResource("2_sktbh")]([SubResource("Resource_k83lu")])
+on_contact = Array[ExtResource("2_sktbh")]([SubResource("Resource_dmk0c"), SubResource("Resource_7p63e")])

@@ -1,0 +1,41 @@
+[gd_resource type="Resource" script_class="AbilityCard" format=3]
+
+[ext_resource type="Script" path="res://game/cards/card_body_def.gd" id="1_opr4u"]
+[ext_resource type="Script" path="res://game/cards/effects/card_effect.gd" id="2_w4378"]
+[ext_resource type="Script" path="res://game/cards/effects/spawn_body_effect.gd" id="3_y3yju"]
+[ext_resource type="Script" path="res://game/cards/effects/damage_area_effect.gd" id="4_lvne8"]
+[ext_resource type="Resource" path="res://game/cards/library/shrapnel.tres" id="5_uq7d3"]
+[ext_resource type="Script" path="res://game/cards/effects/cast_card_effect.gd" id="6_0oyij"]
+[ext_resource type="Script" path="res://game/cards/ability_card.gd" id="7_aeq6u"]
+
+[sub_resource type="Resource" id="Resource_vl645"]
+script = ExtResource("1_opr4u")
+radius = 0.14
+speed = 50.0
+gravity_scale = 0.0
+lifetime = 2.0
+
+[sub_resource type="Resource" id="Resource_3mprn"]
+script = ExtResource("3_y3yju")
+inherit_velocity = 0.0
+
+[sub_resource type="Resource" id="Resource_b6rot"]
+script = ExtResource("4_lvne8")
+damage = 18.0
+
+[sub_resource type="Resource" id="Resource_1xtq4"]
+script = ExtResource("6_0oyij")
+card = ExtResource("5_uq7d3")
+
+[resource]
+script = ExtResource("7_aeq6u")
+display_name = "Splitter Shot"
+description = "A fast slug. Whatever it hits bursts into Shrapnel (proc chain demo)."
+color = Color(0.3, 1, 0.85, 1)
+cooldown = 1.2
+charges = 3
+energy_cost = 5.0
+body = SubResource("Resource_vl645")
+on_cast = Array[ExtResource("2_w4378")]([SubResource("Resource_3mprn")])
+on_contact = Array[ExtResource("2_w4378")]([SubResource("Resource_b6rot")])
+on_hit = Array[ExtResource("2_w4378")]([SubResource("Resource_1xtq4")])

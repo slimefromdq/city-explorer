@@ -4,13 +4,17 @@ config_version=5
 [application]
 
 config/name="City Explorer - Gunslinger Prototype"
-run/main_scene="res://main.tscn"
+run/main_scene="res://game/levels/apartment/apartment.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 
 [autoload]
 
 Bindings="*res://autoload/bindings.gd"
 Events="*res://autoload/events.gd"
+DebugOverlay="*res://game/autoload/debug_overlay.gd"
+CardLibrary="*res://game/autoload/card_library.gd"
+GameState="*res://game/autoload/game_state.gd"
+SaveService="*res://game/autoload/save_service.gd"
 
 [display]
 
@@ -24,6 +28,8 @@ window/stretch/mode="canvas_items"
 3d_physics/layer_2="fighter"
 3d_physics/layer_3="hurtbox"
 3d_physics/layer_4="pickup"
+3d_physics/layer_5="card_body"
+3d_physics/layer_6="trigger"
 
 [physics]
 
