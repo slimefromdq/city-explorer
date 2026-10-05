@@ -25,6 +25,7 @@ var stuck := false
 var expired := false
 
 var _touching := {}               # collider id -> true, so one long contact counts once
+var _recent_targets := {}         # target id -> seconds until it may be hit again
 var _trail_t := 0.0
 var _mat: StandardMaterial3D
 var _blink_t := 0.0
@@ -154,6 +155,10 @@ func _physics_process(dt: float) -> void:
 	if expired:
 		return
 	life_left -= dt
+	for id in _recent_targets.keys():
+		_recent_targets[id] -= dt
+		if _recent_targets[id] <= 0.0:
+			_recent_targets.erase(id)
 	if life_left <= 0.0:
 		expire()
 		return
@@ -200,6 +205,9 @@ func _on_contact(other: Node3D, pos: Vector3, n: Vector3) -> void:
 	var target: Node3D = null
 	if other != null and is_instance_valid(other) and other.has_method(&"take_hit"):
 		target = other
+		if _recent_targets.has(target.get_instance_id()):
+			return   # already hit this one a moment ago: ignore the re-bump entirely
+		_recent_targets[target.get_instance_id()] = def.same_target_cooldown
 	var c := ctx.copy()
 	c.position = global_position
 	c.normal = n

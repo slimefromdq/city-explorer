@@ -90,6 +90,8 @@ func _run() -> void:
 	_check(near.hits_taken > 0 and near.total_damage >= 22.0 - 0.01, "the ball hits the dummy for its damage (%.0f)" % near.total_damage)
 	await _frames(20)
 	_check(near.global_position.distance_to(p0) > 0.5, "the heavy ball knocks the dummy back (%.2f m)" % near.global_position.distance_to(p0))
+	await _frames(40)
+	_check(near.hits_taken == 1, "the ball hits the dummy once, not again every time they bump (%d hits)" % near.hits_taken)
 	# Bouncy: throw one straight at the floor; it should survive the first contact.
 	await _frames(int(runner.cards[1].cooldown * 60.0))
 	_aim_at(hero.global_position + Vector3(0, 0, -2.0))

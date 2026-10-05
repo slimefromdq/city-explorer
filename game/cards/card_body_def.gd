@@ -26,6 +26,11 @@ enum Shape {
 ## BEAM only: how far the ray reaches.
 @export var beam_range := 80.0
 
+## A body ignores a target it already touched for this long, so a ball that
+## bounces off a dummy (or gets pushed along with it) hits it once, not every
+## frame they keep bumping.
+@export var same_target_cooldown := 0.75
+
 @export_group("Properties")
 ## Bounces before it expires. 0 = expires on its first contact (unless sticky).
 @export_range(0, 20) var bounces := 0
