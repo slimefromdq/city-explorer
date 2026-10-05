@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="OutfitPart" format=3]
+
+[ext_resource type="Script" path="res://game/outfits/outfit_piece.gd" id="1_41bmn"]
+[ext_resource type="Script" path="res://game/outfits/outfit_part.gd" id="2_fmoax"]
+
+[sub_resource type="Resource" id="Resource_3r3vr"]
+script = ExtResource("1_41bmn")
+shape = 2
+size = Vector3(0.03, 0.35, 0.03)
+offset = Vector3(0.08, 1.85, 0)
+color_mode = 2
+color = Color(0.55, 0.57, 0.6, 1)
+
+[sub_resource type="Resource" id="Resource_x5psb"]
+script = ExtResource("1_41bmn")
+shape = 1
+size = Vector3(0.09, 0.09, 0.09)
+offset = Vector3(0.08, 2.04, 0)
+
+[resource]
+script = ExtResource("2_fmoax")
+display_name = "Antenna"
+pieces = Array[ExtResource("1_41bmn")]([SubResource("Resource_3r3vr"), SubResource("Resource_x5psb")])

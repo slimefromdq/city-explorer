@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="OutfitPart" format=3]
+
+[ext_resource type="Script" path="res://game/outfits/outfit_piece.gd" id="1_iujo7"]
+[ext_resource type="Script" path="res://game/outfits/outfit_part.gd" id="2_vpn73"]
+
+[sub_resource type="Resource" id="Resource_xhx1m"]
+script = ExtResource("1_iujo7")
+shape = 2
+size = Vector3(0.3, 0.32, 0.3)
+offset = Vector3(0, 1.88, 0)
+color_mode = 2
+color = Color(0.12, 0.12, 0.14, 1)
+
+[sub_resource type="Resource" id="Resource_qkbyh"]
+script = ExtResource("1_iujo7")
+shape = 2
+size = Vector3(0.52, 0.03, 0.52)
+offset = Vector3(0, 1.72, 0)
+color_mode = 2
+color = Color(0.12, 0.12, 0.14, 1)
+
+[sub_resource type="Resource" id="Resource_s5doe"]
+script = ExtResource("1_iujo7")
+shape = 2
+size = Vector3(0.31, 0.05, 0.31)
+offset = Vector3(0, 1.76, 0)
+
+[resource]
+script = ExtResource("2_vpn73")
+display_name = "Top Hat"
+pieces = Array[ExtResource("1_iujo7")]([SubResource("Resource_xhx1m"), SubResource("Resource_qkbyh"), SubResource("Resource_s5doe")])

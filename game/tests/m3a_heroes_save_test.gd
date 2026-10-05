@@ -59,7 +59,7 @@ func _save_roundtrip() -> void:
 
 	GameState.set_hero(&"engineer")
 	GameState.set_loadout_slot(&"engineer", 1, GameState.card_by_id("blink"))
-	GameState.set_outfit_part("head", "cap")
+	GameState.set_outfit_part("head", "head_cap")
 	GameState.discover_entrance("sewer_01")
 	await _frames(2)   # the save is written once, at the end of the frame
 	_check(FileAccess.file_exists(TEST_SAVE), "changing something writes the save file")
@@ -73,7 +73,7 @@ func _save_roundtrip() -> void:
 	_check(SaveService.load_game(), "load_game finds the file")
 	_check(GameState.hero_id == &"engineer", "hero restored")
 	_check(_names(GameState.loadout_cards(&"engineer")) == ["Rivet Gun", "Blink", "Ember Bomb", "Drop Charge"], "loadout restored")
-	_check(GameState.outfit.get("head") == "cap", "outfit restored")
+	_check(GameState.outfit.get("head") == "head_cap", "outfit restored")
 	_check(GameState.discovered_entrances.has("sewer_01"), "discovered entrance restored")
 	_check(_names(GameState.loadout_cards(&"sky_runner")) == ["Pulse Pistol", "Blink", "Rocket Jump", "Sigil Barrage"], "other heroes' loadouts untouched")
 

@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="OutfitPart" format=3]
+
+[ext_resource type="Script" path="res://game/outfits/outfit_piece.gd" id="1_tpyft"]
+[ext_resource type="Script" path="res://game/outfits/outfit_part.gd" id="2_bro5y"]
+
+[sub_resource type="Resource" id="Resource_w37p0"]
+script = ExtResource("1_tpyft")
+shape = 2
+size = Vector3(0, 0.24, 0.09)
+offset = Vector3(-0.14, 1.77, 0)
+rotation_degrees = Vector3(0, 0, 25)
+shade = -0.3
+
+[sub_resource type="Resource" id="Resource_an3qq"]
+script = ExtResource("1_tpyft")
+shape = 2
+size = Vector3(0, 0.24, 0.09)
+offset = Vector3(0.14, 1.77, 0)
+rotation_degrees = Vector3(0, 0, -25)
+shade = -0.3
+
+[resource]
+script = ExtResource("2_bro5y")
+display_name = "Horns"
+pieces = Array[ExtResource("1_tpyft")]([SubResource("Resource_w37p0"), SubResource("Resource_an3qq")])

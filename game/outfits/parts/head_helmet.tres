@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="OutfitPart" format=3]
+
+[ext_resource type="Script" path="res://game/outfits/outfit_piece.gd" id="1_7bne1"]
+[ext_resource type="Script" path="res://game/outfits/outfit_part.gd" id="2_uoh8y"]
+
+[sub_resource type="Resource" id="Resource_avpor"]
+script = ExtResource("1_7bne1")
+shape = 1
+size = Vector3(0.48, 0.48, 0.48)
+offset = Vector3(0, 1.57, 0)
+
+[sub_resource type="Resource" id="Resource_w2bpa"]
+script = ExtResource("1_7bne1")
+size = Vector3(0.36, 0.1, 0.06)
+offset = Vector3(0, 1.57, -0.22)
+color_mode = 2
+color = Color(0.55, 0.95, 1, 1)
+
+[resource]
+script = ExtResource("2_uoh8y")
+display_name = "Visor Helmet"
+pieces = Array[ExtResource("1_7bne1")]([SubResource("Resource_avpor"), SubResource("Resource_w2bpa")])
+hides_visor = true

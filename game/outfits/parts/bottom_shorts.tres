@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="OutfitPart" format=3]
+
+[ext_resource type="Script" path="res://game/outfits/outfit_piece.gd" id="1_medxn"]
+[ext_resource type="Script" path="res://game/outfits/outfit_part.gd" id="2_0urpu"]
+
+[sub_resource type="Resource" id="Resource_c6cyn"]
+script = ExtResource("1_medxn")
+shape = 2
+size = Vector3(0.6, 0.32, 0.64)
+offset = Vector3(0, 0.66, 0)
+
+[resource]
+script = ExtResource("2_0urpu")
+slot = 2
+display_name = "Shorts"
+pieces = Array[ExtResource("1_medxn")]([SubResource("Resource_c6cyn")])

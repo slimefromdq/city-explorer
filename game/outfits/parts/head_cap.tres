@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="OutfitPart" format=3]
+
+[ext_resource type="Script" path="res://game/outfits/outfit_piece.gd" id="1_myjck"]
+[ext_resource type="Script" path="res://game/outfits/outfit_part.gd" id="2_xovo3"]
+
+[sub_resource type="Resource" id="Resource_1ayql"]
+script = ExtResource("1_myjck")
+shape = 2
+size = Vector3(0.42, 0.12, 0.42)
+offset = Vector3(0, 1.7, 0)
+
+[sub_resource type="Resource" id="Resource_cf578"]
+script = ExtResource("1_myjck")
+size = Vector3(0.34, 0.03, 0.2)
+offset = Vector3(0, 1.665, -0.2)
+shade = 0.2
+
+[resource]
+script = ExtResource("2_xovo3")
+display_name = "Cap"
+pieces = Array[ExtResource("1_myjck")]([SubResource("Resource_1ayql"), SubResource("Resource_cf578")])

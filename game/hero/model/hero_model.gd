@@ -25,6 +25,9 @@ var _accent_mat: StandardMaterial3D
 var _shield: MeshInstance3D
 var _shield_mat: StandardMaterial3D
 var _stunned := false
+var _visor: MeshInstance3D
+var _outfit_root := Node3D.new()
+var _outfit := {}
 
 
 func _ready() -> void:
@@ -49,7 +52,7 @@ func _ready() -> void:
 	_add_part(sphere, _body_mat, Vector3(0, 1.55, 0))
 	var visor := BoxMesh.new()      # on the -Z side: Godot's "forward"
 	visor.size = Vector3(0.3, 0.1, 0.12)
-	_add_part(visor, _accent_mat, Vector3(0, 1.58, -0.17))
+	_visor = _add_part(visor, _accent_mat, Vector3(0, 1.58, -0.17))
 	var belt := CylinderMesh.new()
 	belt.top_radius = 0.3
 	belt.bottom_radius = 0.3
@@ -68,6 +71,9 @@ func _ready() -> void:
 	_shield = _add_part(disc, _shield_mat, Vector3(0, 1.05, -0.55))
 	_shield.rotation.x = PI * 0.5
 	_shield.visible = false
+	_outfit_root.name = "Outfit"
+	_parts.add_child(_outfit_root)
+	_build_outfit()
 
 
 ## Recolour the body (heroes have their own colours; outfits tint on top in M3b).
@@ -79,6 +85,72 @@ func set_colors(body: Color, accent: Color) -> void:
 	_body_mat.albedo_color = body.darkened(0.45) if _stunned else body
 	_accent_mat.albedo_color = accent
 	_accent_mat.emission = accent
+	_build_outfit()   # outfit colours follow the hero's colours
+
+
+## Dress the model: `outfit` is GameState's outfit dict
+## ({"head": part id, "top": ..., "bottom": ..., "tint": html colour}).
+## Purely cosmetic; rebuilds the outfit meshes from the part resources.
+func apply_outfit(outfit: Dictionary) -> void:
+	_outfit = outfit.duplicate()
+	_build_outfit()
+
+
+func _build_outfit() -> void:
+	if _body_mat == null:
+		return   # not built yet; _ready builds it
+	for c in _outfit_root.get_children():
+		c.queue_free()
+		_outfit_root.remove_child(c)
+	var tint := OutfitCatalog.tint_of(_outfit, accent_color)
+	var hide_visor := false
+	for key in OutfitCatalog.SLOT_KEYS:
+		var part := OutfitCatalog.part_by_id(str(_outfit.get(key, "")))
+		if part == null:
+			continue
+		hide_visor = hide_visor or part.hides_visor
+		for piece in part.pieces:
+			if piece == null:
+				push_error("Outfit part '%s' has an empty piece slot" % part.display_name)
+				continue
+			_outfit_root.add_child(_piece_mesh(piece, tint))
+	_visor.visible = not hide_visor
+
+
+func _piece_mesh(p: OutfitPiece, tint: Color) -> MeshInstance3D:
+	var mesh: Mesh
+	match p.shape:
+		OutfitPiece.Shape.SPHERE:
+			var m := SphereMesh.new()
+			m.radius = p.size.x * 0.5
+			m.height = p.size.y
+			mesh = m
+		OutfitPiece.Shape.CYLINDER:
+			var m := CylinderMesh.new()
+			m.top_radius = p.size.x * 0.5
+			m.bottom_radius = p.size.z * 0.5
+			m.height = p.size.y
+			mesh = m
+		OutfitPiece.Shape.CAPSULE:
+			var m := CapsuleMesh.new()
+			m.radius = p.size.x * 0.5
+			m.height = maxf(p.size.y, p.size.x)
+			mesh = m
+		_:
+			var m := BoxMesh.new()
+			m.size = p.size
+			mesh = m
+	var c := tint
+	match p.color_mode:
+		OutfitPiece.ColorMode.BODY: c = body_color
+		OutfitPiece.ColorMode.FIXED: c = p.color
+	c = c.darkened(p.shade) if p.shade >= 0.0 else c.lightened(-p.shade)
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh
+	mi.material_override = _mat(c)
+	mi.position = p.offset
+	mi.rotation_degrees = p.rotation_degrees
+	return mi
 
 
 func _add_part(mesh: Mesh, mat: Material, pos: Vector3) -> MeshInstance3D:

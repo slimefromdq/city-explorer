@@ -3,13 +3,17 @@ extends Node3D
 ## scene (move furniture around in the editor freely); this script only wires
 ## the things you can use to what they do:
 ##   Mirror     -> hero select (HeroSelectMenu), previewed on the MirrorFigure
-##   Workbench  -> card loadout editor (M3b)
-##   Wardrobe   -> outfits (M3b)
-##   FrontDoor  -> out to the city (M3b; the test arena until M4 exists)
+##   Wardrobe   -> outfits (WardrobeMenu), previewed on the same figure
+##   Workbench  -> your current hero's card loadout (WorkbenchMenu)
+##   FrontDoor  -> out (the test arena until the M4 city exists)
 ##
-## On load it turns the player into the hero saved in GameState, with that
-## hero's saved loadout. Cards are locked here; movement still works.
+## On load it dresses the player from GameState: hero, that hero's saved
+## loadout, outfit. Cards are locked here; movement still works.
 
+## Where the front door leads. Becomes the city in M4.
+@export_file("*.tscn") var front_door_target := "res://game/levels/test_arena/test_arena.tscn"
+## The spawn point in that scene (a Marker3D name).
+@export var front_door_target_spawn := "FromApartment"
 ## Falling below this height (out of the room somehow) puts you back at the spawn.
 @export var kill_height := -10.0
 ## How fast the figure in the mirror turns, in radians per second.
@@ -19,22 +23,27 @@ extends Node3D
 @onready var figure: HeroModel = $MirrorAlcove/MirrorFigure
 @onready var mirror_cam: Camera3D = $MirrorAlcove/MirrorCamera
 @onready var menu: HeroSelectMenu = $HeroSelectMenu
+@onready var wardrobe: WardrobeMenu = $WardrobeMenu
+@onready var workbench: WorkbenchMenu = $WorkbenchMenu
 
 var _figure_yaw := 0.0
 
 
 func _ready() -> void:
 	var spawn := $SpawnPoint as Marker3D
+	var arrival := SceneRouter.take_arrival()
+	if arrival != "" and has_node(arrival):
+		spawn = get_node(arrival) as Marker3D
 	hero.set_spawn(spawn.global_transform, spawn.global_rotation.y)
+	hero.global_position = spawn.global_position
+	hero.reset_physics_interpolation()
 	_figure_yaw = figure.rotation.y
-	_become_saved_hero()
-	GameState.changed.connect(_on_state_changed)
-	if hero.runner != null:
-		hero.runner.locked = true   # safe room: no casting indoors
-	($Interactables/Mirror as Interactable).used.connect(_on_mirror)
-	($Interactables/Workbench as Interactable).used.connect(_coming_soon.bind("The card workbench"))
-	($Interactables/Wardrobe as Interactable).used.connect(_coming_soon.bind("The wardrobe"))
-	($Interactables/FrontDoor as Interactable).used.connect(_coming_soon.bind("The front door"))
+	_dress()
+	GameState.changed.connect(_dress)
+	($Interactables/Mirror as Interactable).used.connect(_open.bind(menu, true))
+	($Interactables/Wardrobe as Interactable).used.connect(_open.bind(wardrobe, true))
+	($Interactables/Workbench as Interactable).used.connect(_open.bind(workbench, false))
+	($Interactables/FrontDoor as Interactable).used.connect(_go_out)
 	_add_help()
 
 
@@ -44,40 +53,45 @@ func _physics_process(_dt: float) -> void:
 
 
 func _process(dt: float) -> void:
-	if figure != null and not menu.is_open():
+	if figure != null and not _any_menu_open():
 		figure.rotation.y += figure_turn_speed * dt
 
 
-## Become whoever the save says you are, with that hero's own loadout.
-func _become_saved_hero() -> void:
+## Become whoever the save says you are: hero, that hero's loadout, outfit.
+## Runs again whenever GameState changes (a pick, a slot edit, an outfit
+## change, or wiping the save).
+func _dress() -> void:
+	GameState.dress(hero)
+	if hero.runner != null:
+		hero.runner.locked = true   # safe room: no casting indoors
 	var def := GameState.current_hero()
-	if def == null:
-		push_error("Apartment: GameState has no hero definitions; check %s" % GameState.HERO_DIR)
-		return
-	hero.apply_definition(def, GameState.loadout_cards(def.id))
-	if figure != null:
+	if def != null and not menu.is_open():
 		figure.set_colors(def.body_color, def.accent_color)
+	figure.apply_outfit(GameState.outfit)
 
 
-## Picking a hero or wiping the save (F10 twice) can change who you are or your cards.
-func _on_state_changed() -> void:
-	_become_saved_hero()
-
-
-func _on_mirror(_who: Hero) -> void:
-	if not menu.is_open():
+func _open(_who: Hero, which: RoomMenu, use_mirror: bool) -> void:
+	if _any_menu_open():
+		return
+	if use_mirror:
 		figure.rotation.y = _figure_yaw   # face the room while you browse
-		menu.open(hero, figure, mirror_cam)
+		which.open(hero, figure, mirror_cam)
+	else:
+		which.open(hero)
 
 
-func _coming_soon(_who: Hero, what: String) -> void:
-	Events.feed.emit("%s arrives in M3b" % what)
+func _any_menu_open() -> bool:
+	return menu.is_open() or wardrobe.is_open() or workbench.is_open()
+
+
+func _go_out(_who: Hero) -> void:
+	SceneRouter.go(front_door_target, front_door_target_spawn)
 
 
 func _add_help() -> void:
 	var layer := CanvasLayer.new()
 	var label := Label.new()
-	label.text = "WASD move   Shift sprint   Space jump   C crouch   Q roll   E sigil leap   RMB block\nF use (mirror = choose your hero)   F10 twice = wipe save   Esc free mouse   (cards are locked indoors)"
+	label.text = "WASD move   Shift sprint   Space jump   C crouch   Q roll   E sigil leap   RMB block\nF use: mirror = hero, wardrobe = outfit, workbench = cards, front door = go out   F10 twice = wipe save   Esc free mouse"
 	label.add_theme_font_size_override(&"font_size", 15)
 	label.add_theme_color_override(&"font_outline_color", Color.BLACK)
 	label.add_theme_constant_override(&"outline_size", 5)

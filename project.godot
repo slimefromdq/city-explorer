@@ -22,6 +22,7 @@ DebugOverlay="*res://game/autoload/debug_overlay.gd"
 CardLibrary="*res://game/autoload/card_library.gd"
 GameState="*res://game/autoload/game_state.gd"
 SaveService="*res://game/autoload/save_service.gd"
+SceneRouter="*res://game/autoload/scene_router.gd"
 
 [display]
 
