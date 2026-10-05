@@ -6,11 +6,12 @@
 
 [sub_resource type="Resource" id="Resource_llufv"]
 script = ExtResource("2_kye80")
+distance = 14.0
 
 [resource]
 script = ExtResource("3_frkmr")
 display_name = "Blink"
-description = "Teleport 8 m where you're looking. Stops at walls. Keeps your momentum."
+description = "Teleport 14 m where you're looking. Stops at walls. Keeps your momentum."
 color = Color(0.75, 0.5, 1, 1)
 cooldown = 3.0
 charges = 2

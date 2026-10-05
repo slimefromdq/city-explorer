@@ -11,7 +11,7 @@ enum To {
 }
 
 @export var to: To = To.FORWARD
-@export var distance := 8.0
+@export var distance := 14.0
 ## Keep running speed after the teleport? Off = arrive standing still.
 @export var keep_momentum := true
 ## Steepest the blink may point up/down (FORWARD only), so it doesn't dive

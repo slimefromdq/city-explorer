@@ -28,6 +28,8 @@ var _touching := {}               # collider id -> true, so one long contact cou
 var _trail_t := 0.0
 var _mat: StandardMaterial3D
 var _blink_t := 0.0
+var _stick_anchor: Node3D        # what we're stuck to, if it can move (null = stuck to the world)
+var _stick_xform := Transform3D.IDENTITY   # our transform relative to the anchor (or the world)
 
 
 ## Throw a body for `cast` from its position, flying with `velocity`.
@@ -122,8 +124,8 @@ func _physics_process(dt: float) -> void:
 		# Blink faster as the fuse runs out: the "about to go off" tell.
 		_blink_t += dt * lerpf(6.0, 22.0, 1.0 - life_left / maxf(def.stick_fuse, 0.01))
 		_mat.emission_energy_multiplier = 0.5 + 3.5 * (0.5 + 0.5 * sin(_blink_t * TAU))
-		if not is_instance_valid(get_parent()):
-			expire()
+		if _stick_anchor != null and not is_instance_valid(_stick_anchor):
+			_stick_anchor = null   # what we were stuck to is gone: stay where we are
 		return
 	_trail_t += dt
 	if _trail_t >= TRAIL_EVERY and linear_velocity.length() > 2.0:
@@ -132,7 +134,12 @@ func _physics_process(dt: float) -> void:
 
 
 func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
-	if expired or stuck:
+	if stuck:
+		state.linear_velocity = Vector3.ZERO
+		state.angular_velocity = Vector3.ZERO
+		state.transform = _stuck_transform()
+		return
+	if expired:
 		return
 	var now := {}
 	for i in state.get_contact_count():
@@ -180,17 +187,30 @@ func _on_contact(other: Node3D, pos: Vector3, n: Vector3) -> void:
 
 
 ## Glue to whatever we hit; moving targets carry us along.
+## We don't freeze or reparent the rigid body (both can make the physics
+## engine snap it to the world origin). Instead we switch on a custom
+## integrator and pin its transform ourselves every physics step.
 func _stick(other: Node3D) -> void:
 	stuck = true
 	life_left = def.stick_fuse
-	freeze_mode = RigidBody3D.FREEZE_MODE_KINEMATIC
-	set_deferred(&"freeze", true)
-	collision_layer = 0
-	collision_mask = 0
+	set_deferred(&"collision_layer", 0)
+	set_deferred(&"collision_mask", 0)
+	custom_integrator = true
 	linear_velocity = Vector3.ZERO
+	angular_velocity = Vector3.ZERO
+	_stick_anchor = null
+	_stick_xform = global_transform
+	if other != null and is_instance_valid(other) and not other is StaticBody3D and not other is CSGShape3D:
+		_stick_anchor = other
+		_stick_xform = other.global_transform.affine_inverse() * global_transform
 	Sfx.play_at_pos(self, global_position, PlaceholderSfx.sweep("stick", 200.0, 120.0, 0.08, 0.35, 0.5))
-	if other != null and is_instance_valid(other) and other is Node3D and not other is StaticBody3D and not other is CSGShape3D:
-		reparent.call_deferred(other, true)
+
+
+## Where a stuck body should be right now (following its anchor if it has one).
+func _stuck_transform() -> Transform3D:
+	if _stick_anchor != null and is_instance_valid(_stick_anchor):
+		return _stick_anchor.global_transform * _stick_xform
+	return _stick_xform
 
 
 ## End of life: run ON EXPIRE where we are, then vanish.

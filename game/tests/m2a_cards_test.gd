@@ -133,11 +133,31 @@ func _run() -> void:
 	await _wait_until(func() -> bool: return bug_ref.get_ref() == null or (bug_ref.get_ref() as CardBody).stuck, 90)
 	_check(bug != null and is_instance_valid(bug) and bug.stuck, "the bug sticks to what it hits")
 	await _frames(2)
-	_check(bug != null and is_instance_valid(bug) and bug.get_parent() == near, "it rides along on the dummy it stuck to")
+	var stuck_at := bug.global_position if is_instance_valid(bug) else Vector3.ZERO
+	_check(stuck_at.distance_to(_chest(near)) < 1.5, "it stays where it stuck, on the dummy (%.2f m from its chest)" % stuck_at.distance_to(_chest(near)))
+	near.global_position += Vector3(1.0, 0.0, 0.0)
+	await _frames(2)
+	_check(is_instance_valid(bug) and absf(bug.global_position.x - stuck_at.x - 1.0) < 0.15, "it rides along when the dummy moves")
 	var dmg0 := near.total_damage
 	await _wait_until(func() -> bool: return bug_ref.get_ref() == null, 60)
 	_check(near.total_damage - dmg0 > 30.0, "after the fuse it explodes on the dummy (%.0f damage)" % (near.total_damage - dmg0))
 	_check(hero.defense.health == hero.tuning.max_health, "the caster's own explosion didn't hurt them")
+
+	print("bug grenade on the floor")
+	_reset_all()
+	await _place("CardRangeStart")
+	runner.equip(2, runner.cards[2])
+	var floor_spot := hero.global_position + Vector3(0, 0, -5)
+	_aim_at(floor_spot)
+	hero.intent.card_pressed[2] = true
+	await _frames(1)
+	var fbug := _find_body()
+	var fref: WeakRef = weakref(fbug)
+	await _wait_until(func() -> bool: return fref.get_ref() == null or (fref.get_ref() as CardBody).stuck, 90)
+	await _frames(3)
+	var fpos := (fref.get_ref() as CardBody).global_position if fref.get_ref() != null else Vector3.ZERO
+	_check(fref.get_ref() != null and fpos.distance_to(floor_spot) < 2.5 and fpos.y < 0.6,
+			"a bug that sticks to the floor stays where it landed (at %s, aimed at %s)" % [fpos, floor_spot])
 
 	print("blink (teleport)")
 	_reset_all()
@@ -148,7 +168,8 @@ func _run() -> void:
 	hero.intent.card_pressed[3] = true
 	await _frames(1)
 	var moved := Vector2(hero.global_position.x - pos.x, hero.global_position.z - pos.z).length()
-	_check(absf(moved - 8.0) < 0.6, "blink moves 8 m along the aim (%.2f m)" % moved)
+	var blink_dist: float = (runner.cards[3].on_cast[0] as TeleportEffect).distance
+	_check(absf(moved - blink_dist) < 0.6, "blink moves its full distance along the aim (%.2f of %.1f m)" % [moved, blink_dist])
 	# Toward the back wall (front face at z = 26.5), from 3 m away.
 	hero.global_position = Vector3(36.0, 0.05, 29.5)
 	hero.reset_physics_interpolation()
