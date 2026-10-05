@@ -1,3 +1,4 @@
 .godot/
 *.import
 /tests/out/
+project.godot
