@@ -1,4 +1,4 @@
-[gd_scene load_steps=21 format=3]
+[gd_scene load_steps=23 format=3]
 
 [ext_resource type="Script" path="res://game/levels/test_arena/test_arena.gd" id="script"]
 [ext_resource type="Shader" path="res://game/levels/test_arena/arena_grid.gdshader" id="shader"]
@@ -8,6 +8,8 @@
 [ext_resource type="Script" path="res://game/cards/card_loadout.gd" id="loadout_script"]
 [ext_resource type="Resource" path="res://game/cards/loadouts/m2a_kit.tres" id="loadout_a"]
 [ext_resource type="Resource" path="res://game/cards/loadouts/m2a_rocket.tres" id="loadout_b"]
+[ext_resource type="Resource" path="res://game/cards/loadouts/m2b_chains.tres" id="loadout_c"]
+[ext_resource type="Resource" path="res://game/cards/loadouts/m2b_effects.tres" id="loadout_d"]
 
 [sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
 sky_top_color = Color(0.32, 0.46, 0.7, 1)
@@ -83,7 +85,7 @@ shader_parameter/line_strength = 0.35
 
 [node name="TestArena" type="Node3D"]
 script = ExtResource("script")
-loadouts = Array[ExtResource("loadout_script")]([ExtResource("loadout_a"), ExtResource("loadout_b")])
+loadouts = Array[ExtResource("loadout_script")]([ExtResource("loadout_a"), ExtResource("loadout_b"), ExtResource("loadout_c"), ExtResource("loadout_d")])
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = SubResource("env")

@@ -29,6 +29,8 @@ var intent := HeroIntent.new()
 var face_yaw := 0.0
 var spawn_transform := Transform3D.IDENTITY
 var spawn_yaw := 0.0
+## Slows and burns from cards (StatusSet). Slow scales every movement speed.
+var statuses := StatusSet.new()
 
 @onready var body_shape: CollisionShape3D = $BodyShape
 @onready var motor: HeroMotor = $Motor
@@ -64,6 +66,7 @@ func _ready() -> void:
 func _physics_process(dt: float) -> void:
 	motor.tick_timers(dt)
 	defense.tick(dt)
+	statuses.tick(self, dt)
 	states.physics_update(dt)
 	_update_facing(dt)
 	model.set_crouched(motor.crouched)
@@ -89,6 +92,7 @@ func respawn() -> void:
 	velocity = Vector3.ZERO
 	motor.reset()
 	defense.reset()
+	statuses.clear()
 	face_yaw = spawn_yaw
 	states.change(&"Air")
 	reset_physics_interpolation()
@@ -106,6 +110,17 @@ func push(v: Vector3) -> void:
 	# hand over to Air or it would be cancelled.
 	if v.y > 1.0 and states.current_name in [&"Ground", &"Crouch", &"Slide", &"Block", &"Roll"]:
 		states.change(&"Air")
+
+
+func apply_status(kind: StatusSet.Kind, duration: float, magnitude: float, source: Node3D) -> void:
+	if not statuses.has(kind):
+		FloatingText.spawn(self, StatusSet.NAMES[kind], global_position + Vector3.UP * 2.2, StatusSet.COLORS[kind], 44)
+	statuses.apply(kind, duration, magnitude, source)
+
+
+## Movement speed multiplier from status effects (1 = normal).
+func speed_mult() -> float:
+	return statuses.speed_mult()
 
 
 func is_dead() -> bool:

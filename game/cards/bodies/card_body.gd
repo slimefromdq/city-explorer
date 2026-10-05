@@ -28,6 +28,7 @@ var _touching := {}               # collider id -> true, so one long contact cou
 var _trail_t := 0.0
 var _mat: StandardMaterial3D
 var _blink_t := 0.0
+var _look: Node3D                # holds the meshes and light (swapped on transform)
 var _stick_anchor: Node3D        # what we're stuck to, if it can move (null = stuck to the world)
 var _stick_xform := Transform3D.IDENTITY   # our transform relative to the anchor (or the world)
 
@@ -46,10 +47,24 @@ static func spawn(cast: CastContext, dir: Vector3, velocity: Vector3) -> CardBod
 	b.linear_velocity = velocity
 	if cast.caster is PhysicsBody3D:
 		b.add_collision_exception_with(cast.caster)
+	if cast.ignore != null and is_instance_valid(cast.ignore) and cast.ignore is PhysicsBody3D:
+		b.add_collision_exception_with(cast.ignore)
 	return b
 
 
 func _build() -> void:
+	_apply_def()
+	var cs := CollisionShape3D.new()
+	cs.name = &"Shape"
+	var ss := SphereShape3D.new()
+	ss.radius = def.radius
+	cs.shape = ss
+	add_child(cs)
+	_build_visuals()
+
+
+## Physics settings that come from the body definition (redone on transform).
+func _apply_def() -> void:
 	collision_layer = LAYER_CARD_BODY
 	collision_mask = CardEffect.LAYER_WORLD | CardEffect.LAYER_CHARACTER
 	contact_monitor = true
@@ -63,15 +78,18 @@ func _build() -> void:
 	pm.friction = 0.6
 	physics_material_override = pm
 	bounces_left = def.bounces
+	if def.bounces > 0 and ctx.runner != null:
+		bounces_left += int(ctx.runner.stat_add(ModifierEffect.Stat.EXTRA_BOUNCES))   # only bodies that already bounce
 	pierces_left = def.spiky_pierce if def.spiky else 0
 	life_left = def.lifetime
 
-	var cs := CollisionShape3D.new()
-	var ss := SphereShape3D.new()
-	ss.radius = def.radius
-	cs.shape = ss
-	add_child(cs)
 
+## Meshes and light, all children of a "Look" node so a transform can swap them.
+func _build_visuals() -> void:
+	var look := Node3D.new()
+	look.name = &"Look"
+	add_child(look)
+	_look = look
 	var color := ctx.card.color
 	if def.heavy:
 		color = color.darkened(0.35)
@@ -101,16 +119,35 @@ func _build() -> void:
 	if def.spiky:
 		for d in [Vector3.UP, Vector3.DOWN, Vector3.LEFT, Vector3.RIGHT, Vector3.FORWARD, Vector3.BACK]:
 			var spike := _mesh(_cone(r * 0.3, r * 0.9), d * r * 1.1, Vector3.ONE, Color(0.9, 0.9, 0.95))
-			if absf(d.y) < 0.5:
-				spike.look_at_from_position(spike.position, spike.position + d, Vector3.UP)
-				spike.rotate_object_local(Vector3.RIGHT, -PI * 0.5)
-			elif d.y < 0.0:
-				spike.rotation.x = PI
+			spike.quaternion = Quaternion(Vector3.UP, d) if d != Vector3.DOWN else Quaternion(Vector3.RIGHT, PI)
 	var light := OmniLight3D.new()
 	light.light_color = ctx.card.color
 	light.omni_range = 2.5
 	light.light_energy = 1.2
-	add_child(light)
+	_look.add_child(light)
+
+
+## Become `card`'s body from now on: its shape, properties and effect lists.
+func transform_into(card: AbilityCard) -> void:
+	var was := ctx.card.display_name
+	ctx = ctx.copy()
+	ctx.card = card
+	ctx.depth += 1
+	ctx.body = self
+	def = card.body
+	expired = false        # cancels the expiry that may have triggered us
+	stuck = false
+	custom_integrator = false
+	_touching.clear()      # whatever we're touching right now counts as a fresh contact
+	_apply_def()
+	(get_node(^"Shape") as CollisionShape3D).shape.set(&"radius", def.radius)
+	_look.queue_free()
+	_build_visuals()
+	CardFx.flash(self, global_position, card.color, def.radius * 4.0)
+	Sfx.play_at_pos(self, global_position, PlaceholderSfx.sweep("transform", 400.0, 1200.0, 0.2, 0.4, 0.2))
+	FloatingText.spawn(self, "%s > %s" % [was, card.display_name], global_position + Vector3.UP * 0.6, card.color, 40)
+	if ctx.runner != null:
+		ctx.runner.note("%s  transformed into %s  depth %d" % ["  ".repeat(ctx.depth), card.display_name, ctx.depth])
 
 
 func _physics_process(dt: float) -> void:
@@ -221,9 +258,12 @@ func expire() -> void:
 	var c := ctx.copy()
 	c.position = global_position
 	c.target = null
+	c.body = self
 	if ctx.runner != null and is_instance_valid(ctx.runner):
 		ctx.runner.run_list(ctx.card.on_expire, c, &"on_expire")
-	queue_free()
+	if expired:
+		queue_free()
+	# else: an ON EXPIRE Transform turned us into something else; keep flying
 
 
 # ------------------------------------------------------------------ mesh bits
@@ -239,7 +279,7 @@ func _mesh(m: Mesh, pos: Vector3, scl: Vector3, tint := Color(0, 0, 0, 0)) -> Me
 		mi.material_override = mat
 	else:
 		mi.material_override = _mat
-	add_child(mi)
+	_look.add_child(mi)
 	return mi
 
 

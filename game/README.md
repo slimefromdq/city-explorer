@@ -5,7 +5,7 @@ the old Gunslinger prototype (`main.tscn`, `fighter/`, `abilities/`) are left as
 they are. The architecture plan this follows is in the project's
 `meridia/architecture-proposal.md`.
 
-## Run it (M1 movement and defense, M2a cards)
+## Run it (M1 movement and defense, M2 cards)
 
 Open `game/levels/test_arena/test_arena.tscn` and press **F6** (Run Current Scene).
 F5 still runs the old prototype.
@@ -22,7 +22,7 @@ F5 still runs the old prototype.
 | run + jump into a ledge | mantle up (ledges 0.35 to 2.5 m above your feet) |
 | Left mouse (hold) | primary card (Pulse Pistol) |
 | R / G / V (or 1 / 2 / 3) | ability cards 1 to 3 |
-| Tab | next test loadout (the rocket jump is in the second one) |
+| Tab | next test loadout: basic kit, rocket kit, proc chains + movement events, status / modifier / transform |
 | F4 | reload every card file from disk |
 | F5 | respawn and reset the target dummies |
 | F3 | toggle the debug overlay |
@@ -65,25 +65,44 @@ flash, sound, camera shake). The combat yard (south-west of spawn) has
 SWING (orange, blockable), SHOOT (yellow orbs), SLAM (purple, unblockable: roll
 it), NONE (punching bag). A perfect block staggers the dummy.
 
-## Cards (M2a)
+## Cards (M2)
 
-A card is a `.tres` file in `cards/library/`. It holds no code: a trigger
-(press / hold), a cost (cooldown, charges, energy), an optional body to throw
-(`CardBodyDef`: ball, grenade, bug or beam, plus bouncy / sticky / heavy /
-spiky), and five lists of effect blocks: **on cast**, **on contact**, **on
-hit**, **on kill** and **on expire**. `cards/ability_runner.gd` on the hero reads
-the card and runs those lists. The blocks so far are in `cards/effects/`: Spawn
-body, Damage area, Apply impulse and Teleport.
+A card is a `.tres` file in `cards/library/`. It holds no code, only data:
+- **Trigger:** press, hold (automatic fire), release (hold to charge; the charge scales body speed and damage), movement event (fires by itself on e.g. OnDashLaunch), proc only (only other cards cast it), or passive (always on while equipped).
+- **Cost:** cooldown, charges and energy.
+- **Body (optional):** what the card throws (`CardBodyDef`): a ball, grenade, bug or beam, plus bouncy / sticky / heavy / spiky.
+- **Effect lists:** five lists of effect blocks, run at five moments: **on cast**, **on contact**, **on hit**, **on kill** and **on expire**.
 
-**Make a new card:** in the FileSystem dock, duplicate a card in
-`cards/library/`, select the copy, change its fields in the Inspector, and save.
-Put it in a loadout (`cards/loadouts/*.tres`, or the PlayerHero's Runner >
-Loadout) and press F4 in-game after any edit. Mistakes such as an empty effect
-slot or a body with no "Spawn body" are printed to the Output panel by name.
+`cards/ability_runner.gd` on the hero reads the card and runs those lists. The eight blocks are in `cards/effects/`:
 
-The card range is north-east of spawn: six target dummies (floating damage
-numbers, a health bar, knockback, fall over at 0 HP and stand back up) in front
-of a wall and a pillar for bouncing and sticking things.
+| Block | What it does |
+|---|---|
+| Spawn body | throws the card's body (count, spread, lob angle) |
+| Damage area | damages a radius, or just what was touched; feeds ON HIT / ON KILL |
+| Apply impulse | pushes targets, the caster, or an area (rocket jumps) |
+| Teleport | moves the caster, stopping at walls |
+| Status effect | slow or burn, with a tint and a label on the target |
+| Modifier | +damage, +area, +bounces, faster cooldowns...; lasts while a PASSIVE card is equipped, otherwise timed |
+| Cast card | casts another card here: the proc chain |
+| Transform | the thrown body becomes another card's body and takes over its lists |
+
+**Proc chains:** every Cast card or Transform adds 1 to the chain depth. The runner (PlayerHero > Runner) stops anything deeper than `max_proc_depth` (4), and caps casts at `max_casts_per_frame` (64), so a chain can't run away. Either limit prints a warning. A card that casts itself is safe.
+
+**Example cards:**
+- **Basic:** Pulse Pistol, Ball Kick, Bug Grenade, Blink, Rocket Jump.
+- **Proc chain:** Splitter Shot, which casts Shrapnel on hit.
+- **Movement events:** Sigil Volley fires on OnDashLaunch, and Riposte on OnPerfectBlock.
+- **Status, modifier, transform:** Ember Bomb (release trigger, burn), Overclock (passive modifiers), Hatchling Ball (a bouncy ball that turns into a Bug Grenade after its last bounce).
+
+**Make a new card:**
+1. In the FileSystem dock, duplicate a card in `cards/library/`.
+2. Select the copy, change its fields in the Inspector, and save.
+3. Put it in a loadout: one of `cards/loadouts/*.tres`, or the arena's Loadouts list.
+4. Press F4 in-game after any edit.
+
+Mistakes print to the Output panel and name the card and the list entry. Examples are an empty effect slot, a body with no "Spawn body", or a passive card with a non-modifier block.
+
+The card range is north-east of spawn. It has six target dummies (floating damage numbers, a health bar, knockback, a status tint, and they fall over at 0 HP and get back up), in front of a wall and a pillar for bouncing and sticking things.
 
 ## Tests
 
@@ -92,6 +111,7 @@ godot --headless --fixed-fps 60 res://game/tests/m1a_movement_test.tscn
 godot --headless --fixed-fps 60 res://game/tests/m1b_sigil_leap_test.tscn
 godot --headless --fixed-fps 60 res://game/tests/m1c_defense_test.tscn
 godot --headless --fixed-fps 60 res://game/tests/m2a_cards_test.tscn
+godot --headless --fixed-fps 60 res://game/tests/m2b_proc_chains_test.tscn
 ```
 Drives the hero through the real arena by writing its intent (no keyboard), and
 checks walk/sprint/stop speeds, jump height, short hop, coyote time, mantles,

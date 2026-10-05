@@ -21,24 +21,26 @@ extends CardEffect
 
 func apply(ctx: CastContext) -> void:
 	var targets: Array[Node3D] = []
-	if radius <= 0.0:
+	var r := radius * ctx.mult(ModifierEffect.Stat.AREA)
+	var dmg := damage * ctx.mult(ModifierEffect.Stat.DAMAGE) * ctx.power
+	if r <= 0.0:
 		if ctx.target != null and is_instance_valid(ctx.target) and ctx.target.has_method(&"take_hit"):
 			targets.append(ctx.target)
 	else:
-		for n in find_in_radius(ctx, ctx.position, radius):
+		for n in find_in_radius(ctx, ctx.position, r):
 			if n.has_method(&"take_hit"):
 				targets.append(n)
-		CardFx.explosion(ctx.caster, ctx.position, radius, ctx.card.color)
+		CardFx.explosion(ctx.caster, ctx.position, r, ctx.card.color)
 		Sfx.play_at_pos(ctx.caster, ctx.position, PlaceholderSfx.sweep("boom", 160.0, 40.0, 0.5, 0.6, 0.9))
 	if camera_shake > 0.0:
 		Events.camera_shake.emit(camera_shake)
 	for t in targets:
 		if t == ctx.caster and not hits_caster:
 			continue
-		var amount := damage
-		if radius > 0.0:
-			var k := clampf(center_of(t).distance_to(ctx.position) / radius, 0.0, 1.0)
-			amount = damage * lerpf(1.0, edge_damage, k)
+		var amount := dmg
+		if r > 0.0:
+			var k := clampf(center_of(t).distance_to(ctx.position) / r, 0.0, 1.0)
+			amount = dmg * lerpf(1.0, edge_damage, k)
 		var hit := HitData.new()
 		hit.attacker = ctx.caster
 		hit.damage = amount

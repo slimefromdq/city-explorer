@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="AbilityCard" format=3]
+
+[ext_resource type="Script" path="res://game/cards/effects/card_effect.gd" id="1_palc8"]
+[ext_resource type="Script" path="res://game/cards/effects/damage_area_effect.gd" id="2_ys2pc"]
+[ext_resource type="Script" path="res://game/cards/effects/apply_impulse_effect.gd" id="3_32kyi"]
+[ext_resource type="Script" path="res://game/cards/ability_card.gd" id="4_aidrj"]
+
+[sub_resource type="Resource" id="Resource_mmhhy"]
+script = ExtResource("2_ys2pc")
+damage = 30.0
+radius = 4.5
+edge_damage = 0.6
+weight = 1
+camera_shake = 0.4
+
+[sub_resource type="Resource" id="Resource_dkrix"]
+script = ExtResource("3_32kyi")
+who = 2
+strength = 12.0
+up_bias = 0.5
+radius = 5.0
+
+[resource]
+script = ExtResource("4_aidrj")
+display_name = "Riposte"
+description = "Automatic: a perfect block (OnPerfectBlock) releases a shockwave that hurts and shoves everything around you."
+color = Color(1, 0.85, 0.3, 1)
+trigger = 3
+movement_event = 5
+cooldown = 0.3
+origin = 1
+on_cast = Array[ExtResource("1_palc8")]([SubResource("Resource_mmhhy"), SubResource("Resource_dkrix")])

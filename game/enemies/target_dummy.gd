@@ -16,6 +16,7 @@ var health := 0.0
 var dead := false
 var total_damage := 0.0          # since the last reset, for checking numbers in tests
 var hits_taken := 0
+var statuses := StatusSet.new()
 
 var _home := Transform3D.IDENTITY
 var _revive_left := 0.0
@@ -41,6 +42,7 @@ func reset() -> void:
 	dead = false
 	total_damage = 0.0
 	hits_taken = 0
+	statuses.clear()
 	_visual.rotation = Vector3.ZERO
 	reset_physics_interpolation()
 	_update_bar()
@@ -69,9 +71,19 @@ func take_hit(hit: HitData) -> int:
 	return HitData.Result.HIT
 
 
-## Knockback from cards.
+## Status effects from cards (slow, burn). Shown as a tint and a word over the bar.
+func apply_status(kind: StatusSet.Kind, duration: float, magnitude: float, source: Node3D) -> void:
+	if dead:
+		return
+	var fresh := not statuses.has(kind)
+	statuses.apply(kind, duration, magnitude, source)
+	if fresh:
+		FloatingText.spawn(self, StatusSet.NAMES[kind], global_position + Vector3.UP * 2.9, StatusSet.COLORS[kind], 44)
+
+
+## Knockback from cards. Slowed dummies get pushed less far.
 func push(v: Vector3) -> void:
-	velocity += v
+	velocity += v * statuses.speed_mult()
 
 
 func _die() -> void:
@@ -96,9 +108,19 @@ func _physics_process(dt: float) -> void:
 		velocity.x = h.x
 		velocity.z = h.z
 	move_and_slide()
+	statuses.tick(self, dt)
+	var tint := statuses.tint()
 	if _flash > 0.0:
 		_flash = maxf(0.0, _flash - dt * 6.0)
+		_mat.emission = Color(1, 1, 1)
 		_mat.emission_energy_multiplier = _flash * 2.0
+	elif tint.a > 0.0:
+		_mat.emission = tint
+		var flicker := 0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.02) if statuses.has(StatusSet.Kind.BURN) else 1.0
+		_mat.emission_energy_multiplier = 0.6 + 0.6 * flicker
+	else:
+		_mat.emission_energy_multiplier = 0.0
+	_update_bar()
 
 
 func _update_bar() -> void:
@@ -106,7 +128,8 @@ func _update_bar() -> void:
 		return
 	var n := 10
 	var filled := ceili(health / max_health * n)
-	_bar.text = "%s\n%d / %d" % ["|".repeat(filled) + ".".repeat(n - filled), roundi(health), roundi(max_health)]
+	var status := statuses.label()
+	_bar.text = "%s%s\n%d / %d" % [status + "\n" if status != "" else "", "|".repeat(filled) + ".".repeat(n - filled), roundi(health), roundi(max_health)]
 	_bar.modulate = Color(0.4, 1.0, 0.5).lerp(Color(1.0, 0.3, 0.25), 1.0 - health / max_health)
 
 

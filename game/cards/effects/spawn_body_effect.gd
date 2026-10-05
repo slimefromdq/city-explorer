@@ -34,7 +34,8 @@ func apply(ctx: CastContext) -> void:
 			var inherit := Vector3.ZERO
 			if ctx.caster is CharacterBody3D:
 				inherit = (ctx.caster as CharacterBody3D).velocity * inherit_velocity
-			CardBody.spawn(ctx, dir, dir * def.speed * speed_mult + inherit)
+			var speed := def.speed * speed_mult * ctx.mult(ModifierEffect.Stat.BODY_SPEED) * ctx.power
+			CardBody.spawn(ctx, dir, dir * speed + inherit)
 
 
 func _spread_dir(base: Vector3, i: int) -> Vector3:

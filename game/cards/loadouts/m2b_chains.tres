@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CardLoadout" format=3]
+
+[ext_resource type="Script" path="res://game/cards/ability_card.gd" id="1_f7lvb"]
+[ext_resource type="Resource" path="res://game/cards/library/pulse_pistol.tres" id="2_wabip"]
+[ext_resource type="Resource" path="res://game/cards/library/splitter_shot.tres" id="3_pwube"]
+[ext_resource type="Resource" path="res://game/cards/library/sigil_volley.tres" id="4_mhthy"]
+[ext_resource type="Resource" path="res://game/cards/library/riposte.tres" id="5_fptkt"]
+[ext_resource type="Script" path="res://game/cards/card_loadout.gd" id="6_krwf8"]
+
+[resource]
+script = ExtResource("6_krwf8")
+display_name = "M2b chains: pistol, splitter shot, sigil volley (leap), riposte (perfect block)"
+cards = Array[ExtResource("1_f7lvb")]([ExtResource("2_wabip"), ExtResource("3_pwube"), ExtResource("4_mhthy"), ExtResource("5_fptkt")])

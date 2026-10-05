@@ -121,6 +121,12 @@ func _process(_dt: float) -> void:
 			var pool := r.pools[i] as ChargePool
 			var ch := "charges %.2f/%d" % [pool.charges, pool.max_charges] if pool != null else "no cooldown"
 			lines.append("  %-4s  %-14s %s  %s" % [AbilityRunner.SLOT_KEYS[i], c.display_name, ch, AbilityCard.Trigger.keys()[c.trigger]])
+		for mod in r.modifiers:
+			var src: AbilityCard = mod.source
+			lines.append("  mod   %s %s %+.2f  %s" % [src.display_name if src != null else "?", ModifierEffect.Stat.keys()[mod.stat], mod.amount, "while equipped" if mod.left < 0.0 else "%.1fs left" % mod.left])
+		var st := h.statuses.label()
+		if st != "":
+			lines.append("  status  %s" % st)
 		lines.append("recent casts (newest first)")
 		for l in r.log_lines:
 			lines.append(l)

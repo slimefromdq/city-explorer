@@ -13,9 +13,10 @@ extends Resource
 enum Trigger {
 	PRESS,           ## fires once when its button goes down
 	HOLD,            ## fires every `fire_interval` while held (automatic weapons)
-	RELEASE,         ## (M2b) hold to charge, fires on release
-	MOVEMENT_EVENT,  ## (M2b) fires by itself when the hero emits `movement_event`
-	PROC_ONLY,       ## (M2b) never fires on its own; other cards cast it
+	RELEASE,         ## hold to charge (up to charge_time), fires on release; charge scales speed and damage
+	MOVEMENT_EVENT,  ## fires by itself when the hero emits `movement_event` (its button does nothing)
+	PROC_ONLY,       ## never fires on its own; other cards cast it with a "Cast card" block
+	PASSIVE,         ## always on while equipped: its ON CAST list runs once on equip (put Modifier blocks there)
 }
 
 ## Where the cast starts.
@@ -34,6 +35,10 @@ enum Origin {
 @export var trigger: Trigger = Trigger.PRESS
 ## HOLD only: seconds between shots while the button is held.
 @export var fire_interval := 0.2
+## RELEASE only: seconds of holding to reach full power.
+@export var charge_time := 1.0
+## RELEASE only: power of a tap (no charge). Full charge = 1.
+@export_range(0.0, 1.0, 0.05) var min_charge_power := 0.35
 ## MOVEMENT_EVENT only: which movement event fires this card.
 @export var movement_event: MoveEvent.Type = MoveEvent.Type.DASH_LAUNCH
 
@@ -94,4 +99,10 @@ func validate() -> PackedStringArray:
 		problems.append("has on_contact/on_expire effects but no body, so they can never run")
 	if trigger == Trigger.HOLD and fire_interval <= 0.0:
 		problems.append("HOLD trigger needs fire_interval > 0")
+	if trigger == Trigger.RELEASE and charge_time <= 0.0:
+		problems.append("RELEASE trigger needs charge_time > 0")
+	if trigger == Trigger.PASSIVE:
+		for e in on_cast:
+			if e != null and not e is ModifierEffect:
+				problems.append("PASSIVE cards run ON CAST once when equipped, so only Modifier blocks belong there (found %s)" % e.block_name())
 	return problems

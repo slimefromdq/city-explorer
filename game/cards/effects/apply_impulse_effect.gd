@@ -33,6 +33,7 @@ enum Dir {
 
 func apply(ctx: CastContext) -> void:
 	var nodes: Array[Node3D] = []
+	var r := radius * ctx.mult(ModifierEffect.Stat.AREA)
 	match who:
 		Who.TARGET:
 			if ctx.target != null and is_instance_valid(ctx.target):
@@ -40,10 +41,10 @@ func apply(ctx: CastContext) -> void:
 		Who.CASTER:
 			nodes.append(ctx.caster)
 		Who.AREA:
-			nodes = find_in_radius(ctx, ctx.position, radius, LAYER_CHARACTER | (1 << 4))
+			nodes = find_in_radius(ctx, ctx.position, r, LAYER_CHARACTER | (1 << 4))
 			if include_caster and not nodes.has(ctx.caster) and ctx.caster != null:
 				# The caster counts if their body is within the radius.
-				if center_of(ctx.caster).distance_to(ctx.position) <= radius + 1.0:
+				if center_of(ctx.caster).distance_to(ctx.position) <= r + 1.0:
 					nodes.append(ctx.caster)
 	for n in nodes:
 		if n == ctx.caster and who == Who.AREA and not include_caster:
@@ -53,7 +54,7 @@ func apply(ctx: CastContext) -> void:
 		var d := _dir_for(ctx, n)
 		var s := strength * ctx.push_mult()
 		if who == Who.AREA:
-			var k := clampf(center_of(n).distance_to(ctx.position) / maxf(radius, 0.01), 0.0, 1.0)
+			var k := clampf(center_of(n).distance_to(ctx.position) / maxf(r, 0.01), 0.0, 1.0)
 			s *= lerpf(1.0, edge_strength, k)
 		if n == ctx.caster:
 			s *= caster_mult

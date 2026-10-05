@@ -9,6 +9,7 @@ var runner: AbilityRunner
 var _slots: Array[Dictionary] = []
 var _energy: ProgressBar
 var _toast: Label
+var _mods: Label
 var _toast_t := 0.0
 
 
@@ -46,12 +47,26 @@ func _process(dt: float) -> void:
 		var max_count: int = ch[1]
 		var progress: float = ch[2]
 		var count_text := "  x%d" % ready_count if max_count > 1 else ""
-		name_label.text = "%s  %s%s" % [AbilityRunner.SLOT_KEYS[i], card.display_name, count_text]
+		var key: String = AbilityRunner.SLOT_KEYS[i]
+		match card.trigger:
+			AbilityCard.Trigger.MOVEMENT_EVENT:
+				key = "auto: %s" % MoveEvent.name_of(card.movement_event)
+			AbilityCard.Trigger.PASSIVE:
+				key = "passive"
+		name_label.text = "%s  %s%s" % [key, card.display_name, count_text]
 		bar.value = 1.0 if ready_count >= max_count else progress
+		var charge := runner.charge_of(i)
+		if charge >= 0.0:
+			bar.value = charge   # a RELEASE card being charged shows its charge instead
 		var usable := ready_count > 0 and runner.energy >= card.energy_cost
 		panel.modulate = Color(1, 1, 1, 1.0 if usable else 0.5)
 		(ui.style as StyleBoxFlat).border_color = card.color
 	_energy.value = runner.energy / runner.max_energy
+	var mods := PackedStringArray()
+	for m in runner.modifiers:
+		var src: AbilityCard = m.source
+		mods.append("%s %s%s" % [src.display_name if src != null else "?", ModifierEffect.describe_stat(m.stat, m.amount), "" if m.left < 0.0 else " (%.0fs)" % m.left])
+	_mods.text = "   ".join(mods)
 
 
 func _build() -> void:
@@ -84,6 +99,13 @@ func _build() -> void:
 	_toast.add_theme_constant_override(&"outline_size", 5)
 	_toast.add_theme_color_override(&"font_outline_color", Color.BLACK)
 	box.add_child(_toast)
+	_mods = Label.new()
+	_mods.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_mods.add_theme_font_size_override(&"font_size", 13)
+	_mods.add_theme_color_override(&"font_color", Color(1.0, 0.85, 0.4))
+	_mods.add_theme_constant_override(&"outline_size", 4)
+	_mods.add_theme_color_override(&"font_outline_color", Color.BLACK)
+	box.add_child(_mods)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override(&"separation", 8)
 	box.add_child(row)
@@ -96,7 +118,7 @@ func _build() -> void:
 		style.set_content_margin_all(6)
 		style.set_corner_radius_all(4)
 		panel.add_theme_stylebox_override(&"panel", style)
-		panel.custom_minimum_size = Vector2(170, 0)
+		panel.custom_minimum_size = Vector2(190, 0)
 		var v := VBoxContainer.new()
 		panel.add_child(v)
 		var name_label := Label.new()

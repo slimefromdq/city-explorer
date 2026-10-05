@@ -21,7 +21,7 @@ func physics_update(dt: float) -> void:
 		speed = tuning.crouch_speed
 	elif i.sprint:
 		speed = tuning.sprint_speed
-	motor.steer(speed, tuning.ground_accel, tuning.ground_brake, dt)
+	motor.steer(speed * hero.speed_mult(), tuning.ground_accel, tuning.ground_brake, dt)
 	if not jumped:
 		motor.vy = -3.0   # a small push down keeps us glued to slopes and step edges
 	motor.move(dt)

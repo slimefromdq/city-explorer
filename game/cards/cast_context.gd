@@ -17,6 +17,12 @@ var body: Node3D                 # the CardBody (null for beams and body-less ca
 ## True while running ON HIT / ON KILL, so damage dealt by those lists doesn't
 ## trigger ON HIT again forever.
 var is_reaction := false
+## 0..1 charge of a RELEASE card, turned into a multiplier (1 = full power).
+## Scales body speed and damage.
+var power := 1.0
+## A node that bodies spawned by this cast should pass through (e.g. the
+## target a proc chain started inside, so shrapnel doesn't hit it again).
+var ignore: Node3D
 
 
 func copy() -> CastContext:
@@ -31,7 +37,14 @@ func copy() -> CastContext:
 	c.target = target
 	c.body = body
 	c.is_reaction = is_reaction
+	c.power = power
+	c.ignore = ignore
 	return c
+
+
+## The runner's modifier for `stat` (1.0 when there's no runner).
+func mult(stat: int) -> float:
+	return runner.stat_mult(stat) if runner != null else 1.0
 
 
 ## Heavy bodies push harder; every push goes through this.

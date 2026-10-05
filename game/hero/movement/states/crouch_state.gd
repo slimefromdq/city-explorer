@@ -25,7 +25,7 @@ func physics_update(dt: float) -> void:
 		motor.jump()
 		hero.emit_movement_event(MoveEvent.Type.JUMP)
 		jumped = true
-	motor.steer(tuning.crouch_speed, tuning.ground_accel, tuning.ground_brake, dt)
+	motor.steer(tuning.crouch_speed * hero.speed_mult(), tuning.ground_accel, tuning.ground_brake, dt)
 	if not jumped:
 		motor.vy = -3.0
 	motor.move(dt)

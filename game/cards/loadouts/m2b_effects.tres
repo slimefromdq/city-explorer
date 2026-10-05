@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CardLoadout" format=3]
+
+[ext_resource type="Script" path="res://game/cards/ability_card.gd" id="1_bt0ed"]
+[ext_resource type="Resource" path="res://game/cards/library/pulse_pistol.tres" id="2_8mk43"]
+[ext_resource type="Resource" path="res://game/cards/library/ember_bomb.tres" id="3_gothd"]
+[ext_resource type="Resource" path="res://game/cards/library/hatchling_ball.tres" id="4_gv8j3"]
+[ext_resource type="Resource" path="res://game/cards/library/overclock.tres" id="5_u14ve"]
+[ext_resource type="Script" path="res://game/cards/card_loadout.gd" id="6_cbqf6"]
+
+[resource]
+script = ExtResource("6_cbqf6")
+display_name = "M2b effects: pistol, ember bomb (hold R, release), hatchling ball, overclock (passive)"
+cards = Array[ExtResource("1_bt0ed")]([ExtResource("2_8mk43"), ExtResource("3_gothd"), ExtResource("4_gv8j3"), ExtResource("5_u14ve")])
