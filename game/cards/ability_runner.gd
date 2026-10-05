@@ -25,6 +25,8 @@ const SLOT_KEYS := ["LMB", "R", "G", "V"]
 const MAX_LOG := 6
 
 @export var loadout: CardLoadout
+## The hero's passive (a PASSIVE card). Not in a slot; set by the hero definition.
+@export var passive: AbilityCard
 @export var max_energy := 100.0
 ## Energy per second.
 @export var energy_regen := 20.0
@@ -45,6 +47,8 @@ var charge_held: Array[float] = []  # RELEASE cards: seconds the button has been
 var modifiers: Array[Dictionary] = []
 
 var _casts_this_frame := 0
+## When true no card can be cast at all (safe rooms like the apartment).
+var locked := false
 var _event_data := {}              # the movement event being handled right now (for aim direction)
 var _complained := {}              # "card path + message" -> true, so each problem is logged once
 
@@ -93,7 +97,10 @@ func _put(slot: int, card: AbilityCard) -> void:
 ## are rebuilt from scratch whenever the loadout changes.
 func _apply_passives() -> void:
 	modifiers = modifiers.filter(func(m: Dictionary) -> bool: return m.left >= 0.0)
-	for card in cards:
+	var all := cards.duplicate()
+	if passive != null:
+		all.append(passive)
+	for card in all:
 		if card != null and card.trigger == AbilityCard.Trigger.PASSIVE:
 			var ctx := CastContext.new()
 			ctx.card = card
@@ -101,6 +108,17 @@ func _apply_passives() -> void:
 			ctx.caster = hero
 			ctx.position = hero.global_position
 			run_list(card.on_cast, ctx, &"on_cast")
+
+
+## Set the passive (null = none) and rebuild modifiers.
+func set_passive(card: AbilityCard) -> void:
+	passive = card
+	if card != null:
+		for p in card.validate():
+			_complain(card, p)
+		if card.trigger != AbilityCard.Trigger.PASSIVE:
+			_complain(card, "is used as a hero passive but its trigger isn't PASSIVE")
+	_apply_passives()
 
 
 ## Re-reads every equipped card (after a hot reload changed their fields).
@@ -148,7 +166,7 @@ func tick(dt: float) -> void:
 
 
 func can_act() -> bool:
-	return not hero.defense.dead and not blocked_states.has(hero.states.current_name)
+	return not locked and not hero.defense.dead and not blocked_states.has(hero.states.current_name)
 
 
 ## The player (or a bot) wants slot `slot`. Pays the costs and casts.
@@ -156,7 +174,7 @@ func can_act() -> bool:
 ## act" check (the movement event itself proves the hero is acting).
 func try_cast(slot: int, power := 1.0, from_event := false) -> bool:
 	var card := cards[slot]
-	if card == null or (not from_event and not can_act()) or hero.defense.dead:
+	if card == null or (not from_event and not can_act()) or hero.defense.dead or locked:
 		return false
 	if not _can_pay(slot):
 		return false
@@ -196,21 +214,21 @@ func _on_movement_event(type: int, data: Dictionary) -> void:
 
 # ------------------------------------------------------------------ modifiers
 
-func add_modifier(stat: int, amount: float, duration: float, source: AbilityCard) -> void:
+func add_modifier(stat: int, amount: float, duration: float, source: AbilityCard, when: int = 0) -> void:
 	if duration >= 0.0:
 		# A timed buff from the same card refreshes instead of stacking forever.
 		for m in modifiers:
 			if m.source == source and m.stat == stat and m.left >= 0.0:
 				m.left = maxf(m.left, duration)
 				return
-	modifiers.append({"stat": stat, "amount": amount, "left": duration, "source": source})
+	modifiers.append({"stat": stat, "amount": amount, "left": duration, "source": source, "when": when})
 
 
 ## Product of (1 + amount) over every modifier for `stat` (1.0 = unchanged).
 func stat_mult(stat: int) -> float:
 	var k := 1.0
 	for m in modifiers:
-		if m.stat == stat:
+		if m.stat == stat and ModifierEffect.condition_met(m.when, hero):
 			k *= maxf(0.05, 1.0 + m.amount)
 	return k
 
@@ -219,7 +237,7 @@ func stat_mult(stat: int) -> float:
 func stat_add(stat: int) -> float:
 	var total := 0.0
 	for m in modifiers:
-		if m.stat == stat:
+		if m.stat == stat and ModifierEffect.condition_met(m.when, hero):
 			total += m.amount
 	return total
 
@@ -300,6 +318,11 @@ func _player_context(card: AbilityCard) -> CastContext:
 		AbilityCard.Origin.AIM_POINT:
 			ctx.position = i.aim_point
 			ctx.direction = i.aim_dir
+		AbilityCard.Origin.AHEAD:
+			var flat := Vector3(i.aim_dir.x, 0.0, i.aim_dir.z)
+			flat = flat.normalized() if flat.length() > 0.01 else Basis(Vector3.UP, i.aim_yaw) * Vector3.FORWARD
+			ctx.position = hero.global_position + Vector3.UP * 1.1 + flat * card.ahead_distance
+			ctx.direction = flat
 	# Cards fired by a movement event go the way that movement went (a leap,
 	# a roll) when the event says so.
 	if _event_data.has("direction"):

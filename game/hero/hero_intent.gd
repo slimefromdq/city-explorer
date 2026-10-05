@@ -25,6 +25,7 @@ var card_held: Array[bool] = [false, false, false, false]
 var jump_pressed := false
 var dash_pressed := false
 var roll_pressed := false
+var interact_pressed := false     # use the mirror / workbench / door you're facing
 var card_pressed: Array[bool] = [false, false, false, false]
 
 
@@ -32,5 +33,6 @@ func clear_presses() -> void:
 	jump_pressed = false
 	dash_pressed = false
 	roll_pressed = false
+	interact_pressed = false
 	for i in card_pressed.size():
 		card_pressed[i] = false

@@ -112,7 +112,7 @@ func _process(_dt: float) -> void:
 	var r := h.runner
 	if r != null and not r.cards.is_empty():
 		lines.append("")
-		lines.append("cards      energy %5.1f / %d   %s" % [r.energy, int(r.max_energy), "can cast" if r.can_act() else "CAN'T CAST (%s)" % h.states.current_name])
+		lines.append("cards      energy %5.1f / %d   %s" % [r.energy, int(r.max_energy), "can cast" if r.can_act() else "CAN'T CAST (%s)" % ("locked here" if r.locked else String(h.states.current_name))])
 		for i in AbilityRunner.SLOT_COUNT:
 			var c := r.cards[i]
 			if c == null:

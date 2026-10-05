@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="HeroDefinition" format=3]
+
+[ext_resource type="Resource" path="res://game/cards/library/tailwind.tres" id="1_n46xy"]
+[ext_resource type="Script" path="res://game/heroes/hero_definition.gd" id="2_xgndp"]
+[ext_resource type="Script" path="res://game/cards/ability_card.gd" id="3_0quew"]
+[ext_resource type="Resource" path="res://game/cards/library/pulse_pistol.tres" id="4_wbrye"]
+[ext_resource type="Resource" path="res://game/cards/library/blink.tres" id="5_e5fxa"]
+[ext_resource type="Resource" path="res://game/cards/library/rocket_jump.tres" id="6_7jluo"]
+[ext_resource type="Resource" path="res://game/cards/library/sigil_barrage.tres" id="7_aljss"]
+
+[resource]
+script = ExtResource("2_xgndp")
+id = &"sky_runner"
+display_name = "Sky Runner"
+description = "Aerial skirmisher. Leaps, blinks and rocket-jumps over fights and hits hardest from the air."
+body_color = Color(0.25, 0.45, 0.85, 1)
+accent_color = Color(0.6, 0.9, 1, 1)
+starting_cards = Array[ExtResource("3_0quew")]([ExtResource("4_wbrye"), ExtResource("5_e5fxa"), ExtResource("6_7jluo"), ExtResource("7_aljss")])
+passive = ExtResource("1_n46xy")

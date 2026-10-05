@@ -26,6 +26,8 @@ const DEFAULT_TUNING := "res://game/hero/movement/default_tuning.tres"
 @export var tuning: MovementTuning
 
 var intent := HeroIntent.new()
+## Which hero this body is playing (null until apply_definition).
+var definition: HeroDefinition
 var face_yaw := 0.0
 var spawn_transform := Transform3D.IDENTITY
 var spawn_yaw := 0.0
@@ -39,6 +41,8 @@ var statuses := StatusSet.new()
 @onready var defense: HeroDefense = $Defense
 ## Casts the equipped cards (M2). Optional so a bare body still works.
 @onready var runner: AbilityRunner = get_node_or_null("Runner")
+## Uses mirrors, doors and benches (player heroes only).
+@onready var interactor: Interactor = get_node_or_null("Interactor")
 
 
 func _ready() -> void:
@@ -73,6 +77,8 @@ func _physics_process(dt: float) -> void:
 	model.set_guard(defense.blocking, defense.perfect_window_left > 0.0)
 	if runner != null:
 		runner.tick(dt)   # after movement, so casts start from where we are now
+	if intent.interact_pressed and interactor != null:
+		interactor.handle_press()
 	intent.clear_presses()
 
 
@@ -143,6 +149,20 @@ func teleport_to(pos: Vector3, keep_momentum: bool) -> void:
 	reset_physics_interpolation()
 	if states.current_name in [&"Ground", &"Crouch", &"Slide", &"Roll"]:
 		states.change(&"Air")   # Air lands again at once if we arrived on a floor
+
+
+## Become `def`: its colours and passive, with `cards` in the 4 slots
+## (normally the player's saved loadout for that hero).
+func apply_definition(def: HeroDefinition, cards: Array) -> void:
+	if def == null:
+		push_error("Hero.apply_definition: no hero definition")
+		return
+	definition = def
+	display_name = def.display_name
+	model.set_colors(def.body_color, def.accent_color)
+	if runner != null:
+		runner.set_cards(cards)
+		runner.set_passive(def.passive)
 
 
 func set_spawn(t: Transform3D, yaw: float) -> void:

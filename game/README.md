@@ -5,10 +5,26 @@ the old Gunslinger prototype (`main.tscn`, `fighter/`, `abilities/`) are left as
 they are. The architecture plan this follows is in the project's
 `meridia/architecture-proposal.md`.
 
-## Run it (M1 movement and defense, M2 cards)
+## Run it
 
-Open `game/levels/test_arena/test_arena.tscn` and press **F6** (Run Current Scene).
-F5 still runs the old prototype.
+**F5** starts in your apartment (`levels/apartment/apartment.tscn`, M3).
+For the movement and card test arena, open `game/levels/test_arena/test_arena.tscn`
+and press **F6** (Run Current Scene). The old Gunslinger prototype is still
+`main.tscn` (open it and press F6).
+
+### In the apartment (M3a)
+
+| Input | Action |
+|---|---|
+| F | use what you're facing: the **mirror** opens hero select (the wardrobe, workbench and front door arrive in M3b) |
+| A / D or arrows | (hero select) browse heroes; the figure in the mirror shows each one |
+| F or Enter | (hero select) become that hero; saved immediately |
+| Esc | (hero select) close without changing anything |
+| F10 twice | wipe your save and start fresh |
+
+Cards are locked indoors; movement works as everywhere else.
+
+### In the test arena (M1 movement and defense, M2 cards)
 
 | Input | Action |
 |---|---|
@@ -18,11 +34,12 @@ F5 still runs the old prototype.
 | C or Ctrl (hold) | crouch; while moving fast (sprinting, or landing from a leap) it becomes a slide that keeps your speed, speeds up downhill, and can be jumped out of |
 | E | sigil leap toward the crosshair (look up to leap up; 2 charges) |
 | Q or Alt | dodge roll (ground only; i-frames; 2 charges that refill over 2.5 s each; rolls backwards if no direction held) |
-| F or right mouse (hold) | block (front arc; first 0.15 s = perfect block) |
+| right mouse (hold) | block (front arc; first 0.15 s = perfect block) |
+| F | use / interact |
 | run + jump into a ledge | mantle up (ledges 0.35 to 2.5 m above your feet) |
 | Left mouse (hold) | primary card (Pulse Pistol) |
 | R / G / V (or 1 / 2 / 3) | ability cards 1 to 3 |
-| Tab | next test loadout: basic kit, rocket kit, proc chains + movement events, status / modifier / transform |
+| Tab | next test loadout: basic kit, rocket kit, proc chains + movement events, status / modifier / transform, then **your hero** (the hero and loadout saved in the apartment, with its passive) |
 | F4 | reload every card file from disk |
 | F5 | respawn and reset the target dummies |
 | F3 | toggle the debug overlay |
@@ -104,6 +121,35 @@ Mistakes print to the Output panel and name the card and the list entry. Example
 
 The card range is north-east of spawn. It has six target dummies (floating damage numbers, a health bar, knockback, a status tint, and they fall over at 0 HP and get back up), in front of a wall and a pillar for bouncing and sticking things.
 
+## Heroes and saving (M3)
+
+A hero is only data: `heroes/*.tres` (`HeroDefinition`) holds a name, colours,
+a starting loadout of 4 cards and a passive card. Every hero shares the same
+body, movement and defense.
+
+| Hero | Cards (LMB, R, G, V) | Movement-event card | Passive |
+|---|---|---|---|
+| Sky Runner | Pulse Pistol, Blink, Rocket Jump, Sigil Barrage | Sigil Barrage: a ring of bolts when the sigil forms | Tailwind: +30% damage while airborne |
+| Butcher | Cleaver, Meat Hook, Ball Kick, Riposte | Riposte: shockwave on a perfect block | Bloodlust: +35% damage below half health |
+| Engineer | Rivet Gun, Bug Grenade, Ember Bomb, Drop Charge | Drop Charge: rolling leaves a sticky charge | Tinkerer: cooldowns 20% faster, +1 bounce |
+
+Passives are PASSIVE cards made of Modifier blocks; a modifier's `only_when`
+(always, airborne, grounded, below half health, blocking) is what makes
+"+30% while airborne" pure data.
+
+**What's remembered:** `autoload/game_state.gd` (GameState) holds your hero,
+each hero's own loadout, the cards you own, your outfit and the underground
+entrances you've found. Cards and heroes are stored by file name.
+`autoload/save_service.gd` (SaveService) writes it as JSON to
+`user://meridia_save.json` every time something changes and reads it at start.
+In Godot, Project > Open User Data Folder shows the file. A broken file is
+renamed to `.broken` and the game starts fresh; a card that no longer exists
+is dropped with a warning.
+
+**Add a hero:** duplicate a file in `heroes/`, give it a new `id`, pick its
+cards and passive. It shows up in the mirror automatically. It needs at least
+one movement-event card (the Output panel says so if not).
+
 ## Tests
 
 ```
@@ -112,6 +158,7 @@ godot --headless --fixed-fps 60 res://game/tests/m1b_sigil_leap_test.tscn
 godot --headless --fixed-fps 60 res://game/tests/m1c_defense_test.tscn
 godot --headless --fixed-fps 60 res://game/tests/m2a_cards_test.tscn
 godot --headless --fixed-fps 60 res://game/tests/m2b_proc_chains_test.tscn
+godot --headless --fixed-fps 60 res://game/tests/m3a_heroes_save_test.tscn
 ```
 Drives the hero through the real arena by writing its intent (no keyboard), and
 checks walk/sprint/stop speeds, jump height, short hop, coyote time, mantles,

@@ -24,6 +24,7 @@ enum Origin {
 	HAND,       ## from the hero's hand, aimed at whatever is under the crosshair
 	FEET,       ## at the hero's feet, aimed along the camera
 	AIM_POINT,  ## right where the crosshair is pointing
+	AHEAD,      ## chest height, `ahead_distance` in front of you (melee swings)
 }
 
 @export var display_name := "New Card"
@@ -52,6 +53,8 @@ enum Origin {
 
 @export_group("Aim")
 @export var origin: Origin = Origin.HAND
+## AHEAD only: how far in front of you.
+@export var ahead_distance := 1.3
 
 @export_group("Body")
 ## What "Spawn body" throws. Leave empty for cards that just do something

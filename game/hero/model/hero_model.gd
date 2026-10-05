@@ -70,6 +70,17 @@ func _ready() -> void:
 	_shield.visible = false
 
 
+## Recolour the body (heroes have their own colours; outfits tint on top in M3b).
+func set_colors(body: Color, accent: Color) -> void:
+	body_color = body
+	accent_color = accent
+	if _body_mat == null:
+		return   # not built yet; _ready uses the new colours
+	_body_mat.albedo_color = body.darkened(0.45) if _stunned else body
+	_accent_mat.albedo_color = accent
+	_accent_mat.emission = accent
+
+
 func _add_part(mesh: Mesh, mat: Material, pos: Vector3) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh

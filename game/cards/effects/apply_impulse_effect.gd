@@ -14,6 +14,7 @@ enum Dir {
 	ALONG_DIRECTION,  ## the way the cast/body was travelling
 	AIM,              ## where the caster is aiming
 	UP,
+	TOWARD_CASTER,    ## pull in (hooks)
 }
 
 @export var who: Who = Who.TARGET
@@ -81,6 +82,11 @@ func _dir_for(ctx: CastContext, n: Node3D) -> Vector3:
 				d = ctx.direction
 		Dir.UP:
 			d = Vector3.UP
+		Dir.TOWARD_CASTER:
+			d = center_of(ctx.caster) - center_of(n) if ctx.caster != null else Vector3.UP
+			d.y = 0.0
+			if d.length() < 0.05:
+				d = Vector3.UP
 	d = d.normalized()
 	if up_bias > 0.0 and direction != Dir.UP:
 		d = (d + Vector3.UP * up_bias).normalized()

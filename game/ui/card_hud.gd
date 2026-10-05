@@ -65,7 +65,9 @@ func _process(dt: float) -> void:
 	var mods := PackedStringArray()
 	for m in runner.modifiers:
 		var src: AbilityCard = m.source
-		mods.append("%s %s%s" % [src.display_name if src != null else "?", ModifierEffect.describe_stat(m.stat, m.amount), "" if m.left < 0.0 else " (%.0fs)" % m.left])
+		var on := ModifierEffect.condition_met(m.when, runner.hero)
+		mods.append("%s %s%s%s%s" % [src.display_name if src != null else "?", ModifierEffect.describe_stat(m.stat, m.amount),
+				ModifierEffect.describe_when(m.when), "" if m.left < 0.0 else " (%.0fs)" % m.left, "" if on else " (off)"])
 	_mods.text = "   ".join(mods)
 
 

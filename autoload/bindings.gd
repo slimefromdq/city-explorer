@@ -30,6 +30,11 @@ func _ready() -> void:
 	_keys(&"card_3", [KEY_V, KEY_3])
 	_keys(&"card_reload", [KEY_F4])
 	_keys(&"loadout_next", [KEY_TAB])
+	# The hero blocks on right mouse only; F is interact (Lucy's pick, M3).
+	# (The old prototype keeps its own "block" action on F + right mouse.)
+	_mouse(&"hero_block", MOUSE_BUTTON_RIGHT)
+	_keys(&"interact", [KEY_F])
+	_keys(&"ui_wipe_save", [KEY_F10])
 	# --- test-bench tools ---
 	_keys(&"dbg_help", [KEY_F1])
 	_keys(&"dbg_teleport", [KEY_F2])
