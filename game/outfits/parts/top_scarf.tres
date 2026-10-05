@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="OutfitPart" format=3]
+
+[ext_resource type="Script" path="res://game/outfits/outfit_piece.gd" id="1_fv020"]
+[ext_resource type="Script" path="res://game/outfits/outfit_part.gd" id="2_k5oto"]
+
+[sub_resource type="Resource" id="Resource_o1h8l"]
+script = ExtResource("1_fv020")
+shape = 2
+size = Vector3(0.44, 0.13, 0.52)
+offset = Vector3(0, 1.36, 0)
+
+[sub_resource type="Resource" id="Resource_ttv8c"]
+script = ExtResource("1_fv020")
+size = Vector3(0.1, 0.42, 0.04)
+offset = Vector3(0.12, 1.13, -0.27)
+rotation_degrees = Vector3(0, 0, 8)
+shade = 0.1
+
+[resource]
+script = ExtResource("2_k5oto")
+slot = 1
+display_name = "Scarf"
+pieces = Array[ExtResource("1_fv020")]([SubResource("Resource_o1h8l"), SubResource("Resource_ttv8c")])

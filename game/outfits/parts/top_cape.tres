@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="OutfitPart" format=3]
+
+[ext_resource type="Script" path="res://game/outfits/outfit_piece.gd" id="1_q24ho"]
+[ext_resource type="Script" path="res://game/outfits/outfit_part.gd" id="2_3lo6l"]
+
+[sub_resource type="Resource" id="Resource_ct12t"]
+script = ExtResource("1_q24ho")
+size = Vector3(0.52, 1, 0.04)
+offset = Vector3(0, 0.86, 0.31)
+rotation_degrees = Vector3(8, 0, 0)
+shade = 0.1
+
+[sub_resource type="Resource" id="Resource_biwy7"]
+script = ExtResource("1_q24ho")
+shape = 2
+size = Vector3(0.5, 0.06, 0.6)
+offset = Vector3(0, 1.34, 0)
+shade = 0.3
+
+[resource]
+script = ExtResource("2_3lo6l")
+slot = 1
+display_name = "Cape"
+pieces = Array[ExtResource("1_q24ho")]([SubResource("Resource_ct12t"), SubResource("Resource_biwy7")])

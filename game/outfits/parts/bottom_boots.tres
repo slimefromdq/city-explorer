@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="OutfitPart" format=3]
+
+[ext_resource type="Script" path="res://game/outfits/outfit_piece.gd" id="1_oqs4r"]
+[ext_resource type="Script" path="res://game/outfits/outfit_part.gd" id="2_emh6b"]
+
+[sub_resource type="Resource" id="Resource_jjeyn"]
+script = ExtResource("1_oqs4r")
+size = Vector3(0.2, 0.24, 0.32)
+offset = Vector3(-0.12, 0.12, -0.04)
+color_mode = 2
+color = Color(0.32, 0.2, 0.12, 1)
+
+[sub_resource type="Resource" id="Resource_o704v"]
+script = ExtResource("1_oqs4r")
+size = Vector3(0.2, 0.24, 0.32)
+offset = Vector3(0.12, 0.12, -0.04)
+color_mode = 2
+color = Color(0.32, 0.2, 0.12, 1)
+
+[sub_resource type="Resource" id="Resource_a5jmd"]
+script = ExtResource("1_oqs4r")
+size = Vector3(0.22, 0.05, 0.34)
+offset = Vector3(-0.12, 0.25, -0.04)
+
+[sub_resource type="Resource" id="Resource_wvuo2"]
+script = ExtResource("1_oqs4r")
+size = Vector3(0.22, 0.05, 0.34)
+offset = Vector3(0.12, 0.25, -0.04)
+
+[resource]
+script = ExtResource("2_emh6b")
+slot = 2
+display_name = "Boots"
+pieces = Array[ExtResource("1_oqs4r")]([SubResource("Resource_jjeyn"), SubResource("Resource_o704v"), SubResource("Resource_a5jmd"), SubResource("Resource_wvuo2")])

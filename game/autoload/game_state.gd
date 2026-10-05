@@ -110,6 +110,59 @@ func set_loadout_slot(id: StringName, slot: int, card: AbilityCard) -> void:
 	changed.emit()
 
 
+## Put `card` in `slot` of hero `id`'s loadout. A card can only be in one
+## slot, so if it's already in another slot it moves (that slot empties).
+## `card` = null empties the slot.
+func place_card(id: StringName, slot: int, card: AbilityCard) -> void:
+	var ids: Array = loadouts.get(String(id), []).duplicate()
+	if ids.is_empty():
+		ids = _ids_of(hero_definition(id).starting_cards)
+	while ids.size() < 4:
+		ids.append("")
+	var cid := card_id(card)
+	for i in ids.size():
+		if cid != "" and ids[i] == cid:
+			ids[i] = ""
+	ids[slot] = cid
+	loadouts[String(id)] = ids
+	changed.emit()
+
+
+## Back to the hero's starting loadout.
+func reset_loadout(id: StringName) -> void:
+	var def := hero_definition(id)
+	if def != null:
+		loadouts[String(id)] = _ids_of(def.starting_cards)
+		changed.emit()
+
+
+## Cards that can go in a slot at the workbench: owned, not proc-only (those
+## only fire from other cards), and not a hero's built-in passive.
+func slottable_cards() -> Array[AbilityCard]:
+	var passives := []
+	for h in hero_definitions():
+		if h.passive != null:
+			passives.append(card_id(h.passive))
+	var out: Array[AbilityCard] = []
+	for id in owned_cards:
+		var c := card_by_id(id)
+		if c != null and c.trigger != AbilityCard.Trigger.PROC_ONLY and not passives.has(id):
+			out.append(c)
+	return out
+
+
+## Make `hero` look and play like the saved state: hero, loadout, outfit.
+func dress(hero: Hero) -> void:
+	var def := current_hero()
+	if def == null:
+		push_error("GameState: no hero definitions in %s" % HERO_DIR)
+		return
+	hero.apply_definition(def, loadout_cards(def.id))
+	hero.model.apply_outfit(outfit)
+
+
+## slot is "head", "top", "bottom" (a part id, "" = nothing) or "tint" (an
+## html colour, "" = the hero's own accent colour).
 func set_outfit_part(slot: String, value: String) -> void:
 	outfit[slot] = value
 	changed.emit()
@@ -154,7 +207,14 @@ func from_dict(d: Dictionary) -> void:
 		for id in lo[hid]:
 			ids.append(str(id) if str(id) == "" or ResourceLoader.exists(CARD_DIR + str(id) + ".tres") else "")
 		loadouts[str(hid)] = ids
-	outfit = (d.get("outfit", {}) as Dictionary).duplicate()
+	outfit = {}
+	var o: Dictionary = d.get("outfit", {})
+	for key in o:
+		var v := str(o[key])
+		if key == "tint" or v == "" or ResourceLoader.exists(OutfitCatalog.PARTS_DIR + v + ".tres"):
+			outfit[str(key)] = v
+		else:
+			push_warning("Save: dropping unknown outfit part '%s'" % v)
 	discovered_entrances = PackedStringArray(d.get("discovered_entrances", []))
 
 

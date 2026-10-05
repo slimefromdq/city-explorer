@@ -12,16 +12,18 @@ For the movement and card test arena, open `game/levels/test_arena/test_arena.ts
 and press **F6** (Run Current Scene). The old Gunslinger prototype is still
 `main.tscn` (open it and press F6).
 
-### In the apartment (M3a)
+### In the apartment (M3)
 
-| Input | Action |
+Press **F** at what you're facing:
+
+| Thing | What it does |
 |---|---|
-| F | use what you're facing: the **mirror** opens hero select (the wardrobe, workbench and front door arrive in M3b) |
-| A / D or arrows | (hero select) browse heroes; the figure in the mirror shows each one |
-| F or Enter | (hero select) become that hero; saved immediately |
-| Esc | (hero select) close without changing anything |
-| F10 twice | wipe your save and start fresh |
+| **Mirror** | hero select. A/D or arrows browse (the figure in the mirror shows each hero), F/Enter picks, Esc cancels |
+| **Wardrobe** (next to the mirror) | outfit: head, top, bottom and a colour tint. W/S pick a row, A/D change it, or click. Cosmetic only |
+| **Workbench** | your current hero's 4 card slots. Drag a card onto a slot (or click a card, then a slot); drag it back or right-click the slot to empty it. A card can only be in one slot, so putting it somewhere else moves it; dragging slot onto slot swaps. "Reset to hero default" restores the starting cards |
+| **Front door** | goes out, as your hero, to the test arena (the city in M4). The door left of the arena spawn brings you back |
 
+Everything is saved the moment you change it. **F10 twice** wipes your save.
 Cards are locked indoors; movement works as everywhere else.
 
 ### In the test arena (M1 movement and defense, M2 cards)
@@ -146,6 +148,18 @@ In Godot, Project > Open User Data Folder shows the file. A broken file is
 renamed to `.broken` and the game starts fresh; a card that no longer exists
 is dropped with a warning.
 
+**Outfits** are `OutfitPart` files in `outfits/parts/` (14 so far): a slot
+(head, top or bottom) and a list of primitive pieces (box, sphere, cylinder,
+capsule) with a size, an offset from the feet and a colour mode (the outfit
+tint, the hero's body colour, or a fixed colour). The tints are listed in
+`outfits/outfit_catalog.gd`. **Add a part:** duplicate a file in
+`outfits/parts/`, edit its pieces in the Inspector; it appears in the wardrobe.
+
+**Moving between places:** `autoload/scene_router.gd` (SceneRouter) changes
+the scene and names the Marker3D to arrive at (`FromApartment` in the arena,
+`FrontDoorSpawn` in the apartment). The apartment's `front_door_target` export
+is where M4 will point the door at the city.
+
 **Add a hero:** duplicate a file in `heroes/`, give it a new `id`, pick its
 cards and passive. It shows up in the mirror automatically. It needs at least
 one movement-event card (the Output panel says so if not).
@@ -159,6 +173,7 @@ godot --headless --fixed-fps 60 res://game/tests/m1c_defense_test.tscn
 godot --headless --fixed-fps 60 res://game/tests/m2a_cards_test.tscn
 godot --headless --fixed-fps 60 res://game/tests/m2b_proc_chains_test.tscn
 godot --headless --fixed-fps 60 res://game/tests/m3a_heroes_save_test.tscn
+godot --headless --fixed-fps 60 res://game/tests/m3b_apartment_test.tscn
 ```
 Drives the hero through the real arena by writing its intent (no keyboard), and
 checks walk/sprint/stop speeds, jump height, short hop, coyote time, mantles,
