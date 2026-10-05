@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="HeroDefinition" format=3]
+
+[ext_resource type="Resource" path="res://game/cards/library/tinkerer.tres" id="1_fsecc"]
+[ext_resource type="Script" path="res://game/heroes/hero_definition.gd" id="2_7ep31"]
+[ext_resource type="Script" path="res://game/cards/ability_card.gd" id="3_535yv"]
+[ext_resource type="Resource" path="res://game/cards/library/rivet_gun.tres" id="4_165vy"]
+[ext_resource type="Resource" path="res://game/cards/library/bug_grenade.tres" id="5_d28m2"]
+[ext_resource type="Resource" path="res://game/cards/library/ember_bomb.tres" id="6_7gope"]
+[ext_resource type="Resource" path="res://game/cards/library/drop_charge.tres" id="7_vlkov"]
+
+[resource]
+script = ExtResource("2_7ep31")
+id = &"engineer"
+display_name = "Engineer"
+description = "Gadgeteer. Sticky bugs, firebombs and charges left behind every roll."
+body_color = Color(0.35, 0.38, 0.32, 1)
+accent_color = Color(1, 0.75, 0.25, 1)
+starting_cards = Array[ExtResource("3_535yv")]([ExtResource("4_165vy"), ExtResource("5_d28m2"), ExtResource("6_7gope"), ExtResource("7_vlkov")])
+passive = ExtResource("1_fsecc")

@@ -1,0 +1,382 @@
+[gd_scene load_steps=27 format=3]
+
+[ext_resource type="Script" path="res://game/levels/apartment/apartment.gd" id="script"]
+[ext_resource type="PackedScene" path="res://game/hero/player_hero.tscn" id="hero"]
+[ext_resource type="Script" path="res://game/world/interactable.gd" id="interactable"]
+[ext_resource type="Script" path="res://game/hero/model/hero_model.gd" id="model"]
+[ext_resource type="Script" path="res://game/ui/hero_select_menu.gd" id="menu"]
+[ext_resource type="Texture2D" path="res://walk/meridia_cover.png" id="cover"]
+
+[sub_resource type="StandardMaterial3D" id="m_wall"]
+albedo_color = Color(0.78, 0.72, 0.64, 1)
+roughness = 0.85
+
+[sub_resource type="StandardMaterial3D" id="m_floor"]
+albedo_color = Color(0.42, 0.3, 0.2, 1)
+roughness = 0.85
+
+[sub_resource type="StandardMaterial3D" id="m_ceiling"]
+albedo_color = Color(0.86, 0.84, 0.8, 1)
+roughness = 0.85
+
+[sub_resource type="StandardMaterial3D" id="m_wood"]
+albedo_color = Color(0.5, 0.34, 0.22, 1)
+roughness = 0.85
+
+[sub_resource type="StandardMaterial3D" id="m_darkwood"]
+albedo_color = Color(0.3, 0.2, 0.13, 1)
+roughness = 0.85
+
+[sub_resource type="StandardMaterial3D" id="m_sheet"]
+albedo_color = Color(0.9, 0.9, 0.86, 1)
+roughness = 0.85
+
+[sub_resource type="StandardMaterial3D" id="m_blanket"]
+albedo_color = Color(0.25, 0.4, 0.55, 1)
+roughness = 0.85
+
+[sub_resource type="StandardMaterial3D" id="m_rug"]
+albedo_color = Color(0.55, 0.25, 0.22, 1)
+roughness = 0.85
+
+[sub_resource type="StandardMaterial3D" id="m_metal"]
+albedo_color = Color(0.35, 0.37, 0.4, 1)
+roughness = 0.4
+
+[sub_resource type="StandardMaterial3D" id="m_frame"]
+albedo_color = Color(0.75, 0.62, 0.3, 1)
+roughness = 0.4
+
+[sub_resource type="StandardMaterial3D" id="m_alcove"]
+albedo_color = Color(0.2, 0.21, 0.25, 1)
+roughness = 0.85
+
+[sub_resource type="StandardMaterial3D" id="m_door"]
+albedo_color = Color(0.35, 0.22, 0.15, 1)
+roughness = 0.85
+
+[sub_resource type="StandardMaterial3D" id="m_card_a"]
+albedo_color = Color(1.0, 0.55, 0.2, 1)
+roughness = 0.85
+
+[sub_resource type="StandardMaterial3D" id="m_card_b"]
+albedo_color = Color(0.3, 0.7, 1.0, 1)
+roughness = 0.85
+
+[sub_resource type="StandardMaterial3D" id="m_card_c"]
+albedo_color = Color(0.85, 0.3, 0.4, 1)
+roughness = 0.85
+
+[sub_resource type="StandardMaterial3D" id="m_glass"]
+transparency = 1
+albedo_color = Color(0.7, 0.85, 0.95, 0.12)
+metallic = 0.6
+roughness = 0.05
+
+[sub_resource type="StandardMaterial3D" id="m_cover"]
+shading_mode = 0
+albedo_texture = ExtResource("cover")
+
+[sub_resource type="StandardMaterial3D" id="m_lampshade"]
+albedo_color = Color(1, 0.9, 0.7, 1)
+emission_enabled = true
+emission = Color(1, 0.8, 0.55, 1)
+emission_energy_multiplier = 1.5
+
+[sub_resource type="QuadMesh" id="q_window"]
+size = Vector2(3.2, 1.8)
+
+[sub_resource type="Environment" id="env"]
+background_mode = 1
+background_color = Color(0.05, 0.06, 0.09, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.85, 0.78, 0.7, 1)
+ambient_light_energy = 0.45
+tonemap_mode = 2
+ssao_enabled = true
+
+[node name="Apartment" type="Node3D"]
+script = ExtResource("script")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("env")
+
+[node name="Lights" type="Node3D" parent="."]
+
+[node name="CeilingLight" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.9, 0)
+light_color = Color(1, 0.86, 0.7, 1)
+light_energy = 1.4
+shadow_enabled = true
+omni_range = 9.0
+
+[node name="WindowGlow" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.9, -3.2)
+light_color = Color(0.6, 0.75, 1, 1)
+light_energy = 0.9
+omni_range = 5.0
+
+[node name="BedLamp" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.45, 1.05, -3.55)
+light_color = Color(1, 0.75, 0.45, 1)
+light_energy = 1.0
+omni_range = 3.0
+
+[node name="SpawnPoint" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2)
+
+[node name="PlayerHero" parent="." instance=ExtResource("hero")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2)
+
+[node name="Room" type="CSGCombiner3D" parent="."]
+use_collision = true
+
+[node name="Floor" type="CSGBox3D" parent="Room"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.1, 0)
+size = Vector3(10.4, 0.2, 8.4)
+material = SubResource("m_floor")
+
+[node name="Ceiling" type="CSGBox3D" parent="Room"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.3, 0)
+size = Vector3(10.4, 0.2, 8.4)
+material = SubResource("m_ceiling")
+
+[node name="WallNorth" type="CSGBox3D" parent="Room"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, -4.1)
+size = Vector3(10.4, 3.4, 0.2)
+material = SubResource("m_wall")
+
+[node name="WallSouth" type="CSGBox3D" parent="Room"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, 4.1)
+size = Vector3(10.4, 3.4, 0.2)
+material = SubResource("m_wall")
+
+[node name="WallWest" type="CSGBox3D" parent="Room"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.1, 1.6, 0)
+size = Vector3(0.2, 3.4, 8.4)
+material = SubResource("m_wall")
+
+[node name="WallEast" type="CSGBox3D" parent="Room"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.1, 1.6, 0)
+size = Vector3(0.2, 3.4, 8.4)
+material = SubResource("m_wall")
+
+[node name="MirrorOpening" type="CSGBox3D" parent="Room"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.1, 1.2, -1.0)
+size = Vector3(0.4, 2.4, 1.4)
+material = SubResource("m_wall")
+operation = 2
+
+[node name="AlcoveFloor" type="CSGBox3D" parent="Room"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.0, -0.1, -1.0)
+size = Vector3(1.8, 0.2, 2.0)
+material = SubResource("m_alcove")
+
+[node name="AlcoveBack" type="CSGBox3D" parent="Room"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.9, 1.3, -1.0)
+size = Vector3(0.2, 2.8, 2.0)
+material = SubResource("m_alcove")
+
+[node name="AlcoveLeft" type="CSGBox3D" parent="Room"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.0, 1.3, -1.9)
+size = Vector3(1.8, 2.8, 0.2)
+material = SubResource("m_alcove")
+
+[node name="AlcoveRight" type="CSGBox3D" parent="Room"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.0, 1.3, -0.1)
+size = Vector3(1.8, 2.8, 0.2)
+material = SubResource("m_alcove")
+
+[node name="AlcoveTop" type="CSGBox3D" parent="Room"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.0, 2.6, -1.0)
+size = Vector3(1.8, 0.2, 2.0)
+material = SubResource("m_alcove")
+
+[node name="Furniture" type="CSGCombiner3D" parent="."]
+use_collision = true
+
+[node name="BedFrame" type="CSGBox3D" parent="Furniture"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.9, 0.22, -2.75)
+size = Vector3(1.9, 0.44, 2.4)
+material = SubResource("m_wood")
+
+[node name="Mattress" type="CSGBox3D" parent="Furniture"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.9, 0.52, -2.75)
+size = Vector3(1.8, 0.16, 2.3)
+material = SubResource("m_sheet")
+
+[node name="Blanket" type="CSGBox3D" parent="Furniture"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.9, 0.63, -2.3)
+size = Vector3(1.84, 0.06, 1.45)
+material = SubResource("m_blanket")
+
+[node name="Pillow" type="CSGBox3D" parent="Furniture"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.9, 0.67, -3.6)
+size = Vector3(1.2, 0.14, 0.42)
+material = SubResource("m_sheet")
+
+[node name="Headboard" type="CSGBox3D" parent="Furniture"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.9, 0.75, -3.94)
+size = Vector3(1.9, 1.5, 0.12)
+material = SubResource("m_darkwood")
+
+[node name="NightTable" type="CSGBox3D" parent="Furniture"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.45, 0.3, -3.6)
+size = Vector3(0.55, 0.6, 0.55)
+material = SubResource("m_wood")
+
+[node name="WindowSill" type="CSGBox3D" parent="Furniture"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.83, -3.9)
+size = Vector3(3.6, 0.08, 0.3)
+material = SubResource("m_wood")
+
+[node name="Workbench" type="CSGBox3D" parent="Furniture"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.55, 0.45, 1.4)
+size = Vector3(0.8, 0.9, 2.1)
+material = SubResource("m_darkwood")
+
+[node name="WorkbenchTop" type="CSGBox3D" parent="Furniture"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.5, 0.94, 1.4)
+size = Vector3(0.95, 0.08, 2.3)
+material = SubResource("m_wood")
+
+[node name="Pegboard" type="CSGBox3D" parent="Furniture"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.97, 1.75, 1.4)
+size = Vector3(0.05, 1.0, 2.2)
+material = SubResource("m_metal")
+
+[node name="Wardrobe" type="CSGBox3D" parent="Furniture"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.6, 1.1, 2.5)
+size = Vector3(0.8, 2.2, 1.6)
+material = SubResource("m_wood")
+
+[node name="WardrobeSeam" type="CSGBox3D" parent="Furniture"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.19, 1.1, 2.5)
+size = Vector3(0.02, 2.0, 0.03)
+material = SubResource("m_darkwood")
+
+[node name="FrontDoor" type="CSGBox3D" parent="Furniture"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.6, 1.1, 3.97)
+size = Vector3(1.1, 2.2, 0.08)
+material = SubResource("m_door")
+
+[node name="DoorKnob" type="CSGBox3D" parent="Furniture"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.2, 1.0, 3.9)
+size = Vector3(0.08, 0.08, 0.08)
+material = SubResource("m_frame")
+
+[node name="Decor" type="Node3D" parent="."]
+
+[node name="Rug" type="CSGBox3D" parent="Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.005, 0.2)
+size = Vector3(3.2, 0.01, 2.2)
+material = SubResource("m_rug")
+
+[node name="Lampshade" type="CSGBox3D" parent="Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.45, 0.85, -3.6)
+size = Vector3(0.28, 0.3, 0.28)
+material = SubResource("m_lampshade")
+
+[node name="Card1" type="CSGBox3D" parent="Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.45, 0.985, 0.9)
+size = Vector3(0.3, 0.01, 0.42)
+material = SubResource("m_card_a")
+
+[node name="Card2" type="CSGBox3D" parent="Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.4, 0.985, 1.4)
+size = Vector3(0.3, 0.01, 0.42)
+material = SubResource("m_card_b")
+
+[node name="Card3" type="CSGBox3D" parent="Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.5, 0.985, 1.9)
+size = Vector3(0.3, 0.01, 0.42)
+material = SubResource("m_card_c")
+
+[node name="FrameTop" type="CSGBox3D" parent="Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.72, -3.97)
+size = Vector3(3.5, 0.12, 0.08)
+material = SubResource("m_darkwood")
+
+[node name="FrameBottom" type="CSGBox3D" parent="Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.88, -3.97)
+size = Vector3(3.5, 0.12, 0.08)
+material = SubResource("m_darkwood")
+
+[node name="FrameLeft" type="CSGBox3D" parent="Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.69, 1.8, -3.97)
+size = Vector3(0.12, 1.9, 0.08)
+material = SubResource("m_darkwood")
+
+[node name="FrameRight" type="CSGBox3D" parent="Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.69, 1.8, -3.97)
+size = Vector3(0.12, 1.9, 0.08)
+material = SubResource("m_darkwood")
+
+[node name="MirrorFrameTop" type="CSGBox3D" parent="Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.97, 2.46, -1.0)
+size = Vector3(0.08, 0.12, 1.64)
+material = SubResource("m_frame")
+
+[node name="MirrorFrameLeft" type="CSGBox3D" parent="Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.97, 1.2, -1.76)
+size = Vector3(0.08, 2.52, 0.12)
+material = SubResource("m_frame")
+
+[node name="MirrorFrameRight" type="CSGBox3D" parent="Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.97, 1.2, -0.24)
+size = Vector3(0.08, 2.52, 0.12)
+material = SubResource("m_frame")
+
+[node name="WindowView" type="MeshInstance3D" parent="Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, -3.99)
+mesh = SubResource("q_window")
+material_override = SubResource("m_cover")
+
+[node name="MirrorGlass" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.02, 1.2, -1.0)
+use_collision = true
+size = Vector3(0.04, 2.4, 1.4)
+material = SubResource("m_glass")
+
+[node name="MirrorAlcove" type="Node3D" parent="."]
+
+[node name="MirrorFigure" type="Node3D" parent="MirrorAlcove"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.05, 0, -1.0)
+rotation = Vector3(0, 1.5708, 0)
+script = ExtResource("model")
+
+[node name="MirrorLight" type="OmniLight3D" parent="MirrorAlcove"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.5, 2.1, -1.0)
+light_color = Color(1, 0.92, 0.8, 1)
+light_energy = 1.2
+omni_range = 3.0
+
+[node name="MirrorCamera" type="Camera3D" parent="MirrorAlcove"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.3, 1.2, -1.5)
+rotation = Vector3(-0.06, -1.5708, 0)
+fov = 42.0
+
+[node name="Interactables" type="Node3D" parent="."]
+
+[node name="Mirror" type="Node3D" parent="Interactables"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.4, 0, -1.0)
+script = ExtResource("interactable")
+prompt = "Mirror: choose your hero"
+
+[node name="Workbench" type="Node3D" parent="Interactables"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.0, 0, 1.4)
+script = ExtResource("interactable")
+prompt = "Card workbench"
+
+[node name="Wardrobe" type="Node3D" parent="Interactables"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.0, 0, 2.5)
+script = ExtResource("interactable")
+prompt = "Wardrobe"
+
+[node name="FrontDoor" type="Node3D" parent="Interactables"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.6, 0, 3.5)
+script = ExtResource("interactable")
+prompt = "Front door"
+
+[node name="HeroSelectMenu" type="CanvasLayer" parent="."]
+script = ExtResource("menu")

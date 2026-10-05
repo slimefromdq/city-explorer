@@ -1,0 +1,47 @@
+[gd_resource type="Resource" script_class="AbilityCard" format=3]
+
+[ext_resource type="Script" path="res://game/cards/card_body_def.gd" id="1_j1utt"]
+[ext_resource type="Script" path="res://game/cards/effects/card_effect.gd" id="2_60jwh"]
+[ext_resource type="Script" path="res://game/cards/effects/spawn_body_effect.gd" id="3_77b2g"]
+[ext_resource type="Script" path="res://game/cards/effects/damage_area_effect.gd" id="4_tpqv2"]
+[ext_resource type="Script" path="res://game/cards/effects/apply_impulse_effect.gd" id="5_3njk8"]
+[ext_resource type="Script" path="res://game/cards/ability_card.gd" id="6_w4sim"]
+
+[sub_resource type="Resource" id="Resource_qu0a2"]
+script = ExtResource("1_j1utt")
+shape = 1
+radius = 0.15
+speed = 40.0
+gravity_scale = 0.0
+lifetime = 3.0
+
+[sub_resource type="Resource" id="Resource_4irsf"]
+script = ExtResource("3_77b2g")
+inherit_velocity = 0.0
+
+[sub_resource type="Resource" id="Resource_sg36k"]
+script = ExtResource("4_tpqv2")
+damage = 35.0
+radius = 4.0
+camera_shake = 0.35
+
+[sub_resource type="Resource" id="Resource_api2u"]
+script = ExtResource("5_3njk8")
+who = 2
+strength = 16.0
+up_bias = 0.6
+radius = 4.5
+edge_strength = 0.5
+include_caster = true
+
+[resource]
+script = ExtResource("6_w4sim")
+display_name = "Rocket Jump"
+description = "Fire a rocket. The blast hurts others and launches everything nearby, you included. Aim at your feet to fly."
+color = Color(1, 0.3, 0.25, 1)
+cooldown = 2.5
+charges = 2
+energy_cost = 20.0
+body = SubResource("Resource_qu0a2")
+on_cast = Array[ExtResource("2_60jwh")]([SubResource("Resource_4irsf")])
+on_expire = Array[ExtResource("2_60jwh")]([SubResource("Resource_sg36k"), SubResource("Resource_api2u")])

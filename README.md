@@ -8,7 +8,8 @@ One gunslinger, a large vertical city (~590 x 430 m, 35 cells, up to 170 m tall
 landmarks) and a test bench for making movement, parkour and combat feel right
 before anything else gets built.
 
-Open the folder in Godot 4.7.x (Forward+ renderer) and press F5.
+Open the folder in Godot 4.7.x (Forward+ renderer), open `main.tscn` and press F6.
+(F5 now starts the Meridia Hero Sandbox apartment; see [game/README.md](game/README.md).)
 First open imports scripts (`class_name`s); if you run from CLI do
 `godot --headless --import` once.
 

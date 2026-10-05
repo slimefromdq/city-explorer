@@ -1,0 +1,44 @@
+[gd_resource type="Resource" script_class="AbilityCard" format=3]
+
+[ext_resource type="Script" path="res://game/cards/card_body_def.gd" id="1_ftm35"]
+[ext_resource type="Script" path="res://game/cards/effects/card_effect.gd" id="2_dd8qk"]
+[ext_resource type="Script" path="res://game/cards/effects/spawn_body_effect.gd" id="3_vyv05"]
+[ext_resource type="Script" path="res://game/cards/effects/damage_area_effect.gd" id="4_5cpnl"]
+[ext_resource type="Script" path="res://game/cards/effects/apply_impulse_effect.gd" id="5_bpb1a"]
+[ext_resource type="Script" path="res://game/cards/ability_card.gd" id="6_k5ska"]
+
+[sub_resource type="Resource" id="Resource_wfqdq"]
+script = ExtResource("1_ftm35")
+shape = 2
+speed = 18.0
+sticky = true
+
+[sub_resource type="Resource" id="Resource_v8rv7"]
+script = ExtResource("3_vyv05")
+pitch_up_degrees = 6.0
+
+[sub_resource type="Resource" id="Resource_7rev8"]
+script = ExtResource("4_5cpnl")
+damage = 45.0
+radius = 4.0
+edge_damage = 0.4
+weight = 1
+camera_shake = 0.3
+
+[sub_resource type="Resource" id="Resource_yft1g"]
+script = ExtResource("5_bpb1a")
+who = 2
+strength = 8.0
+up_bias = 0.5
+
+[resource]
+script = ExtResource("6_k5ska")
+display_name = "Bug Grenade"
+description = "Throw a sticky bug. It latches onto the first thing it touches, blinks, and explodes."
+color = Color(0.55, 1, 0.3, 1)
+cooldown = 4.0
+charges = 2
+energy_cost = 20.0
+body = SubResource("Resource_wfqdq")
+on_cast = Array[ExtResource("2_dd8qk")]([SubResource("Resource_v8rv7")])
+on_expire = Array[ExtResource("2_dd8qk")]([SubResource("Resource_7rev8"), SubResource("Resource_yft1g")])

@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="AbilityCard" format=3]
+
+[ext_resource type="Script" path="res://game/cards/effects/card_effect.gd" id="1_bpjvy"]
+[ext_resource type="Script" path="res://game/cards/effects/modifier_effect.gd" id="2_a6pew"]
+[ext_resource type="Script" path="res://game/cards/ability_card.gd" id="3_gfgy0"]
+
+[sub_resource type="Resource" id="Resource_0tkvp"]
+script = ExtResource("2_a6pew")
+
+[sub_resource type="Resource" id="Resource_kh08l"]
+script = ExtResource("2_a6pew")
+stat = 5
+amount = 1.0
+
+[sub_resource type="Resource" id="Resource_e07id"]
+script = ExtResource("2_a6pew")
+stat = 3
+
+[resource]
+script = ExtResource("3_gfgy0")
+display_name = "Overclock"
+description = "Passive while equipped: +25% damage, +1 bounce on bouncing bodies, cooldowns 25% faster."
+color = Color(1, 0.8, 0.2, 1)
+trigger = 5
+cooldown = 0.0
+on_cast = Array[ExtResource("1_bpjvy")]([SubResource("Resource_0tkvp"), SubResource("Resource_kh08l"), SubResource("Resource_e07id")])

@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="AbilityCard" format=3]
+
+[ext_resource type="Script" path="res://game/cards/card_body_def.gd" id="1_fm3ad"]
+[ext_resource type="Script" path="res://game/cards/effects/card_effect.gd" id="2_5jmhs"]
+[ext_resource type="Script" path="res://game/cards/effects/spawn_body_effect.gd" id="3_18qfc"]
+[ext_resource type="Script" path="res://game/cards/effects/damage_area_effect.gd" id="4_wrcps"]
+[ext_resource type="Script" path="res://game/cards/ability_card.gd" id="5_pj3aa"]
+
+[sub_resource type="Resource" id="Resource_yaofv"]
+script = ExtResource("1_fm3ad")
+radius = 0.09
+speed = 50.0
+gravity_scale = 0.0
+lifetime = 1.2
+
+[sub_resource type="Resource" id="Resource_87elk"]
+script = ExtResource("3_18qfc")
+count = 6
+spread_degrees = 50.0
+inherit_velocity = 0.0
+
+[sub_resource type="Resource" id="Resource_015mv"]
+script = ExtResource("4_wrcps")
+damage = 9.0
+
+[resource]
+script = ExtResource("5_pj3aa")
+display_name = "Sigil Barrage"
+description = "Automatic: the moment your leap sigil forms (OnSigilFormed), it fires a fan of 6 bolts where you're aiming."
+color = Color(0.55, 0.8, 1, 1)
+trigger = 3
+movement_event = 1
+cooldown = 0.5
+body = SubResource("Resource_yaofv")
+on_cast = Array[ExtResource("2_5jmhs")]([SubResource("Resource_87elk")])
+on_contact = Array[ExtResource("2_5jmhs")]([SubResource("Resource_015mv")])

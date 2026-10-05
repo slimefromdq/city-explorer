@@ -6,7 +6,7 @@ extends RefCounted
 ##   blockable  - false means guard doesn't help (beats block)
 
 enum Weight { LIGHT, HEAVY }
-enum Result { NONE, HIT, BLOCKED, GUARD_BREAK, DODGED }
+enum Result { NONE, HIT, BLOCKED, GUARD_BREAK, DODGED, PERFECT_BLOCK }
 
 var attacker: Node3D
 var damage := 5.0
